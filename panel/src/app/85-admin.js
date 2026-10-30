@@ -76,7 +76,7 @@ function editorRow(id){
 function renderAdmin(){
   const m=$("#main");
   m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:"Редакция"}), h("p",{text:"Приглашай редакторов, следи за колонками, разрешай публиковать самостоятельно, ставь на паузу или удаляй."})),
-    h("div",{class:"leadacts"}, h("button",{class:"btn primary",onclick:()=>{S.showInvite=true;render();}},"+ Пригласить редактора"))));
+    h("div",{class:"leadacts"}, h("button",{class:"btn primary",onclick:()=>{S.showInvite=true;render();}},"+ Пригласить редактора"), S.realOwner?h("button",{class:"btn mobonly",onclick:()=>setTest(true)},"Тестовый вход"):null)));
   if(S.showInvite) m.append(inviteForm());
   const ref=h("input",{type:"url",value:S.settings.referral_url||"",placeholder:"https://claude.ai/… — твоя ссылка гостевого пропуска"});
   const refSave=h("button",{type:"button",class:"btn",onclick:async()=>{ const v=ref.value.trim(); if(v && !/^https:\/\/[^\s]+$/.test(v)){ toast("Нужна ссылка, начинающаяся с https://"); return; } await db.doc("settings/main").set({...S.settings, referral_url:v, updated_at:Date.now()}); toast(v?"Ссылка добавится во все приглашения":"Ссылка убрана из приглашений"); }},"Сохранить");

@@ -7,12 +7,12 @@ const TOOL_COVER = "s6749993_design_radar_2000640";
 const SCN_PHOTO = 6841226;
 const LIMIT = 3900;
 const VIEWS = [
-  {id:"review", name:"На согласовании"},
+  {id:"review", name:"На согласовании", short:"Ревью"},
   {id:"plan", name:"План"},
-  {id:"drafts", name:"Черновики"},
+  {id:"drafts", name:"Черновики", short:"Черновики"},
   {id:"ideas", name:"Идеи"},
-  {id:"published", name:"Опубликовано"},
-  {id:"team", name:"Колонки"}
+  {id:"published", name:"Опубликовано", short:"Вышло"},
+  {id:"team", name:"Колонки", short:"Команда"}
 ];
 const S = {posts:[], ideas:[], invites:[], settings:{}, editors:{}, me:null, owner:false, canWrite:false, view:"review", ready:false, dbOk:null, confirm:null, busy:{}, errors:{}, names:{}};
 let db=null, user=null, mcp=null, sample=null, assets=null;

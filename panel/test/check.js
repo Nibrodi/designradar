@@ -76,6 +76,17 @@ const url='file://'+path.resolve(process.argv[2]);
   ok(src&&src.status==='moved','author copy marked moved');
   ok(!(await p.evaluate(()=>[...document.querySelectorAll('.card.open')].some(c=>c.textContent.includes('Пост Ани')&&c.closest('main')&&location.hash==='#review'))),'moved post left review');
  }
+ { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте
+  const m=await b.newPage({viewport:{width:375,height:780},isMobile:true,hasTouch:true,colorScheme:'dark'}); m.on('pageerror',e=>errs.push('mobile: '+e.message));
+  await m.goto(url); await W(1500);
+  for(const t of ['review','plan','drafts','ideas','published','team']){ await m.evaluate(t=>location.hash=t,t); await W(350);
+    ok(await m.evaluate(()=>document.documentElement.scrollWidth<=375),'mobile '+t+' no horizontal scroll'); }
+  ok(await m.evaluate(()=>{ const r=document.getElementById('tabs').getBoundingClientRect(); return r.bottom>=775 && r.height<100; }),'mobile bottom nav');
+  ok(await m.evaluate(()=>[...document.querySelectorAll('.leadacts .btn.primary')].some(b=>b.offsetParent&&b.textContent.includes('Пригласить'))),'mobile invite button visible');
+  ok(await m.evaluate(()=>{ const t=document.querySelector('.brand h1'); return t.scrollWidth<=t.clientWidth+1; }),'mobile title not cut');
+  await m.evaluate(()=>location.hash='review'); await W(350); ok(await m.$('#fab'),'mobile new post button');
+  ok(await m.evaluate(()=>[...document.querySelectorAll('input,textarea,select')].every(e=>parseFloat(getComputedStyle(e).fontSize)>=16)),'mobile inputs 16px');
+  await m.close(); }
  await b.close();
  if(errs.length||fails.length){ console.error('ОШИБКИ:\n'+errs.join('\n')+'\nНЕ ПРОШЛО:\n'+fails.join('\n')); process.exit(1); }
  console.log('Все проверки прошли');

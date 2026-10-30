@@ -15,7 +15,7 @@ function renderWho(){
   const role=S.test?"Тест":S.owner?"Главный редактор":"Редактор";
   const nm=S.test?"Тестовый редактор":(S.myName||"");
   w.replaceChildren(h("span",{text:role}), h("b",{text:nm}));
-  if(S.realOwner) w.append(h("button",{type:"button",class:"btn sm",onclick:()=>setTest(!S.test)},S.test?"Выйти из теста":"Тестовый вход"));
+  if(S.realOwner) w.append(h("button",{type:"button",class:"btn sm"+(S.test?"":" testin"),onclick:()=>setTest(!S.test),"aria-label":S.test?"Выйти из теста":"Тестовый вход"},h("span",{class:"full",text:S.test?"Выйти из теста":"Тестовый вход"}),h("span",{class:"short",text:S.test?"Выйти":"Тест"})));
 }
 function setTest(on){
   S.test=on; try{ on?localStorage.setItem("dr_test","1"):localStorage.removeItem("dr_test"); }catch(_){}

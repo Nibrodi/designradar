@@ -7,12 +7,12 @@ const TOOL_COVER = "s6749993_design_radar_2000640";
 const SCN_PHOTO = 6841226;
 const LIMIT = 3900;
 const VIEWS = [
-  {id:"review", name:"На согласовании"},
+  {id:"review", name:"На согласовании", short:"Ревью"},
   {id:"plan", name:"План"},
-  {id:"drafts", name:"Черновики"},
+  {id:"drafts", name:"Черновики", short:"Черновики"},
   {id:"ideas", name:"Идеи"},
-  {id:"published", name:"Опубликовано"},
-  {id:"team", name:"Колонки"}
+  {id:"published", name:"Опубликовано", short:"Вышло"},
+  {id:"team", name:"Колонки", short:"Команда"}
 ];
 const S = {posts:[], ideas:[], invites:[], settings:{}, editors:{}, me:null, owner:false, canWrite:false, view:"review", ready:false, dbOk:null, confirm:null, busy:{}, errors:{}, names:{}};
 let db=null, user=null, mcp=null, sample=null, assets=null;
@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.0.0"; const CHANGES=[{"v": "2.0.0", "date": "31.10.2026", "items": ["Права доступа в базе: автор правит только свои посты, общие посты и права редакторов меняет только главный редактор.", "Посты авторов хранятся в их собственных папках. Перед публикацией главный редактор забирает пост в общую ленту.", "Права «публикует сам» и «на паузе» хранятся отдельно от анкеты, редактор не может выдать их себе.", "Номер версии и окно «Что нового» в шапке панели."]}, {"v": "1.6.0", "date": "30.10.2026", "items": ["«Переписать с Claude» даёт два варианта с разными началами и короткий диагноз, что мешало тексту.", "Вместо «Вернуть прежний текст» — переключатель «Твой текст / Вариант 1 / Вариант 2».", "Образец для крафтовых постов и правила, как сделать текст интересным."]}, {"v": "1.5.0", "date": "30.10.2026", "items": ["Код панели разбит на части, перед каждой публикацией панели работает автопроверка.", "Исправлено: пост с каруселью не открывался из-за замороженных данных базы.", "Тёмная «пилюля» для панели выделения, единая кнопка закрытия."]}];
+const APP_VERSION="2.1.0"; const CHANGES=[{"v": "2.1.0", "date": "31.10.2026", "items": ["Мобильная версия: разделы переехали в нижнюю панель с иконками, как в приложении.", "Шапка на телефоне в одну строку; «Тестовый вход» на телефоне — во вкладке «Команда».", "Кнопка «+» для нового поста в углу экрана, прячется при прокрутке вниз.", "Картинки в редакторе по две в ряд, панель выделения листается пальцем.", "Поля ввода больше не приближают экран на iPhone.", "Исправлено: на телефоне пропадала кнопка «Пригласить редактора»."]}, {"v": "2.0.0", "date": "31.10.2026", "items": ["Права доступа в базе: автор правит только свои посты, общие посты и права редакторов меняет только главный редактор.", "Посты авторов хранятся в их собственных папках. Перед публикацией главный редактор забирает пост в общую ленту.", "Права «публикует сам» и «на паузе» хранятся отдельно от анкеты, редактор не может выдать их себе.", "Номер версии и окно «Что нового» в шапке панели."]}, {"v": "1.6.0", "date": "30.10.2026", "items": ["«Переписать с Claude» даёт два варианта с разными началами и короткий диагноз, что мешало тексту.", "Вместо «Вернуть прежний текст» — переключатель «Твой текст / Вариант 1 / Вариант 2».", "Образец для крафтовых постов и правила, как сделать текст интересным."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -616,13 +616,21 @@ async function publish(a){
 }
 
 /* ---------- views ---------- */
+const TAB_ICO=(()=>{ const s=d=>'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+d+'</svg>';
+  return {review:s('<path d="M4 13h4l2 3h4l2-3h4"/><path d="M5.5 5h13L21 13v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5z"/>'),
+    plan:s('<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'),
+    drafts:s('<path d="M14.5 4.5l5 5L9 20H4v-5z"/><path d="M12.5 6.5l5 5"/>'),
+    ideas:s('<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/>'),
+    published:s('<path d="M21 3L10 14"/><path d="M21 3l-6.5 18-4.5-7-7-4.5z"/>'),
+    team:s('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-2.5-5.1"/>')}; })();
 function renderTabs(){
   const nav=$("#tabs"); nav.replaceChildren();
   for(const v of VIEWS){
     const n = v.id==="ideas" ? S.ideas.filter(i=>i.status!=="done").length : v.id==="team" ? null : byView(v.id).length;
     const nm=v.id==="team"&&S.owner?"Редакция":v.name;
     const n2=v.id==="team"&&S.owner?(S.invites.filter(i=>i.status==="sent").length||null):n;
-    nav.append(h("button",{class:"tab","aria-current":S.view===v.id?"page":null,onclick:()=>{location.hash=v.id;}}, nm, n2!=null&&n2>0?h("span",{class:"n",text:n2}):null));
+    const ic=h("span",{class:"ti","aria-hidden":"true"}); ic.innerHTML=TAB_ICO[v.id]||"";
+    nav.append(h("button",{class:"tab","aria-current":S.view===v.id?"page":null,"aria-label":nm,onclick:()=>{location.hash=v.id; window.scrollTo({top:0});}}, ic, h("span",{class:"tl"}, h("span",{class:"full",text:nm}), h("span",{class:"short",text:v.short||nm})), n2!=null&&n2>0?h("span",{class:"n",text:n2>99?"99+":n2}):null));
   }
 }
 function postCard(a){
@@ -701,7 +709,7 @@ function emptyState(v){
 function renderFeed(v){
   const titles={plan:["План публикаций","Запланированные посты по времени выхода. Они выйдут сами, даже если панель закрыта."],review:["На согласовании","Посты, которые ждут твоего решения. Публикуй сразу или запланируй время выхода."],drafts:["Черновики","Посты в работе. Когда текст готов, отправь его на согласование."],published:["Опубликовано","Последние посты, которые вышли в канале."]}[v];
   const m=$("#main");
-  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:titles[0]}), h("p",{text:titles[1]})), h("div",{class:"leadacts"}, authorSelect(), S.canWrite?h("button",{class:"btn primary",onclick:newPost},"+ Новый пост"):null)));
+  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:titles[0]}), h("p",{text:titles[1]})), h("div",{class:"leadacts"}, authorSelect(), S.canWrite?h("button",{class:"btn primary newpost",onclick:newPost},"+ Новый пост"):null)));
   const list=byView(v);
   if(!S.ready){ m.append(h("div",{class:"empty"},h("b",{text:"Загружаю посты…"}))); return; }
   if(!list.length){ m.append(emptyState(v)); return; }
@@ -770,8 +778,14 @@ function renderTeam(){
   }
   m.append(g);
 }
+let lastY=0;
+window.addEventListener("scroll",()=>{ const y=window.scrollY, f=document.getElementById("fab"); if(f) f.classList.toggle("away", y>lastY+4 && y>120); if(Math.abs(y-lastY)>4) lastY=y; },{passive:true});
 function render(){
   renderTabs();
+  let fab=document.getElementById("fab");
+  const wantFab=S.canWrite && !S.blocked && ["review","plan","drafts"].includes(S.view);
+  if(wantFab && !fab){ fab=h("button",{id:"fab",type:"button",class:"fab","aria-label":"Новый пост",onclick:()=>newPost()},h("span",{"aria-hidden":"true",text:"+"})); document.body.append(fab); }
+  if(!wantFab && fab) fab.remove();
   let tb=document.getElementById("testbar");
   if(S.test && !tb){ tb=h("div",{id:"testbar",class:"testbar"},"Тестовый режим: ты видишь панель глазами нового редактора. Публикация недоступна, посты подписаны «Тестовый редактор». ",h("button",{type:"button",class:"btn sm",style:"margin-left:8px",onclick:()=>setTest(false)},"Выйти")); document.body.prepend(tb); }
   if(!S.test && tb) tb.remove();
@@ -860,7 +874,7 @@ function editorRow(id){
 function renderAdmin(){
   const m=$("#main");
   m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:"Редакция"}), h("p",{text:"Приглашай редакторов, следи за колонками, разрешай публиковать самостоятельно, ставь на паузу или удаляй."})),
-    h("div",{class:"leadacts"}, h("button",{class:"btn primary",onclick:()=>{S.showInvite=true;render();}},"+ Пригласить редактора"))));
+    h("div",{class:"leadacts"}, h("button",{class:"btn primary",onclick:()=>{S.showInvite=true;render();}},"+ Пригласить редактора"), S.realOwner?h("button",{class:"btn mobonly",onclick:()=>setTest(true)},"Тестовый вход"):null)));
   if(S.showInvite) m.append(inviteForm());
   const ref=h("input",{type:"url",value:S.settings.referral_url||"",placeholder:"https://claude.ai/… — твоя ссылка гостевого пропуска"});
   const refSave=h("button",{type:"button",class:"btn",onclick:async()=>{ const v=ref.value.trim(); if(v && !/^https:\/\/[^\s]+$/.test(v)){ toast("Нужна ссылка, начинающаяся с https://"); return; } await db.doc("settings/main").set({...S.settings, referral_url:v, updated_at:Date.now()}); toast(v?"Ссылка добавится во все приглашения":"Ссылка убрана из приглашений"); }},"Сохранить");
@@ -919,7 +933,7 @@ function renderWho(){
   const role=S.test?"Тест":S.owner?"Главный редактор":"Редактор";
   const nm=S.test?"Тестовый редактор":(S.myName||"");
   w.replaceChildren(h("span",{text:role}), h("b",{text:nm}));
-  if(S.realOwner) w.append(h("button",{type:"button",class:"btn sm",onclick:()=>setTest(!S.test)},S.test?"Выйти из теста":"Тестовый вход"));
+  if(S.realOwner) w.append(h("button",{type:"button",class:"btn sm"+(S.test?"":" testin"),onclick:()=>setTest(!S.test),"aria-label":S.test?"Выйти из теста":"Тестовый вход"},h("span",{class:"full",text:S.test?"Выйти из теста":"Тестовый вход"}),h("span",{class:"short",text:S.test?"Выйти":"Тест"})));
 }
 function setTest(on){
   S.test=on; try{ on?localStorage.setItem("dr_test","1"):localStorage.removeItem("dr_test"); }catch(_){}

@@ -372,7 +372,7 @@ function drawSheet(){
   const pvToggle=h("button",{type:"button",class:"btn pvbtn",onclick:()=>{ panes.classList.toggle("showpv"); pvToggle.textContent=panes.classList.contains("showpv")?"Текст":"Превью"; }},"Превью");
   const stName={review:"на согласовании",draft:"черновик",published:"опубликован",scheduled:"в плане",rejected:"отклонён"}[d.status]||"";
   const head=h("header",{}, h("button",{class:"iconbtn",onclick:()=>{ if((editing.dirty||editing.changed) && !ro){ save(true); } else closeEditor(); },"aria-label":"Назад"},"←"),
-    h("div",{class:"t"}, h("b",{text:plain(d.title)||(ro?"Пост":"Новый пост")}), h("span",{text:(ro?"просмотр":"редактирование")+(stName?" · "+stName:"")})), ro?null:saveState, themeBtn(), pvToggle);
+    h("div",{class:"t"}, h("b",{text:plain(d.title)||(ro?"Пост":"Новый пост")}), h("span",{text:(ro?"просмотр":"редактирование")+(stName?" · "+stName:"")})), ro?null:saveState, themeBtn(), pvToggle, ro?null:h("button",{type:"button",class:"btn primary hsave",onclick:()=>save(true)},"Сохранить"));
   const foot=h("footer",{});
   if(!ro){
     foot.append(h("span",{class:"hint who",text:"Автор: "+authorName(d.author)}), h("span",{class:"sp"}));
@@ -382,7 +382,11 @@ function drawSheet(){
     if(S.owner && d.status==="review") foot.append(h("button",{class:"btn accent",onclick:async()=>{ await save(false); const id=editing.id; closeEditor(); S.confirm=id; location.hash="review"; render(); }},"К публикации"));
   }
   if(ro) foot.append(h("span",{class:"hint who",text:"Автор: "+authorName(d.author)}));
-  const sheet=h("div",{class:"sheet",role:"dialog","aria-modal":"true","aria-label":"Редактор поста"}, head, panes, foot);
+  /* На телефоне подвал не прибиваем к низу: в приложении Claude низ экрана бывает скрыт. Кнопки — в шапке и в конце текста. */
+  const mobile=window.matchMedia("(max-width:640px)").matches;
+  const edPane=panes.querySelector(".ed");
+  if(mobile && edPane){ foot.classList.add("inline"); edPane.append(foot); }
+  const sheet=h("div",{class:"sheet",role:"dialog","aria-modal":"true","aria-label":"Редактор поста"}, head, panes, (mobile&&edPane)?null:foot);
   root.replaceChildren(sheet); drawPvTabs(); upd();
   if(!ro) setTimeout(()=>tText.focus({preventScroll:true}),50);
 }

@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.3.0"; const CHANGES=[{"v": "2.3.0", "date": "31.10.2026", "items": ["Нижняя панель разделов вернулась. Теперь она сама замеряет, сколько низа страницы прячет приложение Claude, и поднимается ровно на эту величину; так же поднимаются кнопки «Сохранить» и «К публикации» в редакторе.", "«Настроить вид» в меню аватара: ползунки для шапки, полей, расстояний между блоками и карточками, скругления, высоты кнопок и нижней панели. Видно сразу, «Сохранить» применяет вид для всех редакторов, «Сбросить» возвращает исходный."]}, {"v": "2.2.0", "date": "31.10.2026", "items": ["Новая мобильная шапка: разделы — пилюли сверху, всегда на виду. Нижняя панель убрана: в приложении Claude её перекрывали его собственные кнопки.", "Справа в шапке «+» и аватар. В меню аватара: «Что нового», тема, тестовый вход, анкета.", "«+» открывает выбор: написать самой или выбрать одно из 13 направлений (новости, советы, дизайн-идеи, разборы, ребрендинг, психология цвета, доступность, UX-тексты и другие). Темы каждый раз случайные, есть «Темы от Claude» и своя тема; тему можно взять себе или отдать Claude.", "Карточки спокойнее: второстепенные действия — текстовыми кнопками, ровные отступы 16 px.", "Фильтр «Все авторы» во всю ширину.", "Исправлено: после прочтения «Что нового» рядом с версией появлялось «null»."]}, {"v": "2.1.0", "date": "31.10.2026", "items": ["Мобильная версия: разделы переехали в нижнюю панель с иконками, как в приложении.", "Шапка на телефоне в одну строку; «Тестовый вход» на телефоне — во вкладке «Команда».", "Кнопка «+» для нового поста в углу экрана, прячется при прокрутке вниз.", "Картинки в редакторе по две в ряд, панель выделения листается пальцем.", "Поля ввода больше не приближают экран на iPhone.", "Исправлено: на телефоне пропадала кнопка «Пригласить редактора»."]}];
+const APP_VERSION="2.3.1"; const CHANGES=[{"v": "2.3.1", "date": "31.10.2026", "items": ["Редактор на телефоне: «Сохранить» в шапке, «Сохранить» и «К публикации» в конце текста — больше не обрезаются внизу экрана.", "Нижняя панель разделов с запасом под полоску iPhone.", "Шапка на телефоне не липкая: при прокрутке она не прячется под строку со временем.", "Убран замер скрытой части экрана: приложение Claude сдвигает страницу снаружи, изнутри это не измерить."]}, {"v": "2.3.0", "date": "31.10.2026", "items": ["Нижняя панель разделов вернулась. Теперь она сама замеряет, сколько низа страницы прячет приложение Claude, и поднимается ровно на эту величину; так же поднимаются кнопки «Сохранить» и «К публикации» в редакторе.", "«Настроить вид» в меню аватара: ползунки для шапки, полей, расстояний между блоками и карточками, скругления, высоты кнопок и нижней панели. Видно сразу, «Сохранить» применяет вид для всех редакторов, «Сбросить» возвращает исходный."]}, {"v": "2.2.0", "date": "31.10.2026", "items": ["Новая мобильная шапка: разделы — пилюли сверху, всегда на виду. Нижняя панель убрана: в приложении Claude её перекрывали его собственные кнопки.", "Справа в шапке «+» и аватар. В меню аватара: «Что нового», тема, тестовый вход, анкета.", "«+» открывает выбор: написать самой или выбрать одно из 13 направлений (новости, советы, дизайн-идеи, разборы, ребрендинг, психология цвета, доступность, UX-тексты и другие). Темы каждый раз случайные, есть «Темы от Claude» и своя тема; тему можно взять себе или отдать Claude.", "Карточки спокойнее: второстепенные действия — текстовыми кнопками, ровные отступы 16 px.", "Фильтр «Все авторы» во всю ширину.", "Исправлено: после прочтения «Что нового» рядом с версией появлялось «null»."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -1386,7 +1386,7 @@ function drawSheet(){
   const pvToggle=h("button",{type:"button",class:"btn pvbtn",onclick:()=>{ panes.classList.toggle("showpv"); pvToggle.textContent=panes.classList.contains("showpv")?"Текст":"Превью"; }},"Превью");
   const stName={review:"на согласовании",draft:"черновик",published:"опубликован",scheduled:"в плане",rejected:"отклонён"}[d.status]||"";
   const head=h("header",{}, h("button",{class:"iconbtn",onclick:()=>{ if((editing.dirty||editing.changed) && !ro){ save(true); } else closeEditor(); },"aria-label":"Назад"},"←"),
-    h("div",{class:"t"}, h("b",{text:plain(d.title)||(ro?"Пост":"Новый пост")}), h("span",{text:(ro?"просмотр":"редактирование")+(stName?" · "+stName:"")})), ro?null:saveState, themeBtn(), pvToggle);
+    h("div",{class:"t"}, h("b",{text:plain(d.title)||(ro?"Пост":"Новый пост")}), h("span",{text:(ro?"просмотр":"редактирование")+(stName?" · "+stName:"")})), ro?null:saveState, themeBtn(), pvToggle, ro?null:h("button",{type:"button",class:"btn primary hsave",onclick:()=>save(true)},"Сохранить"));
   const foot=h("footer",{});
   if(!ro){
     foot.append(h("span",{class:"hint who",text:"Автор: "+authorName(d.author)}), h("span",{class:"sp"}));
@@ -1396,7 +1396,11 @@ function drawSheet(){
     if(S.owner && d.status==="review") foot.append(h("button",{class:"btn accent",onclick:async()=>{ await save(false); const id=editing.id; closeEditor(); S.confirm=id; location.hash="review"; render(); }},"К публикации"));
   }
   if(ro) foot.append(h("span",{class:"hint who",text:"Автор: "+authorName(d.author)}));
-  const sheet=h("div",{class:"sheet",role:"dialog","aria-modal":"true","aria-label":"Редактор поста"}, head, panes, foot);
+  /* На телефоне подвал не прибиваем к низу: в приложении Claude низ экрана бывает скрыт. Кнопки — в шапке и в конце текста. */
+  const mobile=window.matchMedia("(max-width:640px)").matches;
+  const edPane=panes.querySelector(".ed");
+  if(mobile && edPane){ foot.classList.add("inline"); edPane.append(foot); }
+  const sheet=h("div",{class:"sheet",role:"dialog","aria-modal":"true","aria-label":"Редактор поста"}, head, panes, (mobile&&edPane)?null:foot);
   root.replaceChildren(sheet); drawPvTabs(); upd();
   if(!ro) setTimeout(()=>tText.focus({preventScroll:true}),50);
 }
@@ -1557,24 +1561,6 @@ function openDesign(){
   ov.addEventListener("keydown",e=>{ if(e.key==="Escape") close(true); });
   document.body.append(ov);
 }
-/* ---------- сколько низа страницы прячет приложение Claude ----------
-   В мобильном Claude страница бывает выше видимой области: её низ уходит под край экрана, пока приложение не спрячет свою шапку.
-   IntersectionObserver во фрейме меряет пересечение с настоящим экраном, поэтому невидимая полоска у нижнего края
-   показывает, сколько пикселей скрыто. На эту величину поднимаем нижнюю панель и подвал редактора. */
-(function(){
-  if(!("IntersectionObserver" in window)) return;
-  const probe=document.createElement("div"); probe.className="hostprobe"; probe.setAttribute("aria-hidden","true");
-  const start=()=>{ document.body.append(probe);
-    const th=[]; for(let i=0;i<=240;i++) th.push(i/240);
-    new IntersectionObserver(es=>{ for(const e of es){
-      const full=e.boundingClientRect.height||240;
-      let clip=Math.round(full-e.intersectionRect.height);
-      if(!e.isIntersecting) clip=0;            // полоска не видна совсем — данных нет, не сдвигаем
-      clip=Math.max(0,Math.min(clip,160));
-      document.documentElement.style.setProperty("--hostclip",clip+"px");
-    } },{threshold:th}).observe(probe); };
-  if(document.body) start(); else document.addEventListener("DOMContentLoaded",start);
-})();
 /* ---------- boot ---------- */
 function route(){ const hv=location.hash.replace("#","");
   if(/^invite=/.test(hv)){ S.inviteCode=hv.slice(7).replace(/[^A-Za-z0-9_-]/g,"").slice(0,40); try{ localStorage.setItem("dr_invite",S.inviteCode); }catch(_){} history.replaceState(null,"",location.pathname+location.search+"#review"); }

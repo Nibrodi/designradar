@@ -84,7 +84,6 @@ const url='file://'+path.resolve(process.argv[2]);
   ok(await m.evaluate(()=>{ const r=document.getElementById('tabs').getBoundingClientRect(); return r.bottom>=775 && r.height<100; }),'mobile nav at bottom');
   await m.evaluate(()=>window.scrollTo(0,900)); await W(200);
   ok(await m.evaluate(()=>document.getElementById('tabs').getBoundingClientRect().bottom>=775),'mobile nav stays at bottom on scroll');
-  ok(await m.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--hostclip').trim()==='0px'),'no host clip in plain browser');
   ok(await m.evaluate(()=>!/null|undefined/.test(document.querySelector('.mast').textContent)),'no null in header');
   await m.click('#mbar .mbtn.me'); await W(200); ok(await m.$('#mmenu .pop'),'mobile profile menu');
   await m.evaluate(()=>[...document.querySelectorAll('#mmenu button')].find(b=>b.textContent.includes('Что нового')).click()); await W(200);
@@ -110,6 +109,12 @@ const url='file://'+path.resolve(process.argv[2]);
   ok(await m.evaluate(()=>[...(window.__mockdb['ideas']||new Map()).values()].some(i=>i.status==='requested'&&i.rubric==='Крафт')),'topic handed to Claude');
   await m.click('#mbar .mbtn.new'); await W(250); await m.evaluate(()=>document.querySelector('.npself').click()); await W(900);
   ok(await m.$('.sheet .sec'),'write myself opens editor');
+  await m.evaluate(()=>{ location.hash='review'; window.scrollTo(0,0); }); await W(400);
+  await m.evaluate(()=>{ const c=[...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('Токен')); c.querySelector('h3').click(); }); await W(1200);
+  ok(await m.evaluate(()=>{ const b=document.querySelector('.sheet header .hsave'); return b && b.getBoundingClientRect().top<80 && b.offsetParent; }),'mobile editor save in header');
+  ok(await m.evaluate(()=>!!document.querySelector('.ed footer.inline .btn.primary')),'mobile editor actions at end of text');
+  ok(await m.evaluate(()=>![...document.querySelectorAll('.sheet > footer')].length),'no fixed footer on mobile');
+  await m.evaluate(()=>document.querySelector('.sheet header .iconbtn').click()); await W(500);
   await m.close(); }
  await b.close();
  if(errs.length||fails.length){ console.error('ОШИБКИ:\n'+errs.join('\n')+'\nНЕ ПРОШЛО:\n'+fails.join('\n')); process.exit(1); }

@@ -429,15 +429,15 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
    Панель открывается внутри приложения Claude: его нижняя панель перекрывает всё, что прибито к низу экрана.
    Поэтому на телефоне навигация и действия — только сверху. Сетка: поля 16px, шаг 4/8/12/16. */
 .tab .ti,.tab .short,.mbar,.mmenu{display:none}
-.hostprobe{position:fixed;left:0;bottom:0;width:1px;height:240px;opacity:0;pointer-events:none;z-index:-1}
+
 .brand .who .short{display:none}
 .mobonly{display:none}
 @media (max-width:640px){
   :root{--g:16px;--hdr:52px;--logo:28px;--brand-fs:18px;--h2-fs:28px;--sec-gap:16px;--card-gap:12px;--card-pad:16px;--card-r:18px;--tab-h:52px;--tab-fs:10.5px;--btn-h:44px;--sub-show:-webkit-box}
   .wrap{padding-left:max(var(--g),env(safe-area-inset-left,0px));padding-right:max(var(--g),env(safe-area-inset-right,0px))}
   /* шапка: строка бренда 52px + ленточка разделов 44px, вся шапка липкая */
-  /* без backdrop-filter: он сделал бы шапку контейнером для fixed-панели разделов */
-  .mast{background:var(--paper);border-bottom:1px solid var(--line)}
+  /* шапка не липкая: при прокрутке приложение Claude поднимает страницу под строку статуса, липкая шапка там обрезалась бы */
+  .mast{position:static;background:var(--paper);border-bottom:1px solid var(--line)}
   .mast .wrap{gap:0;padding-block:0}
   .brand{height:var(--hdr);gap:10px}
   .brand .radar{width:var(--logo);height:var(--logo);flex:none}
@@ -450,10 +450,10 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
   .mbtn.me{background:var(--ink);color:var(--paper);font:700 14px/1 var(--body)}
   .mbtn.me .vdot{position:absolute;top:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 2px var(--paper)}
   .mbtn:active{transform:scale(.94)}
-  /* разделы — нижняя панель. --hostclip: сколько низа страницы прячет приложение Claude (меряет 98-hostclip.js) */
+  /* разделы — нижняя панель. Приложение Claude сдвигает страницу вместе со своей шапкой, поэтому снизу запас под полоску iPhone */
   .tabs{position:fixed;left:0;right:0;bottom:var(--hostclip,0px);z-index:15;margin:0;gap:0;overflow:visible;justify-content:space-around;
     background:color-mix(in srgb,var(--sheet) 94%,transparent);backdrop-filter:saturate(1.4) blur(16px);-webkit-backdrop-filter:saturate(1.4) blur(16px);
-    border-top:1px solid var(--line);padding:6px max(6px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));transition:bottom .15s ease}
+    border-top:1px solid var(--line);padding:6px max(6px,env(safe-area-inset-right,0px)) max(22px,calc(6px + env(safe-area-inset-bottom,0px))) max(6px,env(safe-area-inset-left,0px))}
   .tab{flex:1 1 0;min-width:0;height:auto;min-height:var(--tab-h);flex-direction:column;justify-content:center;gap:3px;padding:6px 2px;border:0;border-radius:12px;background:none;position:relative;font-size:var(--tab-fs);font-weight:600;letter-spacing:-.01em;color:var(--muted)}
   .tab .ti{display:block;line-height:0}
   .tab .tl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -558,3 +558,15 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
 .dsmin .dsbody{display:none}
 @media (max-width:640px){.dsov{place-items:start center;padding-top:calc(env(safe-area-inset-top,0px) + 8px)}.dsbox{max-height:52vh}}
 .dsmin .hint{display:none}
+
+.hsave{display:none}
+@media (max-width:640px){
+  .sheet header{gap:8px;padding-inline:12px}
+  .sheet header .iconbtn.th,.sheet header .savestate{display:none}
+  .sheet header .iconbtn{width:40px;height:40px}
+  .sheet header .pvbtn,.sheet header .hsave{display:inline-flex;min-height:40px;padding:0 12px;font-size:14px}
+  .sheet footer.inline{position:static;border:0;background:none;padding:8px 0 calc(40px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:1fr;gap:8px;max-width:780px;margin-inline:auto}
+  .sheet footer.inline .btn{width:100%;min-height:48px}
+  .sheet footer.inline .who,.sheet footer.inline .sp{display:none}
+  .ed{padding-bottom:16px}
+}

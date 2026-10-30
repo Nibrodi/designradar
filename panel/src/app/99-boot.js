@@ -26,11 +26,13 @@ route();
     if(t && S.realOwner){ S.test=true; S.owner=false; S.me=TEST_ID; }
     renderWho();
   }
-  postsCol().onSnapshot(snap=>{ S.posts=snap.docs.map(d=>({id:d.id,...d.data()})); S.ready=true; render(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{ S.ready=true; render(); });
+  postsCol().onSnapshot(snap=>{ S.mainPosts=snap.docs.map(d=>({id:d.id,...d.data(),_base:"posts"})); mergePosts(); S.ready=true; render(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{ S.ready=true; render(); });
   ideasCol().onSnapshot(snap=>{ S.ideas=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
-  db.collection("editors").onSnapshot(snap=>{ S.editors={}; snap.docs.forEach(d=>S.editors[d.id]=d.data()); S.editorsLoaded=true; applyBlock(); render(); if(!$("#sheetRoot").firstChild && !S.blocked) checkOnboarding(); });
+  db.collection("roles").onSnapshot(snap=>{ S.roles={}; snap.docs.forEach(d=>S.roles[d.id]=d.data()); S.rolesLoaded=true; mergeEditors(); applyBlock(); render(); }, ()=>{});
+  db.collection("editors").onSnapshot(snap=>{ S.edRaw={}; snap.docs.forEach(d=>S.edRaw[d.id]=d.data()); mergeEditors(); watchAuthors(); syncInvites(); S.editorsLoaded=true; matchInvite(); applyBlock(); render(); if(!$("#sheetRoot").firstChild && !S.blocked) checkOnboarding(); });
   db.collection("settings").onSnapshot(snap=>{ const d=snap.docs.find(x=>x.id==="main"); S.settings=d?d.data():{}; if(S.owner) render(); }, ()=>{});
-  db.collection("invites").onSnapshot(snap=>{ S.invites=snap.docs.map(d=>({id:d.id,...d.data()})); if(S.owner) render(); matchInvite(); }, ()=>{});
+  db.collection("invites").onSnapshot(snap=>{ S.invites=snap.docs.map(d=>({id:d.id,...d.data()})); if(S.owner) render(); matchInvite(); syncInvites(); }, ()=>{});
+  watchAuthors();
   if(S.realMe && S.canWrite){ try{ const r=db.doc("editors/"+S.realMe); const g=await r.get(); if(!g.exists) await r.set({column:"", joined_at:Date.now()}); }catch{} }
 })();
 })();

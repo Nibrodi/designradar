@@ -52,11 +52,11 @@ function postCard(a){
       main.append(h("button",{class:"btn accent",disabled:busy||a.status==="publishing",onclick:()=>{S.confirm=a.id;render();}},busy?"Публикую…":"Опубликовать"));
       main.append(h("button",{class:"btn",disabled:busy,onclick:()=>{S.sched=a.id;S.confirm=null;render();}},"Запланировать"));
     } else {
-      if(a.status==="draft" && S.canWrite) main.append(h("button",{class:"btn accent",onclick:()=>savePost(a.id,{status:"review"}).then(()=>toast("Отправлено на согласование"))},"На согласование"));
+      if(a.status==="draft" && mayEdit(a)) main.append(h("button",{class:"btn accent",onclick:()=>savePost(a.id,{status:"review"}).then(()=>toast("Отправлено на согласование"))},"На согласование"));
       main.append(h("button",{class:"btn",onclick:()=>openEditor(a.id)},"Редактировать"));
     }
     if(!S.owner && canPub(a) && a.status==="draft") sub.append(link("На согласование",()=>savePost(a.id,{status:"review"}).then(()=>toast("Отправлено на согласование"))));
-    if(a.status==="review" && S.canWrite) sub.append(link("В черновики",()=>savePost(a.id,{status:"draft"}).then(()=>toast("Перенесено в черновики"))));
+    if(a.status==="review" && mayEdit(a)) sub.append(link("В черновики",()=>savePost(a.id,{status:"draft"}).then(()=>toast("Перенесено в черновики"))));
     if(S.owner && a.status!=="published") sub.append(link("Отклонить",()=>savePost(a.id,{status:"rejected"}).then(()=>toast("Отклонено")),"danger"));
   }
   if(main.childNodes.length===1) main.classList.add("one");

@@ -3,7 +3,8 @@
 set -e
 cd "$(dirname "$0")"
 rm -rf dist && mkdir -p dist
-cat src/app/*.js > dist/app.js
+python3 tools-version.py > /tmp/dr_version.js
+{ cat src/app/00-core.js; cat /tmp/dr_version.js; for f in src/app/*.js; do [ "$f" = src/app/00-core.js ] || cat "$f"; done; } > dist/app.js
 cp src/render.js dist/render.js
 cp src/styles.css dist/styles.css
 { cat src/head.html; echo '<link rel="stylesheet" href="styles.css">'; cat src/body.html; echo '<script src="render.js"></script>'; echo '<script src="app.js"></script>'; } > dist/index.html
@@ -14,4 +15,4 @@ mkdir -p dist/_test && cp test/mockreal.js test/m2.png dist/_test/ && cp dist/*.
 { echo '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><script src="mockreal.js"></script></head><body>'; cat dist/index.html; echo '</body></html>'; } > dist/_test/index.html
 node test/check.js dist/_test/index.html
 rm -rf dist/_test
-echo "BUILD OK: $(du -ch dist/* | tail -1 | cut -f1)"
+echo "BUILD OK v$(cat VERSION): $(du -ch dist/* | tail -1 | cut -f1)"

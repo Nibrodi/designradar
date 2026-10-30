@@ -81,7 +81,7 @@ function openOnboarding(editMode){
     const miss=[]; if(!data.sign) miss.push("подпись"); if(!data.grade) miss.push("грейд"); if(!data.channels.length) miss.push("канал"); if(!data.column) miss.push("название колонки"); if(!data.topics.length&&!data.topic_other) miss.push("темы"); if(!data.formats.length) miss.push("форматы"); if(!data.frequency) miss.push("как часто"); if(!data.agreed) miss.push("согласие с правилами");
     if(miss.length){ err.hidden=false; err.textContent="Заполни: "+miss.join(", ")+"."; err.scrollIntoView({block:"center",behavior:"smooth"}); return; }
     if(!ed.onboarded_at) data.onboarded_at=Date.now();
-    try{ await db.doc("editors/"+id).set({...ed, ...data, joined_at:ed.joined_at||Date.now()}); closeEditor(); toast(editMode?"Анкета обновлена":"Добро пожаловать в редакцию!"); }
+    try{ const {status:_s, can_publish:_c, ...raw}={...ed, ...data}; await db.doc("editors/"+id).set({...raw, joined_at:ed.joined_at||Date.now()}); closeEditor(); toast(editMode?"Анкета обновлена":"Добро пожаловать в редакцию!"); }
     catch(e){ err.hidden=false; err.textContent="Не удалось сохранить анкету. Попробуй ещё раз."; }
   };
   const head=h("header",{}, editMode?h("button",{class:"iconbtn",onclick:closeEditor,"aria-label":"Назад"},"←"):(S.test?h("button",{class:"iconbtn",onclick:()=>setTest(false),"aria-label":"Выйти из теста"},"←"):null),

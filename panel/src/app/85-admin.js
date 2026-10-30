@@ -63,8 +63,8 @@ function editorRow(id){
     h("div",{class:"estats"}, h("span",{},h("b",{text:pub})," опубликовано"), h("span",{},h("b",{text:rev})," на согласовании"), h("span",{},h("b",{text:dr})," в черновиках"), h("span",{text:last?"активность "+ago(last):"постов пока нет"})));
   const acts=h("div",{class:"acts"});
   acts.append(h("button",{type:"button",class:"btn sm",onclick:()=>{ S.author=id; try{localStorage.setItem("dr_author",id);}catch(_){} location.hash=rev?"review":"published"; }},"Посты"));
-  const setSt=(v,msg)=>db.doc("editors/"+id).set({...ed,status:v,status_at:Date.now()}).then(()=>toast(msg));
-  if(status!=="removed") acts.append(h("button",{type:"button",class:"btn sm"+(ed.can_publish?" on":""),"aria-pressed":ed.can_publish?"true":"false",onclick:()=>db.doc("editors/"+id).set({...ed,can_publish:!ed.can_publish,updated_at:Date.now()}).then(()=>toast(ed.can_publish?"Теперь посты редактора идут тебе на согласование":"Редактор может публиковать сам: Claude выпускает его посты раз в час"))},ed.can_publish?"✓ Публикует сам":"Разрешить публиковать"));
+  const setSt=(v,msg)=>setRole(id,{status:v,status_at:Date.now()}).then(()=>toast(msg));
+  if(status!=="removed") acts.append(h("button",{type:"button",class:"btn sm"+(ed.can_publish?" on":""),"aria-pressed":ed.can_publish?"true":"false",onclick:()=>setRole(id,{can_publish:!ed.can_publish}).then(()=>toast(ed.can_publish?"Теперь посты редактора идут тебе на согласование":"Редактор может публиковать сам: Claude выпускает его посты раз в час"))},ed.can_publish?"✓ Публикует сам":"Разрешить публиковать"));
   if(status==="active") acts.append(h("button",{type:"button",class:"btn sm",onclick:()=>setSt("paused","Колонка на паузе: редактор видит панель, но не может писать")},"Пауза"));
   if(status!=="active") acts.append(h("button",{type:"button",class:"btn sm",onclick:()=>setSt("active","Доступ к редакции восстановлен")},"Вернуть"));
   if(status!=="removed") acts.append(h("button",{type:"button",class:"btn sm danger",onclick:()=>{ if(S.confirmRemove===id){ S.confirmRemove=null; setSt("removed","Редактор удалён из редакции. Убери его и в «Поделиться», чтобы закрыть ссылку полностью"); } else { S.confirmRemove=id; render(); } }},S.confirmRemove===id?"Точно удалить?":"Удалить"));
@@ -95,14 +95,21 @@ function renderAdmin(){
   if(rem.length){ m.append(h("details",{class:"pdet",style:"margin-top:8px"}, h("summary",{text:"Удалённые редакторы · "+rem.length}), h("div",{class:"egrid",style:"margin-top:12px"}, ...rem.map(editorRow)))); }
 }
 async function matchInvite(){
-  if(S.owner || !S.me || S.me===TEST_ID || !user) return;
+  if(S.owner || !S.me || S.me===TEST_ID || !user || !S.editorsLoaded) return;
   let code=S.inviteCode; if(!code){ try{ code=localStorage.getItem("dr_invite")||""; }catch(_){} }
   if(!code) return;
   const inv=S.invites.find(i=>i.id===code && i.status==="sent"); if(!inv) return;
   try{ localStorage.removeItem("dr_invite"); }catch(_){}
-  try{ await db.collection("invites").doc(inv.id).update({status:"joined", user_id:S.me, joined_at:Date.now()});
-    const ed=S.editors[S.me]||{}; const pre={}; if(!ed.column && inv.column) pre.column=inv.column; if(!ed.channels && inv.channel) pre.channels=[inv.channel]; if(!ed.sign && inv.name) pre.sign=inv.name;
-    if(Object.keys(pre).length) await db.doc("editors/"+S.me).set({...ed, ...pre, invited_by:inv.by||"", updated_at:Date.now()}); }catch(_){}
+  try{ const ed=(S.edRaw||{})[S.me]||{}; const pre={invite_id:inv.id, invite_at:Date.now()}; if(!ed.column && inv.column) pre.column=inv.column; if(!ed.channels && inv.channel) pre.channels=[inv.channel]; if(!ed.sign && inv.name) pre.sign=inv.name;
+    await db.doc("editors/"+S.me).set({...ed, ...pre, invited_by:inv.by||"", updated_at:Date.now()}); }catch(_){}
+}
+/* Приглашённый сам пишет только в свою анкету (invite_id); отметку в приглашении ставит панель главного редактора. */
+async function syncInvites(){
+  if(!S.realOwner || !db) return;
+  for(const [uid,ed] of Object.entries(S.edRaw||{})){
+    const inv=ed.invite_id && S.invites.find(i=>i.id===ed.invite_id && i.status==="sent");
+    if(inv){ try{ await db.collection("invites").doc(inv.id).update({status:"joined", user_id:uid, joined_at:ed.invite_at||Date.now()}); }catch(_){} }
+  }
 }
 function applyBlock(){
   const ed=S.me&&S.editors[S.me]; const st=!S.owner&&ed&&ed.status;

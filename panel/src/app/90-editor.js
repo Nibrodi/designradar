@@ -3,7 +3,7 @@ let editing=null;
 function newPost(prefill={}){
   if(!S.canWrite) return;
   if(S.paused){ toast("Колонка на паузе — новые посты сейчас недоступны"); return; }
-  const ref=postsCol().doc();
+  const ref=S.owner?postsCol().doc():authorCol(S.me).doc();
   const now=Date.now();
   const a={title:prefill.title||"", cover_title:prefill.title||"", label:"Крафт", section:"Крафт", kind:"original", full_text:"", hashtags:[], photos:[], status:"draft", author:S.me||"", created_at:now, updated_at:now, idea:prefill.idea||null};
   ref.set(a).then(()=>{ if(prefill.idea) ideasCol().doc(prefill.idea).update({status:"taken"}); openEditor(ref.id); });
@@ -46,7 +46,7 @@ window.addEventListener("error",ev=>{ if(ev && ev.error) showErr("Ошибка �
 window.addEventListener("unhandledrejection",ev=>{ const r=ev&&ev.reason; if(r && r.code!=="not_granted" && r.code!=="rate_limited") showErr("Ошибка в панели", r); });
 function closeEditor(){ try{ (editing&&editing.unsubs||[]).forEach(f=>{ try{ f&&f(); }catch(_){} }); }catch(_){} editing=null; $("#sheetRoot").replaceChildren(); document.body.style.overflow=""; }
 function drawSheet(){
-  const root=$("#sheetRoot"); const d=editing.draft; const ro=!S.canWrite||(d.status==="published"&&!S.owner);
+  const root=$("#sheetRoot"); const d=editing.draft; const ro=!mayEdit(d)||(d.status==="published"&&!S.owner);
   document.body.style.overflow="hidden";
   const panes=h("div",{class:"panes"});
   editing.unsubs=editing.unsubs||[];
@@ -285,8 +285,8 @@ function drawSheet(){
   panes.append(ed,pv);
   const saveState=h("span",{class:"savestate"});
   const setSaveState=(t)=>{ saveState.textContent=t; };
-  const verCol=()=>db.collection("posts/"+editing.id+"/versions");
-  const noteCol=()=>db.collection("posts/"+editing.id+"/notes");
+  const verCol=()=>db.collection(baseOf(editing.id)+"/"+editing.id+"/versions");
+  const noteCol=()=>db.collection(baseOf(editing.id)+"/"+editing.id+"/notes");
   function logVersion(source, before){
     if(ro||!db) return; const now=Date.now();
     const text=before!=null?before:d.full_text;
@@ -331,7 +331,7 @@ function drawSheet(){
   function drawNotes(){
     const ns=(editing.notes||[]).slice().sort((a,b)=>(a.resolved-b.resolved)||(b.at-a.at));
     const wrap=h("div",{class:"notes"});
-    if(S.canWrite){
+    if(mayEdit(editing.draft)){
       const q=editing.noteQuote||"";
       const ta=h("textarea",{id:"noteIn",rows:3,placeholder:q?"Что не так с этим фрагментом?":"Заметка к посту: что поправить, что проверить"});
       const add=h("button",{type:"button",class:"btn accent",onclick:async()=>{ const t=ta.value.trim(); if(!t) return; add.disabled=true;
@@ -342,7 +342,7 @@ function drawSheet(){
     ns.forEach(n=>{ const el=h("div",{class:"note"+(n.resolved?" done":"")}, h("div",{class:"nmeta"}, h("b",{text:authorName(n.by)}), h("span",{text:" · "+ago(n.at)+(n.resolved?" · решено":"")})),
         n.quote?h("button",{type:"button",class:"nq",title:"Найти в тексте",onclick:()=>{ const i=tText.value.indexOf(n.quote); if(i>=0){ panes.classList.remove("showpv"); tText.focus(); tText.setSelectionRange(i,i+n.quote.length); } else toast("Этого фрагмента в тексте уже нет"); }},"«"+n.quote+"»"):null,
         h("p",{text:n.text}),
-        S.canWrite?h("div",{class:"acts"}, h("button",{type:"button",class:"btn sm",onclick:()=>noteCol().doc(n.id).update({resolved:!n.resolved, resolved_by:S.me||"", resolved_at:Date.now()})},n.resolved?"Вернуть":"✓ Готово"),
+        mayEdit(editing.draft)?h("div",{class:"acts"}, h("button",{type:"button",class:"btn sm",onclick:()=>noteCol().doc(n.id).update({resolved:!n.resolved, resolved_by:S.me||"", resolved_at:Date.now()})},n.resolved?"Вернуть":"✓ Готово"),
           (S.owner||n.by===S.me)?h("button",{type:"button",class:"btn sm ghost danger",onclick:()=>noteCol().doc(n.id).delete()},"Удалить"):null):null);
       wrap.append(el); });
     return wrap;

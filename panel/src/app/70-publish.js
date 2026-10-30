@@ -92,7 +92,7 @@ async function prepareEditorPosts(){
 }
 async function armDispatcher(extra){
   if(!mcp) return;
-  const times=S.posts.filter(p=>p.status==="scheduled"&&(!extra||p.id!==extra.id)).map(p=>p.scheduled_at||0);
+  const times=S.posts.filter(p=>p.status==="scheduled"&&(p._base||"posts")==="posts"&&(!extra||p.id!==extra.id)).map(p=>p.scheduled_at||0);
   if(extra&&extra.status==="scheduled") times.push(extra.scheduled_at);
   const next=times.filter(Boolean).sort((x,y)=>x-y)[0];
   if(!next) return;
@@ -125,6 +125,7 @@ async function scheduleAt(a, ms){
     return;
   }
   if(!mcp){ toast("Планирование недоступно в этом окне: открой панель в Claude."); return; }
+  try{ a=await adoptPost(a); }catch(e){ S.errors[a.id]="Не удалось забрать пост автора в общую ленту."; render(); return; }
   if(textLength(a)>LIMIT){ S.errors[a.id]="Пост длиннее "+LIMIT+" знаков. Сократи текст."; render(); return; }
   S.busy[a.id]=true; S.errors[a.id]=""; render();
   try{
@@ -157,6 +158,7 @@ async function publish(a){
   if(!mcp){ S.errors[a.id]="Публикация недоступна в этом окне: открой панель в Claude."; render(); return; }
   if(textLength(a)>LIMIT){ S.errors[a.id]="Пост длиннее "+LIMIT+" знаков вместе с заголовком и хэштегами. Сократи текст."; render(); return; }
   S.busy[a.id]=true; S.errors[a.id]=""; S.confirm=null; render();
+  try{ a=await adoptPost(a); }catch(e){ S.busy[a.id]=false; S.errors[a.id]="Не удалось забрать пост автора в общую ленту."; render(); return; }
   let sent=false;
   try{
     const body={chat_id:CHANNEL, rich_message:await buildRich(a)};

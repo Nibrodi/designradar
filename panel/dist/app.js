@@ -38,6 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
+const APP_VERSION="2.0.0"; const CHANGES=[{"v": "2.0.0", "date": "31.10.2026", "items": ["Права доступа в базе: автор правит только свои посты, общие посты и права редакторов меняет только главный редактор.", "Посты авторов хранятся в их собственных папках. Перед публикацией главный редактор забирает пост в общую ленту.", "Права «публикует сам» и «на паузе» хранятся отдельно от анкеты, редактор не может выдать их себе.", "Номер версии и окно «Что нового» в шапке панели."]}, {"v": "1.6.0", "date": "30.10.2026", "items": ["«Переписать с Claude» даёт два варианта с разными началами и короткий диагноз, что мешало тексту.", "Вместо «Вернуть прежний текст» — переключатель «Твой текст / Вариант 1 / Вариант 2».", "Образец для крафтовых постов и правила, как сделать текст интересным."]}, {"v": "1.5.0", "date": "30.10.2026", "items": ["Код панели разбит на части, перед каждой публикацией панели работает автопроверка.", "Исправлено: пост с каруселью не открывался из-за замороженных данных базы.", "Тёмная «пилюля» для панели выделения, единая кнопка закрытия."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -391,6 +392,31 @@ function tgPreview(a){
 /* ---------- data ---------- */
 const postsCol = () => db.collection("posts");
 const ideasCol = () => db.collection("ideas");
+/* Посты авторов живут в byauthor/<uid>/posts: правила базы дают автору писать только туда. Общие посты (posts) пишет только главный редактор. */
+const authorCol = uid => db.collection("byauthor/"+uid+"/posts");
+const baseOf = id => (S.baseOverride&&S.baseOverride[id]) || ((S.posts.find(p=>p.id===id)||{})._base) || "posts";
+const mayEdit = a => !!a && (S.owner || (S.canWrite && (a._base||"posts")!=="posts" && (a.author||"")===S.me));
+function mergePosts(){
+  const extra=[]; for(const arr of Object.values(S.authorPosts||{})) extra.push(...arr);
+  S.posts=[...(S.mainPosts||[]), ...extra.filter(p=>p.status!=="moved")];
+}
+const authorSubs={};
+function watchAuthors(){
+  const ids=new Set(Object.keys(S.edRaw||{})); if(S.realMe) ids.add(S.realMe); if(S.realOwner) ids.add(TEST_ID);
+  for(const uid of ids){ if(authorSubs[uid]) continue;
+    authorSubs[uid]=authorCol(uid).onSnapshot(snap=>{ S.authorPosts=S.authorPosts||{}; S.authorPosts[uid]=snap.docs.map(d=>({id:d.id,...d.data(),_base:"byauthor/"+uid+"/posts"})); mergePosts(); render(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{}); }
+}
+function mergeEditors(){ S.editors={}; const ids=new Set([...Object.keys(S.edRaw||{}),...Object.keys(S.roles||{})]); for(const id of ids){ const r=(S.roles||{})[id]||{}; S.editors[id]={...((S.edRaw||{})[id]||{}), status:r.status||"", can_publish:!!r.can_publish}; } }
+const setRole=(id,patch)=>db.doc("roles/"+id).set({...((S.roles||{})[id]||{}), ...patch, updated_at:Date.now(), by:S.realMe||""});
+/* Главный редактор забирает пост автора в общую ленту перед публикацией: публикует только то, что лежит в posts. */
+async function adoptPost(a){
+  if(!S.owner || (a._base||"posts")==="posts") return a;
+  const {_base, ...data}=JSON.parse(JSON.stringify(a)); delete data.id;
+  await postsCol().doc(a.id).set({...data, adopted_from:_base, adopted_at:Date.now()});
+  await db.collection(_base).doc(a.id).update({status:"moved", moved_to:"posts/"+a.id, updated_at:Date.now()});
+  S.baseOverride=S.baseOverride||{}; S.baseOverride[a.id]="posts";
+  return {...a, _base:"posts"};
+}
 function byView(v){
   const p=S.posts.filter(authorOk);
   if(v==="review") return p.filter(x=>["review","queued","publishing","publish_unknown"].includes(x.status)).sort((a,b)=>(b.updated_at||0)-(a.updated_at||0));
@@ -400,8 +426,8 @@ function byView(v){
   return [];
 }
 async function savePost(id, patch){
-  const ref=postsCol().doc(id);
-  await ref.update({...patch, updated_at:Date.now()});
+  const {_base, ...clean}=patch;
+  await db.collection(baseOf(id)).doc(id).update({...clean, updated_at:Date.now()});
 }
 
 /* ---------- publishing ---------- */
@@ -498,7 +524,7 @@ async function prepareEditorPosts(){
 }
 async function armDispatcher(extra){
   if(!mcp) return;
-  const times=S.posts.filter(p=>p.status==="scheduled"&&(!extra||p.id!==extra.id)).map(p=>p.scheduled_at||0);
+  const times=S.posts.filter(p=>p.status==="scheduled"&&(p._base||"posts")==="posts"&&(!extra||p.id!==extra.id)).map(p=>p.scheduled_at||0);
   if(extra&&extra.status==="scheduled") times.push(extra.scheduled_at);
   const next=times.filter(Boolean).sort((x,y)=>x-y)[0];
   if(!next) return;
@@ -531,6 +557,7 @@ async function scheduleAt(a, ms){
     return;
   }
   if(!mcp){ toast("Планирование недоступно в этом окне: открой панель в Claude."); return; }
+  try{ a=await adoptPost(a); }catch(e){ S.errors[a.id]="Не удалось забрать пост автора в общую ленту."; render(); return; }
   if(textLength(a)>LIMIT){ S.errors[a.id]="Пост длиннее "+LIMIT+" знаков. Сократи текст."; render(); return; }
   S.busy[a.id]=true; S.errors[a.id]=""; render();
   try{
@@ -563,6 +590,7 @@ async function publish(a){
   if(!mcp){ S.errors[a.id]="Публикация недоступна в этом окне: открой панель в Claude."; render(); return; }
   if(textLength(a)>LIMIT){ S.errors[a.id]="Пост длиннее "+LIMIT+" знаков вместе с заголовком и хэштегами. Сократи текст."; render(); return; }
   S.busy[a.id]=true; S.errors[a.id]=""; S.confirm=null; render();
+  try{ a=await adoptPost(a); }catch(e){ S.busy[a.id]=false; S.errors[a.id]="Не удалось забрать пост автора в общую ленту."; render(); return; }
   let sent=false;
   try{
     const body={chat_id:CHANNEL, rich_message:await buildRich(a)};
@@ -641,11 +669,11 @@ function postCard(a){
       main.append(h("button",{class:"btn accent",disabled:busy||a.status==="publishing",onclick:()=>{S.confirm=a.id;render();}},busy?"Публикую…":"Опубликовать"));
       main.append(h("button",{class:"btn",disabled:busy,onclick:()=>{S.sched=a.id;S.confirm=null;render();}},"Запланировать"));
     } else {
-      if(a.status==="draft" && S.canWrite) main.append(h("button",{class:"btn accent",onclick:()=>savePost(a.id,{status:"review"}).then(()=>toast("Отправлено на согласование"))},"На согласование"));
+      if(a.status==="draft" && mayEdit(a)) main.append(h("button",{class:"btn accent",onclick:()=>savePost(a.id,{status:"review"}).then(()=>toast("Отправлено на согласование"))},"На согласование"));
       main.append(h("button",{class:"btn",onclick:()=>openEditor(a.id)},"Редактировать"));
     }
     if(!S.owner && canPub(a) && a.status==="draft") sub.append(link("На согласование",()=>savePost(a.id,{status:"review"}).then(()=>toast("Отправлено на согласование"))));
-    if(a.status==="review" && S.canWrite) sub.append(link("В черновики",()=>savePost(a.id,{status:"draft"}).then(()=>toast("Перенесено в черновики"))));
+    if(a.status==="review" && mayEdit(a)) sub.append(link("В черновики",()=>savePost(a.id,{status:"draft"}).then(()=>toast("Перенесено в черновики"))));
     if(S.owner && a.status!=="published") sub.append(link("Отклонить",()=>savePost(a.id,{status:"rejected"}).then(()=>toast("Отклонено")),"danger"));
   }
   if(main.childNodes.length===1) main.classList.add("one");
@@ -819,8 +847,8 @@ function editorRow(id){
     h("div",{class:"estats"}, h("span",{},h("b",{text:pub})," опубликовано"), h("span",{},h("b",{text:rev})," на согласовании"), h("span",{},h("b",{text:dr})," в черновиках"), h("span",{text:last?"активность "+ago(last):"постов пока нет"})));
   const acts=h("div",{class:"acts"});
   acts.append(h("button",{type:"button",class:"btn sm",onclick:()=>{ S.author=id; try{localStorage.setItem("dr_author",id);}catch(_){} location.hash=rev?"review":"published"; }},"Посты"));
-  const setSt=(v,msg)=>db.doc("editors/"+id).set({...ed,status:v,status_at:Date.now()}).then(()=>toast(msg));
-  if(status!=="removed") acts.append(h("button",{type:"button",class:"btn sm"+(ed.can_publish?" on":""),"aria-pressed":ed.can_publish?"true":"false",onclick:()=>db.doc("editors/"+id).set({...ed,can_publish:!ed.can_publish,updated_at:Date.now()}).then(()=>toast(ed.can_publish?"Теперь посты редактора идут тебе на согласование":"Редактор может публиковать сам: Claude выпускает его посты раз в час"))},ed.can_publish?"✓ Публикует сам":"Разрешить публиковать"));
+  const setSt=(v,msg)=>setRole(id,{status:v,status_at:Date.now()}).then(()=>toast(msg));
+  if(status!=="removed") acts.append(h("button",{type:"button",class:"btn sm"+(ed.can_publish?" on":""),"aria-pressed":ed.can_publish?"true":"false",onclick:()=>setRole(id,{can_publish:!ed.can_publish}).then(()=>toast(ed.can_publish?"Теперь посты редактора идут тебе на согласование":"Редактор может публиковать сам: Claude выпускает его посты раз в час"))},ed.can_publish?"✓ Публикует сам":"Разрешить публиковать"));
   if(status==="active") acts.append(h("button",{type:"button",class:"btn sm",onclick:()=>setSt("paused","Колонка на паузе: редактор видит панель, но не может писать")},"Пауза"));
   if(status!=="active") acts.append(h("button",{type:"button",class:"btn sm",onclick:()=>setSt("active","Доступ к редакции восстановлен")},"Вернуть"));
   if(status!=="removed") acts.append(h("button",{type:"button",class:"btn sm danger",onclick:()=>{ if(S.confirmRemove===id){ S.confirmRemove=null; setSt("removed","Редактор удалён из редакции. Убери его и в «Поделиться», чтобы закрыть ссылку полностью"); } else { S.confirmRemove=id; render(); } }},S.confirmRemove===id?"Точно удалить?":"Удалить"));
@@ -851,14 +879,21 @@ function renderAdmin(){
   if(rem.length){ m.append(h("details",{class:"pdet",style:"margin-top:8px"}, h("summary",{text:"Удалённые редакторы · "+rem.length}), h("div",{class:"egrid",style:"margin-top:12px"}, ...rem.map(editorRow)))); }
 }
 async function matchInvite(){
-  if(S.owner || !S.me || S.me===TEST_ID || !user) return;
+  if(S.owner || !S.me || S.me===TEST_ID || !user || !S.editorsLoaded) return;
   let code=S.inviteCode; if(!code){ try{ code=localStorage.getItem("dr_invite")||""; }catch(_){} }
   if(!code) return;
   const inv=S.invites.find(i=>i.id===code && i.status==="sent"); if(!inv) return;
   try{ localStorage.removeItem("dr_invite"); }catch(_){}
-  try{ await db.collection("invites").doc(inv.id).update({status:"joined", user_id:S.me, joined_at:Date.now()});
-    const ed=S.editors[S.me]||{}; const pre={}; if(!ed.column && inv.column) pre.column=inv.column; if(!ed.channels && inv.channel) pre.channels=[inv.channel]; if(!ed.sign && inv.name) pre.sign=inv.name;
-    if(Object.keys(pre).length) await db.doc("editors/"+S.me).set({...ed, ...pre, invited_by:inv.by||"", updated_at:Date.now()}); }catch(_){}
+  try{ const ed=(S.edRaw||{})[S.me]||{}; const pre={invite_id:inv.id, invite_at:Date.now()}; if(!ed.column && inv.column) pre.column=inv.column; if(!ed.channels && inv.channel) pre.channels=[inv.channel]; if(!ed.sign && inv.name) pre.sign=inv.name;
+    await db.doc("editors/"+S.me).set({...ed, ...pre, invited_by:inv.by||"", updated_at:Date.now()}); }catch(_){}
+}
+/* Приглашённый сам пишет только в свою анкету (invite_id); отметку в приглашении ставит панель главного редактора. */
+async function syncInvites(){
+  if(!S.realOwner || !db) return;
+  for(const [uid,ed] of Object.entries(S.edRaw||{})){
+    const inv=ed.invite_id && S.invites.find(i=>i.id===ed.invite_id && i.status==="sent");
+    if(inv){ try{ await db.collection("invites").doc(inv.id).update({status:"joined", user_id:uid, joined_at:ed.invite_at||Date.now()}); }catch(_){} }
+  }
 }
 function applyBlock(){
   const ed=S.me&&S.editors[S.me]; const st=!S.owner&&ed&&ed.status;
@@ -950,7 +985,7 @@ function openOnboarding(editMode){
     const miss=[]; if(!data.sign) miss.push("подпись"); if(!data.grade) miss.push("грейд"); if(!data.channels.length) miss.push("канал"); if(!data.column) miss.push("название колонки"); if(!data.topics.length&&!data.topic_other) miss.push("темы"); if(!data.formats.length) miss.push("форматы"); if(!data.frequency) miss.push("как часто"); if(!data.agreed) miss.push("согласие с правилами");
     if(miss.length){ err.hidden=false; err.textContent="Заполни: "+miss.join(", ")+"."; err.scrollIntoView({block:"center",behavior:"smooth"}); return; }
     if(!ed.onboarded_at) data.onboarded_at=Date.now();
-    try{ await db.doc("editors/"+id).set({...ed, ...data, joined_at:ed.joined_at||Date.now()}); closeEditor(); toast(editMode?"Анкета обновлена":"Добро пожаловать в редакцию!"); }
+    try{ const {status:_s, can_publish:_c, ...raw}={...ed, ...data}; await db.doc("editors/"+id).set({...raw, joined_at:ed.joined_at||Date.now()}); closeEditor(); toast(editMode?"Анкета обновлена":"Добро пожаловать в редакцию!"); }
     catch(e){ err.hidden=false; err.textContent="Не удалось сохранить анкету. Попробуй ещё раз."; }
   };
   const head=h("header",{}, editMode?h("button",{class:"iconbtn",onclick:closeEditor,"aria-label":"Назад"},"←"):(S.test?h("button",{class:"iconbtn",onclick:()=>setTest(false),"aria-label":"Выйти из теста"},"←"):null),
@@ -972,7 +1007,7 @@ let editing=null;
 function newPost(prefill={}){
   if(!S.canWrite) return;
   if(S.paused){ toast("Колонка на паузе — новые посты сейчас недоступны"); return; }
-  const ref=postsCol().doc();
+  const ref=S.owner?postsCol().doc():authorCol(S.me).doc();
   const now=Date.now();
   const a={title:prefill.title||"", cover_title:prefill.title||"", label:"Крафт", section:"Крафт", kind:"original", full_text:"", hashtags:[], photos:[], status:"draft", author:S.me||"", created_at:now, updated_at:now, idea:prefill.idea||null};
   ref.set(a).then(()=>{ if(prefill.idea) ideasCol().doc(prefill.idea).update({status:"taken"}); openEditor(ref.id); });
@@ -1015,7 +1050,7 @@ window.addEventListener("error",ev=>{ if(ev && ev.error) showErr("Ошибка �
 window.addEventListener("unhandledrejection",ev=>{ const r=ev&&ev.reason; if(r && r.code!=="not_granted" && r.code!=="rate_limited") showErr("Ошибка в панели", r); });
 function closeEditor(){ try{ (editing&&editing.unsubs||[]).forEach(f=>{ try{ f&&f(); }catch(_){} }); }catch(_){} editing=null; $("#sheetRoot").replaceChildren(); document.body.style.overflow=""; }
 function drawSheet(){
-  const root=$("#sheetRoot"); const d=editing.draft; const ro=!S.canWrite||(d.status==="published"&&!S.owner);
+  const root=$("#sheetRoot"); const d=editing.draft; const ro=!mayEdit(d)||(d.status==="published"&&!S.owner);
   document.body.style.overflow="hidden";
   const panes=h("div",{class:"panes"});
   editing.unsubs=editing.unsubs||[];
@@ -1254,8 +1289,8 @@ function drawSheet(){
   panes.append(ed,pv);
   const saveState=h("span",{class:"savestate"});
   const setSaveState=(t)=>{ saveState.textContent=t; };
-  const verCol=()=>db.collection("posts/"+editing.id+"/versions");
-  const noteCol=()=>db.collection("posts/"+editing.id+"/notes");
+  const verCol=()=>db.collection(baseOf(editing.id)+"/"+editing.id+"/versions");
+  const noteCol=()=>db.collection(baseOf(editing.id)+"/"+editing.id+"/notes");
   function logVersion(source, before){
     if(ro||!db) return; const now=Date.now();
     const text=before!=null?before:d.full_text;
@@ -1300,7 +1335,7 @@ function drawSheet(){
   function drawNotes(){
     const ns=(editing.notes||[]).slice().sort((a,b)=>(a.resolved-b.resolved)||(b.at-a.at));
     const wrap=h("div",{class:"notes"});
-    if(S.canWrite){
+    if(mayEdit(editing.draft)){
       const q=editing.noteQuote||"";
       const ta=h("textarea",{id:"noteIn",rows:3,placeholder:q?"Что не так с этим фрагментом?":"Заметка к посту: что поправить, что проверить"});
       const add=h("button",{type:"button",class:"btn accent",onclick:async()=>{ const t=ta.value.trim(); if(!t) return; add.disabled=true;
@@ -1311,7 +1346,7 @@ function drawSheet(){
     ns.forEach(n=>{ const el=h("div",{class:"note"+(n.resolved?" done":"")}, h("div",{class:"nmeta"}, h("b",{text:authorName(n.by)}), h("span",{text:" · "+ago(n.at)+(n.resolved?" · решено":"")})),
         n.quote?h("button",{type:"button",class:"nq",title:"Найти в тексте",onclick:()=>{ const i=tText.value.indexOf(n.quote); if(i>=0){ panes.classList.remove("showpv"); tText.focus(); tText.setSelectionRange(i,i+n.quote.length); } else toast("Этого фрагмента в тексте уже нет"); }},"«"+n.quote+"»"):null,
         h("p",{text:n.text}),
-        S.canWrite?h("div",{class:"acts"}, h("button",{type:"button",class:"btn sm",onclick:()=>noteCol().doc(n.id).update({resolved:!n.resolved, resolved_by:S.me||"", resolved_at:Date.now()})},n.resolved?"Вернуть":"✓ Готово"),
+        mayEdit(editing.draft)?h("div",{class:"acts"}, h("button",{type:"button",class:"btn sm",onclick:()=>noteCol().doc(n.id).update({resolved:!n.resolved, resolved_by:S.me||"", resolved_at:Date.now()})},n.resolved?"Вернуть":"✓ Готово"),
           (S.owner||n.by===S.me)?h("button",{type:"button",class:"btn sm ghost danger",onclick:()=>noteCol().doc(n.id).delete()},"Удалить"):null):null);
       wrap.append(el); });
     return wrap;
@@ -1356,6 +1391,26 @@ function drawSheet(){
   if(!ro) setTimeout(()=>tText.focus({preventScroll:true}),50);
 }
 
+/* ---------- версия панели и «Что нового» ---------- */
+function seenVersion(){ try{ return localStorage.getItem("dr_seen_version")||""; }catch(_){ return ""; } }
+function showChanges(){
+  try{ localStorage.setItem("dr_seen_version",APP_VERSION); }catch(_){}
+  drawVersionChip();
+  const close=()=>ov.remove();
+  const ov=h("div",{class:"wnov",onclick:e=>{ if(e.target===ov) close(); }});
+  const box=h("div",{class:"wnbox",role:"dialog","aria-label":"Что нового"}, panelHead("Что нового",close),
+    ...CHANGES.map(c=>h("section",{class:"wnv"}, h("div",{class:"wnh"}, h("b",{text:"Версия "+c.v}), h("span",{text:c.date})), h("ul",{}, ...c.items.map(t=>h("li",{text:t}))))));
+  ov.append(box); document.body.append(ov);
+  ov.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); }); box.querySelector("button")?.focus();
+}
+function drawVersionChip(){
+  const sub=document.querySelector(".brand .sub"); if(!sub) return;
+  let b=document.getElementById("verChip");
+  if(!b){ b=h("button",{type:"button",id:"verChip",class:"verchip",title:"Что нового",onclick:showChanges}); sub.after(b); }
+  const fresh=seenVersion()!==APP_VERSION;
+  b.replaceChildren(h("span",{text:"v"+APP_VERSION}), fresh?h("i",{class:"vdot","aria-label":"новое"}):null);
+}
+setTimeout(drawVersionChip,0);
 /* ---------- boot ---------- */
 function route(){ const hv=location.hash.replace("#","");
   if(/^invite=/.test(hv)){ S.inviteCode=hv.slice(7).replace(/[^A-Za-z0-9_-]/g,"").slice(0,40); try{ localStorage.setItem("dr_invite",S.inviteCode); }catch(_){} history.replaceState(null,"",location.pathname+location.search+"#review"); }
@@ -1384,11 +1439,13 @@ route();
     if(t && S.realOwner){ S.test=true; S.owner=false; S.me=TEST_ID; }
     renderWho();
   }
-  postsCol().onSnapshot(snap=>{ S.posts=snap.docs.map(d=>({id:d.id,...d.data()})); S.ready=true; render(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{ S.ready=true; render(); });
+  postsCol().onSnapshot(snap=>{ S.mainPosts=snap.docs.map(d=>({id:d.id,...d.data(),_base:"posts"})); mergePosts(); S.ready=true; render(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{ S.ready=true; render(); });
   ideasCol().onSnapshot(snap=>{ S.ideas=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
-  db.collection("editors").onSnapshot(snap=>{ S.editors={}; snap.docs.forEach(d=>S.editors[d.id]=d.data()); S.editorsLoaded=true; applyBlock(); render(); if(!$("#sheetRoot").firstChild && !S.blocked) checkOnboarding(); });
+  db.collection("roles").onSnapshot(snap=>{ S.roles={}; snap.docs.forEach(d=>S.roles[d.id]=d.data()); S.rolesLoaded=true; mergeEditors(); applyBlock(); render(); }, ()=>{});
+  db.collection("editors").onSnapshot(snap=>{ S.edRaw={}; snap.docs.forEach(d=>S.edRaw[d.id]=d.data()); mergeEditors(); watchAuthors(); syncInvites(); S.editorsLoaded=true; matchInvite(); applyBlock(); render(); if(!$("#sheetRoot").firstChild && !S.blocked) checkOnboarding(); });
   db.collection("settings").onSnapshot(snap=>{ const d=snap.docs.find(x=>x.id==="main"); S.settings=d?d.data():{}; if(S.owner) render(); }, ()=>{});
-  db.collection("invites").onSnapshot(snap=>{ S.invites=snap.docs.map(d=>({id:d.id,...d.data()})); if(S.owner) render(); matchInvite(); }, ()=>{});
+  db.collection("invites").onSnapshot(snap=>{ S.invites=snap.docs.map(d=>({id:d.id,...d.data()})); if(S.owner) render(); matchInvite(); syncInvites(); }, ()=>{});
+  watchAuthors();
   if(S.realMe && S.canWrite){ try{ const r=db.doc("editors/"+S.realMe); const g=await r.get(); if(!g.exists) await r.set({column:"", joined_at:Date.now()}); }catch{} }
 })();
 })();

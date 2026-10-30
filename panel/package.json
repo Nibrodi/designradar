@@ -1,0 +1,7 @@
+{
+  "name": "designradar-panel",
+  "private": true,
+  "description": "Панель редакции Дизайн-Радара",
+  "scripts": { "build": "bash build.sh" },
+  "devDependencies": { "playwright": "^1.47.0" }
+}

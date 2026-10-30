@@ -1,0 +1,5 @@
+node_modules/
+panel/dist/_test/
+.env
+*.token
+.DS_Store

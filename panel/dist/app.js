@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.2.0"; const CHANGES=[{"v": "2.2.0", "date": "31.10.2026", "items": ["Новая мобильная шапка: разделы — пилюли сверху, всегда на виду. Нижняя панель убрана: в приложении Claude её перекрывали его собственные кнопки.", "Справа в шапке «+» и аватар. В меню аватара: «Что нового», тема, тестовый вход, анкета.", "«+» открывает выбор: написать самой или выбрать одно из 13 направлений (новости, советы, дизайн-идеи, разборы, ребрендинг, психология цвета, доступность, UX-тексты и другие). Темы каждый раз случайные, есть «Темы от Claude» и своя тема; тему можно взять себе или отдать Claude.", "Карточки спокойнее: второстепенные действия — текстовыми кнопками, ровные отступы 16 px.", "Фильтр «Все авторы» во всю ширину.", "Исправлено: после прочтения «Что нового» рядом с версией появлялось «null»."]}, {"v": "2.1.0", "date": "31.10.2026", "items": ["Мобильная версия: разделы переехали в нижнюю панель с иконками, как в приложении.", "Шапка на телефоне в одну строку; «Тестовый вход» на телефоне — во вкладке «Команда».", "Кнопка «+» для нового поста в углу экрана, прячется при прокрутке вниз.", "Картинки в редакторе по две в ряд, панель выделения листается пальцем.", "Поля ввода больше не приближают экран на iPhone.", "Исправлено: на телефоне пропадала кнопка «Пригласить редактора»."]}, {"v": "2.0.0", "date": "31.10.2026", "items": ["Права доступа в базе: автор правит только свои посты, общие посты и права редакторов меняет только главный редактор.", "Посты авторов хранятся в их собственных папках. Перед публикацией главный редактор забирает пост в общую ленту.", "Права «публикует сам» и «на паузе» хранятся отдельно от анкеты, редактор не может выдать их себе.", "Номер версии и окно «Что нового» в шапке панели."]}];
+const APP_VERSION="2.3.0"; const CHANGES=[{"v": "2.3.0", "date": "31.10.2026", "items": ["Нижняя панель разделов вернулась. Теперь она сама замеряет, сколько низа страницы прячет приложение Claude, и поднимается ровно на эту величину; так же поднимаются кнопки «Сохранить» и «К публикации» в редакторе.", "«Настроить вид» в меню аватара: ползунки для шапки, полей, расстояний между блоками и карточками, скругления, высоты кнопок и нижней панели. Видно сразу, «Сохранить» применяет вид для всех редакторов, «Сбросить» возвращает исходный."]}, {"v": "2.2.0", "date": "31.10.2026", "items": ["Новая мобильная шапка: разделы — пилюли сверху, всегда на виду. Нижняя панель убрана: в приложении Claude её перекрывали его собственные кнопки.", "Справа в шапке «+» и аватар. В меню аватара: «Что нового», тема, тестовый вход, анкета.", "«+» открывает выбор: написать самой или выбрать одно из 13 направлений (новости, советы, дизайн-идеи, разборы, ребрендинг, психология цвета, доступность, UX-тексты и другие). Темы каждый раз случайные, есть «Темы от Claude» и своя тема; тему можно взять себе или отдать Claude.", "Карточки спокойнее: второстепенные действия — текстовыми кнопками, ровные отступы 16 px.", "Фильтр «Все авторы» во всю ширину.", "Исправлено: после прочтения «Что нового» рядом с версией появлялось «null»."]}, {"v": "2.1.0", "date": "31.10.2026", "items": ["Мобильная версия: разделы переехали в нижнюю панель с иконками, как в приложении.", "Шапка на телефоне в одну строку; «Тестовый вход» на телефоне — во вкладке «Команда».", "Кнопка «+» для нового поста в углу экрана, прячется при прокрутке вниз.", "Картинки в редакторе по две в ряд, панель выделения листается пальцем.", "Поля ввода больше не приближают экран на iPhone.", "Исправлено: на телефоне пропадала кнопка «Пригласить редактора»."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -1443,6 +1443,7 @@ function openMeMenu(){
     item("Что нового","v"+APP_VERSION,showChanges),
     item("Тема",themeName,()=>{ const i=THEMES.findIndex(x=>x[0]===getTheme()); const nx=THEMES[(i+1)%THEMES.length]; try{ localStorage.setItem("dr_theme",nx[0]); }catch(_){} applyTheme(nx[0]); toast(nx[2]); })
   ];
+  if(S.realOwner) items.push(item("Настроить вид","",openDesign));
   if(S.realOwner) items.push(item(S.test?"Выйти из теста":"Тестовый вход","",()=>setTest(!S.test)));
   if(!S.owner && S.me) items.push(item("Моя анкета","",()=>openOnboarding(true)));
   m=h("div",{id:"mmenu",class:"mmenu"}, h("div",{class:"scrim",onclick:close}),
@@ -1514,6 +1515,66 @@ function openNewPost(){
   };
   home(); document.body.append(ov);
 }
+/* ---------- «Настроить вид»: главный редактор двигает отступы и размеры, видно сразу ---------- */
+const DS=[
+  ["Шапка",[["--hdr","Высота шапки",44,68,1,52,"px"],["--logo","Логотип",20,40,1,28,"px"],["--brand-fs","Название канала",14,24,.5,18,"px"]]],
+  ["Отступы",[["--g","Поля по краям",8,28,1,16,"px"],["--sec-gap","Между блоками",6,32,1,16,"px"],["--card-gap","Между карточками",4,28,1,12,"px"]]],
+  ["Карточки",[["--card-pad","Внутренний отступ",10,26,1,16,"px"],["--card-r","Скругление",0,32,1,18,"px"],["--btn-h","Высота кнопок",36,56,1,44,"px"]]],
+  ["Заголовок раздела",[["--h2-fs","Размер",20,40,1,28,"px"]]],
+  ["Нижняя панель",[["--tab-h","Высота",44,68,1,52,"px"],["--tab-fs","Подписи",9,13,.5,10.5,"px"]]]
+];
+const DS_KEYS=DS.flatMap(g=>g[1].map(r=>r[0]));
+function applyDesign(d){ const st=document.documentElement.style; for(const k of DS_KEYS){ if(d&&d[k]!=null) st.setProperty(k,d[k]); else st.removeProperty(k); } if(d&&d["--sub-show"]) st.setProperty("--sub-show",d["--sub-show"]); else st.removeProperty("--sub-show"); }
+function savedDesign(){ return (S.settings&&S.settings.design)||{}; }
+function openDesign(){
+  if(!S.realOwner){ toast("Вид настраивает главный редактор"); return; }
+  let ov=document.getElementById("dsov"); if(ov) ov.remove();
+  const base=savedDesign(); const cur={...base};
+  const close=(revert)=>{ if(revert) applyDesign(base); ov.remove(); };
+  const cs=getComputedStyle(document.documentElement);
+  const body=h("div",{class:"dsbody"});
+  for(const [grp,rows] of DS){
+    body.append(h("div",{class:"dsgrp",text:grp}));
+    for(const [k,label,min,max,step,def,unit] of rows){
+      const v=parseFloat(cur[k]??cs.getPropertyValue(k))||def;
+      const out=h("output",{text:v+unit});
+      const r=h("input",{type:"range",min,max,step,value:v,"aria-label":label});
+      r.addEventListener("input",()=>{ cur[k]=r.value+unit; out.textContent=r.value+unit; applyDesign(cur); });
+      body.append(h("div",{class:"dsrow"}, h("label",{text:label}), out, r));
+    }
+  }
+  const sub=h("input",{type:"checkbox"}); sub.checked=(cur["--sub-show"]||"-webkit-box")!=="none";
+  sub.addEventListener("change",()=>{ cur["--sub-show"]=sub.checked?"-webkit-box":"none"; applyDesign(cur); });
+  body.append(h("label",{class:"dschk"}, sub, "Пояснение под заголовком раздела"));
+  const box=h("div",{class:"dsbox",role:"dialog","aria-label":"Настроить вид"});
+  const minBtn=h("button",{type:"button",class:"btn sm",onclick:()=>{ box.classList.toggle("dsmin"); minBtn.textContent=box.classList.contains("dsmin")?"Развернуть":"Свернуть"; }},"Свернуть");
+  box.append(h("div",{class:"phead"}, h("span",{text:"Настроить вид"}), minBtn, closeX(()=>close(true))),
+    h("p",{class:"hint",text:"Двигай ползунки — панель меняется сразу. Окно можно свернуть, чтобы посмотреть страницу целиком."}), body,
+    h("div",{class:"dsacts"},
+      h("button",{type:"button",class:"btn",onclick:async()=>{ for(const k of [...DS_KEYS,"--sub-show"]) delete cur[k]; applyDesign(cur); try{ await db.doc("settings/main").set({...(S.settings||{}), design:{}, updated_at:Date.now()}); toast("Вернула вид по умолчанию"); close(false); }catch(_){ toast("Не удалось сохранить"); } }},"Сбросить"),
+      h("button",{type:"button",class:"btn accent",onclick:async()=>{ try{ await db.doc("settings/main").set({...(S.settings||{}), design:cur, updated_at:Date.now()}); toast("Вид сохранён для всех редакторов"); close(false); }catch(_){ toast("Не удалось сохранить"); } }},"Сохранить")));
+  ov=h("div",{id:"dsov",class:"dsov"}, box);
+  ov.addEventListener("keydown",e=>{ if(e.key==="Escape") close(true); });
+  document.body.append(ov);
+}
+/* ---------- сколько низа страницы прячет приложение Claude ----------
+   В мобильном Claude страница бывает выше видимой области: её низ уходит под край экрана, пока приложение не спрячет свою шапку.
+   IntersectionObserver во фрейме меряет пересечение с настоящим экраном, поэтому невидимая полоска у нижнего края
+   показывает, сколько пикселей скрыто. На эту величину поднимаем нижнюю панель и подвал редактора. */
+(function(){
+  if(!("IntersectionObserver" in window)) return;
+  const probe=document.createElement("div"); probe.className="hostprobe"; probe.setAttribute("aria-hidden","true");
+  const start=()=>{ document.body.append(probe);
+    const th=[]; for(let i=0;i<=240;i++) th.push(i/240);
+    new IntersectionObserver(es=>{ for(const e of es){
+      const full=e.boundingClientRect.height||240;
+      let clip=Math.round(full-e.intersectionRect.height);
+      if(!e.isIntersecting) clip=0;            // полоска не видна совсем — данных нет, не сдвигаем
+      clip=Math.max(0,Math.min(clip,160));
+      document.documentElement.style.setProperty("--hostclip",clip+"px");
+    } },{threshold:th}).observe(probe); };
+  if(document.body) start(); else document.addEventListener("DOMContentLoaded",start);
+})();
 /* ---------- boot ---------- */
 function route(){ const hv=location.hash.replace("#","");
   if(/^invite=/.test(hv)){ S.inviteCode=hv.slice(7).replace(/[^A-Za-z0-9_-]/g,"").slice(0,40); try{ localStorage.setItem("dr_invite",S.inviteCode); }catch(_){} history.replaceState(null,"",location.pathname+location.search+"#review"); }
@@ -1546,7 +1607,7 @@ route();
   ideasCol().onSnapshot(snap=>{ S.ideas=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
   db.collection("roles").onSnapshot(snap=>{ S.roles={}; snap.docs.forEach(d=>S.roles[d.id]=d.data()); S.rolesLoaded=true; mergeEditors(); applyBlock(); render(); }, ()=>{});
   db.collection("editors").onSnapshot(snap=>{ S.edRaw={}; snap.docs.forEach(d=>S.edRaw[d.id]=d.data()); mergeEditors(); watchAuthors(); syncInvites(); S.editorsLoaded=true; matchInvite(); applyBlock(); render(); if(!$("#sheetRoot").firstChild && !S.blocked) checkOnboarding(); });
-  db.collection("settings").onSnapshot(snap=>{ const d=snap.docs.find(x=>x.id==="main"); S.settings=d?d.data():{}; if(S.owner) render(); }, ()=>{});
+  db.collection("settings").onSnapshot(snap=>{ const d=snap.docs.find(x=>x.id==="main"); S.settings=d?d.data():{}; if(!document.getElementById("dsov")) applyDesign(S.settings.design||{}); if(S.owner) render(); }, ()=>{});
   db.collection("invites").onSnapshot(snap=>{ S.invites=snap.docs.map(d=>({id:d.id,...d.data()})); if(S.owner) render(); matchInvite(); syncInvites(); }, ()=>{});
   watchAuthors();
   if(S.realMe && S.canWrite){ try{ const r=db.doc("editors/"+S.realMe); const g=await r.get(); if(!g.exists) await r.set({column:"", joined_at:Date.now()}); }catch{} }

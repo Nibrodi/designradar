@@ -20,6 +20,7 @@ function openMeMenu(){
     item("Что нового","v"+APP_VERSION,showChanges),
     item("Тема",themeName,()=>{ const i=THEMES.findIndex(x=>x[0]===getTheme()); const nx=THEMES[(i+1)%THEMES.length]; try{ localStorage.setItem("dr_theme",nx[0]); }catch(_){} applyTheme(nx[0]); toast(nx[2]); })
   ];
+  if(S.realOwner) items.push(item("Настроить вид","",openDesign));
   if(S.realOwner) items.push(item(S.test?"Выйти из теста":"Тестовый вход","",()=>setTest(!S.test)));
   if(!S.owner && S.me) items.push(item("Моя анкета","",()=>openOnboarding(true)));
   m=h("div",{id:"mmenu",class:"mmenu"}, h("div",{class:"scrim",onclick:close}),

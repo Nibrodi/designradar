@@ -429,18 +429,20 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
    Панель открывается внутри приложения Claude: его нижняя панель перекрывает всё, что прибито к низу экрана.
    Поэтому на телефоне навигация и действия — только сверху. Сетка: поля 16px, шаг 4/8/12/16. */
 .tab .ti,.tab .short,.mbar,.mmenu{display:none}
+.hostprobe{position:fixed;left:0;bottom:0;width:1px;height:240px;opacity:0;pointer-events:none;z-index:-1}
 .brand .who .short{display:none}
 .mobonly{display:none}
 @media (max-width:640px){
-  :root{--g:16px}
+  :root{--g:16px;--hdr:52px;--logo:28px;--brand-fs:18px;--h2-fs:28px;--sec-gap:16px;--card-gap:12px;--card-pad:16px;--card-r:18px;--tab-h:52px;--tab-fs:10.5px;--btn-h:44px;--sub-show:-webkit-box}
   .wrap{padding-left:max(var(--g),env(safe-area-inset-left,0px));padding-right:max(var(--g),env(safe-area-inset-right,0px))}
   /* шапка: строка бренда 52px + ленточка разделов 44px, вся шапка липкая */
-  .mast{background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:saturate(1.4) blur(16px);-webkit-backdrop-filter:saturate(1.4) blur(16px);border-bottom:1px solid var(--line)}
+  /* без backdrop-filter: он сделал бы шапку контейнером для fixed-панели разделов */
+  .mast{background:var(--paper);border-bottom:1px solid var(--line)}
   .mast .wrap{gap:0;padding-block:0}
-  .brand{height:52px;gap:10px}
-  .brand .radar{width:28px;height:28px;flex:none}
+  .brand{height:var(--hdr);gap:10px}
+  .brand .radar{width:var(--logo);height:var(--logo);flex:none}
   .brand>div:nth-child(2){flex:1;min-width:0;display:flex;align-items:baseline;gap:8px}
-  .brand h1{font-size:18px;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis}
+  .brand h1{font-size:var(--brand-fs);letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis}
   .brand .sub,.brand .who,#verChip,.brand>.iconbtn.th{display:none}
   .mbar{display:flex;align-items:center;gap:8px;flex:none}
   .mbtn{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:0;padding:0;position:relative;flex:none}
@@ -448,14 +450,19 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
   .mbtn.me{background:var(--ink);color:var(--paper);font:700 14px/1 var(--body)}
   .mbtn.me .vdot{position:absolute;top:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 2px var(--paper)}
   .mbtn:active{transform:scale(.94)}
-  /* разделы — пилюли с прокруткой, активная видна всегда */
-  .tabs{gap:6px;margin:0 calc(-1 * var(--g));padding:0 var(--g) 10px;scroll-padding-inline:var(--g);
-    -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 24px),transparent)}
-  .tab{height:34px;padding:0 13px;border:1px solid var(--line2);border-radius:999px;font-size:14px;font-weight:600;gap:6px;color:var(--ink);background:var(--sheet)}
-  .tab[aria-current="page"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-  .tab .n{padding:2px 6px;font-size:10.5px;background:var(--chip);color:var(--ink)}
-  .tab[aria-current="page"] .n{background:var(--orange);color:var(--on-orange)}
+  /* разделы — нижняя панель. --hostclip: сколько низа страницы прячет приложение Claude (меряет 98-hostclip.js) */
+  .tabs{position:fixed;left:0;right:0;bottom:var(--hostclip,0px);z-index:15;margin:0;gap:0;overflow:visible;justify-content:space-around;
+    background:color-mix(in srgb,var(--sheet) 94%,transparent);backdrop-filter:saturate(1.4) blur(16px);-webkit-backdrop-filter:saturate(1.4) blur(16px);
+    border-top:1px solid var(--line);padding:6px max(6px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));transition:bottom .15s ease}
+  .tab{flex:1 1 0;min-width:0;height:auto;min-height:var(--tab-h);flex-direction:column;justify-content:center;gap:3px;padding:6px 2px;border:0;border-radius:12px;background:none;position:relative;font-size:var(--tab-fs);font-weight:600;letter-spacing:-.01em;color:var(--muted)}
+  .tab .ti{display:block;line-height:0}
+  .tab .tl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tab .full{display:none}.tab .short{display:inline}
+  .tab[aria-current="page"]{color:var(--orange);background:color-mix(in srgb,var(--orange) 11%,transparent);border:0}
+  .tab .n{position:absolute;top:2px;left:calc(50% + 6px);padding:2px 5px;font-size:9.5px;min-width:16px;text-align:center;background:var(--chip);color:var(--ink);box-shadow:0 0 0 2px var(--sheet)}
+  .tab[aria-current="page"] .n{background:var(--orange);color:var(--on-orange)}
+  .sheet{bottom:var(--hostclip,0px)}
+  .toast{bottom:calc(84px + var(--hostclip,0px) + env(safe-area-inset-bottom,0px))}
   /* меню профиля */
   .mmenu{display:block;position:fixed;inset:0;z-index:40}
   .mmenu[hidden]{display:none}
@@ -469,28 +476,28 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
   .mmenu button small{color:var(--muted);font:600 12px/1 var(--mono)}
   .mmenu button:active{background:var(--chip)}
   /* контент */
-  main.wrap{padding-block:18px calc(32px + env(safe-area-inset-bottom,0px));gap:16px}
+  main.wrap{padding-block:calc(var(--sec-gap) + 2px) calc(var(--tab-h) + 48px + var(--hostclip,0px) + env(safe-area-inset-bottom,0px));gap:var(--sec-gap)}
   .lead{flex-direction:column;align-items:stretch;gap:12px}
-  .lead h2{font-size:28px;line-height:1.1}
-  .lead p{margin-top:6px;font-size:14px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .lead h2{font-size:var(--h2-fs);line-height:1.1}
+  .lead p{margin-top:6px;font-size:14px;line-height:1.45;display:var(--sub-show);-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .leadacts{gap:8px}
   .leadacts{width:100%}
   .leadacts select,.authsel{max-width:none}
-  .leadacts select{height:44px;min-height:44px;padding:0 36px 0 14px;width:100%;flex:1 1 100%;border-radius:12px;font-weight:600}
+  .leadacts select{height:var(--btn-h);min-height:var(--btn-h);padding:0 36px 0 14px;width:100%;flex:1 1 100%;border-radius:12px;font-weight:600}
   .leadacts .btn{min-height:40px}
   .leadacts .btn.newpost{display:none}
   .mobonly{display:inline-flex}
   /* карточки */
-  .feed{gap:12px}
-  .card{border-radius:18px;box-shadow:none}
+  .feed{gap:var(--card-gap)}
+  .card{border-radius:var(--card-r);box-shadow:none}
   .card.open:hover{transform:none}
-  .card .body{padding:14px 16px 16px;gap:8px}
+  .card .body{padding:calc(var(--card-pad) - 2px) var(--card-pad) var(--card-pad);gap:8px}
   .card h3{font-size:18px;line-height:1.22}
   .card .excerpt{font-size:14px;-webkit-line-clamp:2}
   .meta{font-size:12px;gap:4px 8px}
   .card .acts{margin-top:4px;gap:6px}
   .amain{gap:8px}
-  .amain .btn{min-height:44px;font-size:15px;border-radius:12px}
+  .amain .btn{min-height:var(--btn-h);font-size:15px;border-radius:12px}
   .asub,.asub.three{display:flex;flex-wrap:wrap;gap:4px;margin:0 -10px -6px}
   .asub .btn,.asub.three .btn{border:0;background:none;min-height:40px;padding:0 10px;font-size:14px;font-weight:600;color:var(--muted);border-radius:10px}
   .asub .btn.danger{color:var(--bad)}
@@ -534,3 +541,20 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
   .npgrid{grid-template-columns:1fr 1fr}
   .nptile{min-height:88px;padding:12px}
 }
+
+/* настройка вида */
+.dsbox{width:min(460px,100%);max-height:min(88vh,760px);overflow:auto;background:var(--sheet);color:var(--ink);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.dsov{position:fixed;inset:0;z-index:46;display:grid;place-items:end center;padding:12px;background:transparent;pointer-events:none}
+.dsov .dsbox{pointer-events:auto}
+.dsgrp{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.dsrow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
+.dsrow label{font-size:14px;font-weight:600}
+.dsrow output{font:600 12px/1 var(--mono);color:var(--muted);min-width:44px;text-align:right}
+.dsrow input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--orange);height:28px}
+.dschk{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;min-height:40px}
+.dschk input{width:22px;height:22px;accent-color:var(--orange)}
+.dsacts{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:sticky;bottom:-16px;background:var(--sheet);padding:10px 0 4px}
+.dsacts .btn{min-height:46px}
+.dsmin .dsbody{display:none}
+@media (max-width:640px){.dsov{place-items:start center;padding-top:calc(env(safe-area-inset-top,0px) + 8px)}.dsbox{max-height:52vh}}
+.dsmin .hint{display:none}

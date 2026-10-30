@@ -30,7 +30,7 @@ route();
   ideasCol().onSnapshot(snap=>{ S.ideas=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
   db.collection("roles").onSnapshot(snap=>{ S.roles={}; snap.docs.forEach(d=>S.roles[d.id]=d.data()); S.rolesLoaded=true; mergeEditors(); applyBlock(); render(); }, ()=>{});
   db.collection("editors").onSnapshot(snap=>{ S.edRaw={}; snap.docs.forEach(d=>S.edRaw[d.id]=d.data()); mergeEditors(); watchAuthors(); syncInvites(); S.editorsLoaded=true; matchInvite(); applyBlock(); render(); if(!$("#sheetRoot").firstChild && !S.blocked) checkOnboarding(); });
-  db.collection("settings").onSnapshot(snap=>{ const d=snap.docs.find(x=>x.id==="main"); S.settings=d?d.data():{}; if(S.owner) render(); }, ()=>{});
+  db.collection("settings").onSnapshot(snap=>{ const d=snap.docs.find(x=>x.id==="main"); S.settings=d?d.data():{}; if(!document.getElementById("dsov")) applyDesign(S.settings.design||{}); if(S.owner) render(); }, ()=>{});
   db.collection("invites").onSnapshot(snap=>{ S.invites=snap.docs.map(d=>({id:d.id,...d.data()})); if(S.owner) render(); matchInvite(); syncInvites(); }, ()=>{});
   watchAuthors();
   if(S.realMe && S.canWrite){ try{ const r=db.doc("editors/"+S.realMe); const g=await r.get(); if(!g.exists) await r.set({column:"", joined_at:Date.now()}); }catch{} }

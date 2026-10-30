@@ -7,13 +7,14 @@ const TAB_ICO=(()=>{ const s=d=>'<svg width="22" height="22" viewBox="0 0 24 24"
     published:s('<path d="M21 3L10 14"/><path d="M21 3l-6.5 18-4.5-7-7-4.5z"/>'),
     team:s('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-2.5-5.1"/>')}; })();
 function renderTabs(){
-  const nav=$("#tabs"); nav.replaceChildren();
+  const nav=$("#tabs"); const keep=nav.scrollLeft; nav.replaceChildren();
+  requestAnimationFrame(()=>{ nav.scrollLeft=keep; const a=nav.querySelector('[aria-current="page"]'); if(a && nav.scrollWidth>nav.clientWidth){ const l=a.offsetLeft-16, r=a.offsetLeft+a.offsetWidth-nav.clientWidth+24; if(nav.scrollLeft>l) nav.scrollLeft=l; else if(nav.scrollLeft<r) nav.scrollLeft=r; } });
   for(const v of VIEWS){
     const n = v.id==="ideas" ? S.ideas.filter(i=>i.status!=="done").length : v.id==="team" ? null : byView(v.id).length;
     const nm=v.id==="team"&&S.owner?"Редакция":v.name;
     const n2=v.id==="team"&&S.owner?(S.invites.filter(i=>i.status==="sent").length||null):n;
     const ic=h("span",{class:"ti","aria-hidden":"true"}); ic.innerHTML=TAB_ICO[v.id]||"";
-    nav.append(h("button",{class:"tab","aria-current":S.view===v.id?"page":null,"aria-label":nm,onclick:()=>{location.hash=v.id; window.scrollTo({top:0});}}, ic, h("span",{class:"tl"}, h("span",{class:"full",text:nm}), h("span",{class:"short",text:v.short||nm})), n2!=null&&n2>0?h("span",{class:"n",text:n2>99?"99+":n2}):null));
+    nav.append(h("button",{class:"tab","aria-current":S.view===v.id?"page":null,"aria-label":nm,onclick:()=>{location.hash=v.id; window.scrollTo({top:0});},"data-v":v.id}, ic, h("span",{class:"tl"}, h("span",{class:"full",text:nm}), h("span",{class:"short",text:v.short||nm})), n2!=null&&n2>0?h("span",{class:"n",text:n2>99?"99+":n2}):null));
   }
 }
 function postCard(a){
@@ -92,7 +93,7 @@ function emptyState(v){
 function renderFeed(v){
   const titles={plan:["План публикаций","Запланированные посты по времени выхода. Они выйдут сами, даже если панель закрыта."],review:["На согласовании","Посты, которые ждут твоего решения. Публикуй сразу или запланируй время выхода."],drafts:["Черновики","Посты в работе. Когда текст готов, отправь его на согласование."],published:["Опубликовано","Последние посты, которые вышли в канале."]}[v];
   const m=$("#main");
-  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:titles[0]}), h("p",{text:titles[1]})), h("div",{class:"leadacts"}, authorSelect(), S.canWrite?h("button",{class:"btn primary newpost",onclick:newPost},"+ Новый пост"):null)));
+  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:titles[0]}), h("p",{text:titles[1]})), h("div",{class:"leadacts"}, authorSelect(), S.canWrite?h("button",{class:"btn primary newpost",onclick:()=>openNewPost()},"+ Новый пост"):null)));
   const list=byView(v);
   if(!S.ready){ m.append(h("div",{class:"empty"},h("b",{text:"Загружаю посты…"}))); return; }
   if(!list.length){ m.append(emptyState(v)); return; }
@@ -161,14 +162,9 @@ function renderTeam(){
   }
   m.append(g);
 }
-let lastY=0;
-window.addEventListener("scroll",()=>{ const y=window.scrollY, f=document.getElementById("fab"); if(f) f.classList.toggle("away", y>lastY+4 && y>120); if(Math.abs(y-lastY)>4) lastY=y; },{passive:true});
 function render(){
   renderTabs();
-  let fab=document.getElementById("fab");
-  const wantFab=S.canWrite && !S.blocked && ["review","plan","drafts"].includes(S.view);
-  if(wantFab && !fab){ fab=h("button",{id:"fab",type:"button",class:"fab","aria-label":"Новый пост",onclick:()=>newPost()},h("span",{"aria-hidden":"true",text:"+"})); document.body.append(fab); }
-  if(!wantFab && fab) fab.remove();
+  drawMobileBar();
   let tb=document.getElementById("testbar");
   if(S.test && !tb){ tb=h("div",{id:"testbar",class:"testbar"},"Тестовый режим: ты видишь панель глазами нового редактора. Публикация недоступна, посты подписаны «Тестовый редактор». ",h("button",{type:"button",class:"btn sm",style:"margin-left:8px",onclick:()=>setTest(false)},"Выйти")); document.body.prepend(tb); }
   if(!S.test && tb) tb.remove();

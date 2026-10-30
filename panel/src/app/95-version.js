@@ -2,7 +2,7 @@
 function seenVersion(){ try{ return localStorage.getItem("dr_seen_version")||""; }catch(_){ return ""; } }
 function showChanges(){
   try{ localStorage.setItem("dr_seen_version",APP_VERSION); }catch(_){}
-  drawVersionChip();
+  drawVersionChip(); try{ drawMobileBar(); }catch(_){}
   const close=()=>ov.remove();
   const ov=h("div",{class:"wnov",onclick:e=>{ if(e.target===ov) close(); }});
   const box=h("div",{class:"wnbox",role:"dialog","aria-label":"Что нового"}, panelHead("Что нового",close),
@@ -15,6 +15,6 @@ function drawVersionChip(){
   let b=document.getElementById("verChip");
   if(!b){ b=h("button",{type:"button",id:"verChip",class:"verchip",title:"Что нового",onclick:showChanges}); sub.after(b); }
   const fresh=seenVersion()!==APP_VERSION;
-  b.replaceChildren(h("span",{text:"v"+APP_VERSION}), fresh?h("i",{class:"vdot","aria-label":"новое"}):null);
+  b.replaceChildren(...[h("span",{text:"v"+APP_VERSION}), fresh?h("i",{class:"vdot","aria-label":"новое"}):null].filter(Boolean));
 }
 setTimeout(drawVersionChip,0);

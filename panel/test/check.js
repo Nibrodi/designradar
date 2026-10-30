@@ -81,11 +81,26 @@ const url='file://'+path.resolve(process.argv[2]);
   await m.goto(url); await W(1500);
   for(const t of ['review','plan','drafts','ideas','published','team']){ await m.evaluate(t=>location.hash=t,t); await W(350);
     ok(await m.evaluate(()=>document.documentElement.scrollWidth<=375),'mobile '+t+' no horizontal scroll'); }
-  ok(await m.evaluate(()=>{ const r=document.getElementById('tabs').getBoundingClientRect(); return r.bottom>=775 && r.height<100; }),'mobile bottom nav');
+  ok(await m.evaluate(()=>{ const r=document.getElementById('tabs').getBoundingClientRect(); return r.top<130 && r.height<60; }),'mobile nav at top');
+  await m.evaluate(()=>window.scrollTo(0,900)); await W(200);
+  ok(await m.evaluate(()=>document.getElementById('tabs').getBoundingClientRect().top>=0 && document.getElementById('tabs').getBoundingClientRect().top<130),'mobile nav sticky on scroll');
+  ok(await m.evaluate(()=>!/null|undefined/.test(document.querySelector('.mast').textContent)),'no null in header');
+  await m.click('#mbar .mbtn.me'); await W(200); ok(await m.$('#mmenu .pop'),'mobile profile menu');
+  await m.evaluate(()=>[...document.querySelectorAll('#mmenu button')].find(b=>b.textContent.includes('Что нового')).click()); await W(200);
+  ok(await m.$('.wnbox'),'whats new from menu'); await m.evaluate(()=>document.querySelector('.wnbox .phead button').click()); await W(100);
+  ok(await m.evaluate(()=>!document.querySelector('#mbar .vdot') && !/null/.test(document.querySelector('.mast').textContent)),'dot gone after reading');
   ok(await m.evaluate(()=>[...document.querySelectorAll('.leadacts .btn.primary')].some(b=>b.offsetParent&&b.textContent.includes('Пригласить'))),'mobile invite button visible');
   ok(await m.evaluate(()=>{ const t=document.querySelector('.brand h1'); return t.scrollWidth<=t.clientWidth+1; }),'mobile title not cut');
-  await m.evaluate(()=>location.hash='review'); await W(350); ok(await m.$('#fab'),'mobile new post button');
+  await m.evaluate(()=>location.hash='review'); await W(350); ok(await m.evaluate(()=>{ const b=document.querySelector('#mbar .mbtn.new'); return b && b.getBoundingClientRect().top<60; }),'mobile new post button in header');
+  ok(await m.evaluate(()=>{ const s=document.querySelector('.leadacts select'); return s.getBoundingClientRect().width>=document.querySelector('main').clientWidth-34; }),'author filter full width');
   ok(await m.evaluate(()=>[...document.querySelectorAll('input,textarea,select')].every(e=>parseFloat(getComputedStyle(e).fontSize)>=16)),'mobile inputs 16px');
+  await m.click('#mbar .mbtn.new'); await W(250); ok((await m.$$('.npgrid .nptile')).length>=12,'new post picker directions');
+  await m.evaluate(()=>[...document.querySelectorAll('.nptile')].find(t=>t.textContent.includes('Психология цвета')).click()); await W(200);
+  ok((await m.$$('.nptopics .nptopic')).length===3,'three topics');
+  await m.evaluate(()=>[...document.querySelectorAll('.npacts .btn')].find(b=>b.textContent==='Отдать Claude').click()); await W(500);
+  ok(await m.evaluate(()=>[...(window.__mockdb['ideas']||new Map()).values()].some(i=>i.status==='requested'&&i.rubric==='Крафт')),'topic handed to Claude');
+  await m.click('#mbar .mbtn.new'); await W(250); await m.evaluate(()=>document.querySelector('.npself').click()); await W(900);
+  ok(await m.$('.sheet .sec'),'write myself opens editor');
   await m.close(); }
  await b.close();
  if(errs.length||fails.length){ console.error('ОШИБКИ:\n'+errs.join('\n')+'\nНЕ ПРОШЛО:\n'+fails.join('\n')); process.exit(1); }

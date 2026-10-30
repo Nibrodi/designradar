@@ -5,8 +5,8 @@ function newPost(prefill={}){
   if(S.paused){ toast("Колонка на паузе — новые посты сейчас недоступны"); return; }
   const ref=S.owner?postsCol().doc():authorCol(S.me).doc();
   const now=Date.now();
-  const a={title:prefill.title||"", cover_title:prefill.title||"", label:"Крафт", section:"Крафт", kind:"original", full_text:"", hashtags:[], photos:[], status:"draft", author:S.me||"", created_at:now, updated_at:now, idea:prefill.idea||null};
-  ref.set(a).then(()=>{ if(prefill.idea) ideasCol().doc(prefill.idea).update({status:"taken"}); openEditor(ref.id); });
+  const lb=prefill.label||"Крафт"; const a={title:prefill.title||"", cover_title:prefill.title||"", label:lb, section:lb, kind:"original", full_text:"", hashtags:[], photos:[], status:"draft", author:S.me||"", created_at:now, updated_at:now, idea:prefill.idea||null};
+  ref.set(a).then(()=>{ if(prefill.idea) ideasCol().doc(prefill.idea).update({status:"taken"}); const tryOpen=n=>{ if(S.posts.some(p=>p.id===ref.id)) openEditor(ref.id); else if(n<40) setTimeout(()=>tryOpen(n+1),100); else toast("Черновик создан — открой его во вкладке «Черновики»"); }; tryOpen(0); });
 }
 function openEditor(id){
   const a=S.posts.find(p=>p.id===id); if(!a) return;

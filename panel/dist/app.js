@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.1.0"; const CHANGES=[{"v": "2.1.0", "date": "31.10.2026", "items": ["Мобильная версия: разделы переехали в нижнюю панель с иконками, как в приложении.", "Шапка на телефоне в одну строку; «Тестовый вход» на телефоне — во вкладке «Команда».", "Кнопка «+» для нового поста в углу экрана, прячется при прокрутке вниз.", "Картинки в редакторе по две в ряд, панель выделения листается пальцем.", "Поля ввода больше не приближают экран на iPhone.", "Исправлено: на телефоне пропадала кнопка «Пригласить редактора»."]}, {"v": "2.0.0", "date": "31.10.2026", "items": ["Права доступа в базе: автор правит только свои посты, общие посты и права редакторов меняет только главный редактор.", "Посты авторов хранятся в их собственных папках. Перед публикацией главный редактор забирает пост в общую ленту.", "Права «публикует сам» и «на паузе» хранятся отдельно от анкеты, редактор не может выдать их себе.", "Номер версии и окно «Что нового» в шапке панели."]}, {"v": "1.6.0", "date": "30.10.2026", "items": ["«Переписать с Claude» даёт два варианта с разными началами и короткий диагноз, что мешало тексту.", "Вместо «Вернуть прежний текст» — переключатель «Твой текст / Вариант 1 / Вариант 2».", "Образец для крафтовых постов и правила, как сделать текст интересным."]}];
+const APP_VERSION="2.2.0"; const CHANGES=[{"v": "2.2.0", "date": "31.10.2026", "items": ["Новая мобильная шапка: разделы — пилюли сверху, всегда на виду. Нижняя панель убрана: в приложении Claude её перекрывали его собственные кнопки.", "Справа в шапке «+» и аватар. В меню аватара: «Что нового», тема, тестовый вход, анкета.", "«+» открывает выбор: написать самой или выбрать одно из 13 направлений (новости, советы, дизайн-идеи, разборы, ребрендинг, психология цвета, доступность, UX-тексты и другие). Темы каждый раз случайные, есть «Темы от Claude» и своя тема; тему можно взять себе или отдать Claude.", "Карточки спокойнее: второстепенные действия — текстовыми кнопками, ровные отступы 16 px.", "Фильтр «Все авторы» во всю ширину.", "Исправлено: после прочтения «Что нового» рядом с версией появлялось «null»."]}, {"v": "2.1.0", "date": "31.10.2026", "items": ["Мобильная версия: разделы переехали в нижнюю панель с иконками, как в приложении.", "Шапка на телефоне в одну строку; «Тестовый вход» на телефоне — во вкладке «Команда».", "Кнопка «+» для нового поста в углу экрана, прячется при прокрутке вниз.", "Картинки в редакторе по две в ряд, панель выделения листается пальцем.", "Поля ввода больше не приближают экран на iPhone.", "Исправлено: на телефоне пропадала кнопка «Пригласить редактора»."]}, {"v": "2.0.0", "date": "31.10.2026", "items": ["Права доступа в базе: автор правит только свои посты, общие посты и права редакторов меняет только главный редактор.", "Посты авторов хранятся в их собственных папках. Перед публикацией главный редактор забирает пост в общую ленту.", "Права «публикует сам» и «на паузе» хранятся отдельно от анкеты, редактор не может выдать их себе.", "Номер версии и окно «Что нового» в шапке панели."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -624,13 +624,14 @@ const TAB_ICO=(()=>{ const s=d=>'<svg width="22" height="22" viewBox="0 0 24 24"
     published:s('<path d="M21 3L10 14"/><path d="M21 3l-6.5 18-4.5-7-7-4.5z"/>'),
     team:s('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-2.5-5.1"/>')}; })();
 function renderTabs(){
-  const nav=$("#tabs"); nav.replaceChildren();
+  const nav=$("#tabs"); const keep=nav.scrollLeft; nav.replaceChildren();
+  requestAnimationFrame(()=>{ nav.scrollLeft=keep; const a=nav.querySelector('[aria-current="page"]'); if(a && nav.scrollWidth>nav.clientWidth){ const l=a.offsetLeft-16, r=a.offsetLeft+a.offsetWidth-nav.clientWidth+24; if(nav.scrollLeft>l) nav.scrollLeft=l; else if(nav.scrollLeft<r) nav.scrollLeft=r; } });
   for(const v of VIEWS){
     const n = v.id==="ideas" ? S.ideas.filter(i=>i.status!=="done").length : v.id==="team" ? null : byView(v.id).length;
     const nm=v.id==="team"&&S.owner?"Редакция":v.name;
     const n2=v.id==="team"&&S.owner?(S.invites.filter(i=>i.status==="sent").length||null):n;
     const ic=h("span",{class:"ti","aria-hidden":"true"}); ic.innerHTML=TAB_ICO[v.id]||"";
-    nav.append(h("button",{class:"tab","aria-current":S.view===v.id?"page":null,"aria-label":nm,onclick:()=>{location.hash=v.id; window.scrollTo({top:0});}}, ic, h("span",{class:"tl"}, h("span",{class:"full",text:nm}), h("span",{class:"short",text:v.short||nm})), n2!=null&&n2>0?h("span",{class:"n",text:n2>99?"99+":n2}):null));
+    nav.append(h("button",{class:"tab","aria-current":S.view===v.id?"page":null,"aria-label":nm,onclick:()=>{location.hash=v.id; window.scrollTo({top:0});},"data-v":v.id}, ic, h("span",{class:"tl"}, h("span",{class:"full",text:nm}), h("span",{class:"short",text:v.short||nm})), n2!=null&&n2>0?h("span",{class:"n",text:n2>99?"99+":n2}):null));
   }
 }
 function postCard(a){
@@ -709,7 +710,7 @@ function emptyState(v){
 function renderFeed(v){
   const titles={plan:["План публикаций","Запланированные посты по времени выхода. Они выйдут сами, даже если панель закрыта."],review:["На согласовании","Посты, которые ждут твоего решения. Публикуй сразу или запланируй время выхода."],drafts:["Черновики","Посты в работе. Когда текст готов, отправь его на согласование."],published:["Опубликовано","Последние посты, которые вышли в канале."]}[v];
   const m=$("#main");
-  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:titles[0]}), h("p",{text:titles[1]})), h("div",{class:"leadacts"}, authorSelect(), S.canWrite?h("button",{class:"btn primary newpost",onclick:newPost},"+ Новый пост"):null)));
+  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:titles[0]}), h("p",{text:titles[1]})), h("div",{class:"leadacts"}, authorSelect(), S.canWrite?h("button",{class:"btn primary newpost",onclick:()=>openNewPost()},"+ Новый пост"):null)));
   const list=byView(v);
   if(!S.ready){ m.append(h("div",{class:"empty"},h("b",{text:"Загружаю посты…"}))); return; }
   if(!list.length){ m.append(emptyState(v)); return; }
@@ -778,14 +779,9 @@ function renderTeam(){
   }
   m.append(g);
 }
-let lastY=0;
-window.addEventListener("scroll",()=>{ const y=window.scrollY, f=document.getElementById("fab"); if(f) f.classList.toggle("away", y>lastY+4 && y>120); if(Math.abs(y-lastY)>4) lastY=y; },{passive:true});
 function render(){
   renderTabs();
-  let fab=document.getElementById("fab");
-  const wantFab=S.canWrite && !S.blocked && ["review","plan","drafts"].includes(S.view);
-  if(wantFab && !fab){ fab=h("button",{id:"fab",type:"button",class:"fab","aria-label":"Новый пост",onclick:()=>newPost()},h("span",{"aria-hidden":"true",text:"+"})); document.body.append(fab); }
-  if(!wantFab && fab) fab.remove();
+  drawMobileBar();
   let tb=document.getElementById("testbar");
   if(S.test && !tb){ tb=h("div",{id:"testbar",class:"testbar"},"Тестовый режим: ты видишь панель глазами нового редактора. Публикация недоступна, посты подписаны «Тестовый редактор». ",h("button",{type:"button",class:"btn sm",style:"margin-left:8px",onclick:()=>setTest(false)},"Выйти")); document.body.prepend(tb); }
   if(!S.test && tb) tb.remove();
@@ -1023,8 +1019,8 @@ function newPost(prefill={}){
   if(S.paused){ toast("Колонка на паузе — новые посты сейчас недоступны"); return; }
   const ref=S.owner?postsCol().doc():authorCol(S.me).doc();
   const now=Date.now();
-  const a={title:prefill.title||"", cover_title:prefill.title||"", label:"Крафт", section:"Крафт", kind:"original", full_text:"", hashtags:[], photos:[], status:"draft", author:S.me||"", created_at:now, updated_at:now, idea:prefill.idea||null};
-  ref.set(a).then(()=>{ if(prefill.idea) ideasCol().doc(prefill.idea).update({status:"taken"}); openEditor(ref.id); });
+  const lb=prefill.label||"Крафт"; const a={title:prefill.title||"", cover_title:prefill.title||"", label:lb, section:lb, kind:"original", full_text:"", hashtags:[], photos:[], status:"draft", author:S.me||"", created_at:now, updated_at:now, idea:prefill.idea||null};
+  ref.set(a).then(()=>{ if(prefill.idea) ideasCol().doc(prefill.idea).update({status:"taken"}); const tryOpen=n=>{ if(S.posts.some(p=>p.id===ref.id)) openEditor(ref.id); else if(n<40) setTimeout(()=>tryOpen(n+1),100); else toast("Черновик создан — открой его во вкладке «Черновики»"); }; tryOpen(0); });
 }
 function openEditor(id){
   const a=S.posts.find(p=>p.id===id); if(!a) return;
@@ -1409,7 +1405,7 @@ function drawSheet(){
 function seenVersion(){ try{ return localStorage.getItem("dr_seen_version")||""; }catch(_){ return ""; } }
 function showChanges(){
   try{ localStorage.setItem("dr_seen_version",APP_VERSION); }catch(_){}
-  drawVersionChip();
+  drawVersionChip(); try{ drawMobileBar(); }catch(_){}
   const close=()=>ov.remove();
   const ov=h("div",{class:"wnov",onclick:e=>{ if(e.target===ov) close(); }});
   const box=h("div",{class:"wnbox",role:"dialog","aria-label":"Что нового"}, panelHead("Что нового",close),
@@ -1422,9 +1418,102 @@ function drawVersionChip(){
   let b=document.getElementById("verChip");
   if(!b){ b=h("button",{type:"button",id:"verChip",class:"verchip",title:"Что нового",onclick:showChanges}); sub.after(b); }
   const fresh=seenVersion()!==APP_VERSION;
-  b.replaceChildren(h("span",{text:"v"+APP_VERSION}), fresh?h("i",{class:"vdot","aria-label":"новое"}):null);
+  b.replaceChildren(...[h("span",{text:"v"+APP_VERSION}), fresh?h("i",{class:"vdot","aria-label":"новое"}):null].filter(Boolean));
 }
 setTimeout(drawVersionChip,0);
+/* ---------- мобильная шапка: «новый пост» и меню профиля ---------- */
+function drawMobileBar(){
+  const brand=document.querySelector(".brand"); if(!brand) return;
+  let bar=document.getElementById("mbar");
+  if(!bar){ bar=h("div",{id:"mbar",class:"mbar"}); brand.append(bar); }
+  const kids=[];
+  if(S.canWrite && !S.blocked){ const nb=h("button",{type:"button",class:"mbtn new","aria-label":"Новый пост",onclick:()=>openNewPost()}); nb.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'; kids.push(nb); }
+  const nm=S.test?"Тестовый редактор":(S.myName||"");
+  const me=h("button",{type:"button",class:"mbtn me","aria-label":"Меню: "+(nm||"профиль"),onclick:openMeMenu}, (nm.trim()[0]||"Я").toUpperCase());
+  if(typeof APP_VERSION!=="undefined" && seenVersion()!==APP_VERSION) me.append(h("i",{class:"vdot","aria-hidden":"true"}));
+  kids.push(me); bar.replaceChildren(...kids);
+}
+function openMeMenu(){
+  let m=document.getElementById("mmenu"); if(m) m.remove();
+  const close=()=>m.remove();
+  const role=S.test?"Тестовый режим":S.owner?"Главный редактор":"Редактор";
+  const item=(label,right,fn)=>h("button",{type:"button",onclick:()=>{ close(); fn(); }}, h("span",{text:label}), right?h("small",{text:right}):null);
+  const themeName={auto:"как в системе",light:"светлая",dark:"тёмная"}[getTheme()]||"";
+  const items=[
+    item("Что нового","v"+APP_VERSION,showChanges),
+    item("Тема",themeName,()=>{ const i=THEMES.findIndex(x=>x[0]===getTheme()); const nx=THEMES[(i+1)%THEMES.length]; try{ localStorage.setItem("dr_theme",nx[0]); }catch(_){} applyTheme(nx[0]); toast(nx[2]); })
+  ];
+  if(S.realOwner) items.push(item(S.test?"Выйти из теста":"Тестовый вход","",()=>setTest(!S.test)));
+  if(!S.owner && S.me) items.push(item("Моя анкета","",()=>openOnboarding(true)));
+  m=h("div",{id:"mmenu",class:"mmenu"}, h("div",{class:"scrim",onclick:close}),
+    h("div",{class:"pop",role:"menu"}, h("div",{class:"who2"}, h("b",{text:S.test?"Тестовый редактор":(S.myName||"Без имени")}), h("span",{text:role})), ...items));
+  m.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); });
+  document.body.append(m); m.querySelector(".pop button")?.focus();
+}
+/* ---------- «+»: выбор направления и темы для нового поста ---------- */
+const DIRS=[
+  {id:"news", t:"Новости", d:"Что вышло и что это меняет", label:"Новости", pool:["Главный релиз недели в Figma и что он меняет в работе","Крупный сервис обновил интерфейс: что поменяли и зачем","Что нового в гайдлайнах Apple и Material","AI-функция в дизайн-инструменте: польза или шум","Обновление дизайн-системы известной компании"]},
+  {id:"tips", t:"Советы", d:"Приём, который можно взять завтра", label:"Крафт", pool:["Как подписывать слои, чтобы разработчик не переспрашивал","Пустые состояния: три вопроса перед отрисовкой","Как проверить контраст в тёмной теме за минуту","Как отдать макет формы, чтобы не было багов","Отступы: почему сетка 8 px не спасает без правил"]},
+  {id:"ideas", t:"Дизайн-идеи", d:"Решение, которое стоит украсть", label:"Крафт", pool:["Микроанимация, которая объясняет, а не украшает","Онбординг без слайдов: учить по ходу","Скелетоны вместо спиннеров — когда это честно","Отмена вместо подтверждения: «Удалено. Вернуть?»","Прогресс, который мотивирует, а не давит"]},
+  {id:"review", t:"Разбор нового дизайна", d:"Что поменяли, зачем и как вышло", label:"Разбор", pool:["Разбор свежего редизайна банковского приложения","Новый экран оплаты популярного сервиса: где теряются люди","Редизайн маркетплейса: стало удобнее или моднее?","Разбор онбординга нового приложения"]},
+  {id:"rebrand", t:"Ребрендинг", d:"Бренд, логотип, айдентика", label:"Разбор", pool:["Ребрендинг, который сохранил узнаваемость","Почему новые логотипы всё больше похожи друг на друга","Что брендбук должен говорить продуктовым дизайнерам","Ребрендинг через интерфейс: как бренд живёт в продукте"]},
+  {id:"color", t:"Психология цвета", d:"Как цвет меняет смысл", label:"Крафт", pool:["Красный — ошибка или акцент? Как цвет меняет смысл кнопки","Почему у финтеха синие логотипы","Цвета статусов: светофор и дальтонизм","Тёмная тема — это не инверсия цветов"]},
+  {id:"a11y", t:"Доступность", d:"Интерфейс для всех", label:"Крафт", pool:["Фокус с клавиатуры: что ломается первым","Зона нажатия 44 pt: откуда цифра и когда её нарушают","Подписи полей вместо плейсхолдеров","Как проверить макет на доступность без плагинов"]},
+  {id:"texts", t:"UX-тексты", d:"Слова в интерфейсе", label:"Крафт", pool:["Текст ошибки, который помогает исправить","Кнопка «ОК» — худшая подпись","Пустой экран: что написать, кроме «Здесь ничего нет»","Как называть действия: глагол или существительное"]},
+  {id:"tools", t:"Инструменты", d:"Figma, плагины, процессы", label:"Крафт", pool:["Variables в Figma: с чего начать","Плагин, который экономит час в неделю","Как организовать файл Figma для команды","Хендофф без боли: что положить рядом с макетом"]},
+  {id:"career", t:"Карьера", d:"Рост, портфолио, собеседования", label:"Мнение", pool:["Как показать процесс в портфолио","Что спрашивают на собеседовании продуктового дизайнера","Как спорить с продактом аргументами, а не вкусом","Как вырасти из мидла в сеньора"]},
+  {id:"mind", t:"Психология работы", d:"Выгорание, критика, созвоны", label:"Мнение", pool:["Выгорание от созвонов: как защищать время на дизайн","Как принимать критику макета и не защищаться","Синдром самозванца у сеньоров","Когда дизайнеру говорить «нет»"]},
+  {id:"opinion", t:"Мнение", d:"Спорный тезис редакции", label:"Мнение", pool:["Дизайн-системы замедляют продукт?","Нужен ли дизайнеру код","Тренды вредят продуктам","Красивый дизайн переоценён"]},
+  {id:"check", t:"Карусель-чек-лист", d:"5–7 карточек, которые сохраняют", label:"Крафт", pool:["5 вопросов к макету перед ревью","Чек-лист тёмной темы","Чек-лист формы перед разработкой","7 проверок пустых и ошибочных состояний"]}
+];
+const pick=(arr,n)=>{ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a.slice(0,n); };
+function openNewPost(){
+  if(!S.canWrite) return;
+  if(S.paused){ toast("Колонка на паузе — новые посты сейчас недоступны"); return; }
+  let ov=document.getElementById("npov"); if(ov) ov.remove();
+  const close=()=>ov.remove();
+  const box=h("div",{class:"npbox",role:"dialog","aria-label":"Новый пост"});
+  ov=h("div",{id:"npov",class:"npov",onclick:e=>{ if(e.target===ov) close(); }}, box);
+  ov.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); });
+  const home=()=>{
+    const tiles=pick(DIRS,DIRS.length).map(dr=>h("button",{type:"button",class:"nptile",onclick:()=>detail(dr)}, h("b",{text:dr.t}), h("span",{text:pick(dr.pool,1)[0]})));
+    box.replaceChildren(panelHead("Что пишем?",close),
+      h("button",{type:"button",class:"npself",onclick:()=>{ close(); newPost(); }}, h("span",{class:"npi","aria-hidden":"true",text:"✎"}), h("span",{}, h("b",{text:"Написать самой"}), h("small",{text:"Пустой черновик, тема своя"}))),
+      h("div",{class:"nphint",text:"Или выбери направление — предложу темы"}),
+      h("div",{class:"npgrid"}, ...tiles));
+    box.scrollTop=0; box.querySelector(".npself")?.focus();
+  };
+  const detail=(dr)=>{
+    let topics=pick(dr.pool,3), chosen=topics[0];
+    const list=h("div",{class:"nptopics",role:"radiogroup","aria-label":"Темы"});
+    const own=h("input",{type:"text",placeholder:"Или своя тема",class:"npown","aria-label":"Своя тема"});
+    const st=h("div",{class:"hint"});
+    const draw=()=>{ list.replaceChildren(...topics.map(t=>h("button",{type:"button",role:"radio","aria-checked":t===chosen&&!own.value.trim()?"true":"false",class:"nptopic"+(t===chosen&&!own.value.trim()?" on":""),onclick:()=>{ chosen=t; own.value=""; draw(); }}, t))); };
+    own.addEventListener("input",draw);
+    const topic=()=>own.value.trim()||chosen;
+    const more=h("button",{type:"button",class:"btn sm",onclick:()=>{ const rest=dr.pool.filter(x=>!topics.includes(x)); topics=pick(rest.length>=3?rest:dr.pool,3); chosen=topics[0]; draw(); }},"↻ Другие темы");
+    const ai=sample?h("button",{type:"button",class:"btn sm aibtn",onclick:async()=>{
+      ai.disabled=true; st.textContent="Claude думает над темами…";
+      const recent=S.posts.slice(0,20).map(p=>"— "+plain(p.title)).join("\n");
+      try{ const r=await sample.json("Ты редактор Telegram-канала «Дизайн-Радар» для продуктовых дизайнеров с опытом от 2 лет. Предложи 3 темы постов в направлении «"+dr.t+"» ("+dr.d+"). Тема — одна конкретная фраза до 80 знаков, с понятной пользой для практика, без выдуманных фактов, цифр и названий релизов, которых ты не знаешь наверняка. Не повторяй уже вышедшее:\n"+recent+"\nОтветь только JSON-массивом из трёх строк.",{modelTier:"default",cache:false});
+        const arr=(Array.isArray(r)?r:[]).map(x=>String(x).trim()).filter(Boolean).slice(0,3);
+        if(arr.length){ topics=arr; chosen=arr[0]; own.value=""; draw(); st.textContent=""; } else st.textContent="Не получилось — попробуй ещё раз.";
+      }catch(e){ st.textContent=e&&e.code==="not_granted"?"Разреши панели обращаться к Claude.":"Не получилось — попробуй ещё раз."; }
+      finally{ ai.disabled=false; } }},"✦ Темы от Claude"):null;
+    const write=h("button",{type:"button",class:"btn",onclick:()=>{ close(); newPost({title:topic(), label:dr.label}); }},"Написать самой");
+    const give=h("button",{type:"button",class:"btn accent",onclick:async()=>{
+      give.disabled=true;
+      try{ await ideasCol().add({text:topic().slice(0,140), angle:dr.t+": "+dr.d, rubric:dr.label, author:S.me||"", status:"requested", requested_by:S.me||"", requested_at:Date.now(), created_at:Date.now(), dir:dr.id});
+        close(); toast("Отдала Claude — черновик придёт на согласование"); }
+      catch(e){ give.disabled=false; st.textContent="Не удалось сохранить. Попробуй ещё раз."; } }},"Отдать Claude");
+    box.replaceChildren(
+      h("div",{class:"phead"}, h("button",{type:"button",class:"npback","aria-label":"Назад",onclick:home},"←"), h("span",{text:dr.t}), closeX(close)),
+      h("p",{class:"npdesc",text:dr.d}), list, h("div",{class:"nprow"}, more, ai), own, st,
+      h("div",{class:"npacts"}, write, give));
+    draw(); box.scrollTop=0;
+  };
+  home(); document.body.append(ov);
+}
 /* ---------- boot ---------- */
 function route(){ const hv=location.hash.replace("#","");
   if(/^invite=/.test(hv)){ S.inviteCode=hv.slice(7).replace(/[^A-Za-z0-9_-]/g,"").slice(0,40); try{ localStorage.setItem("dr_invite",S.inviteCode); }catch(_){} history.replaceState(null,"",location.pathname+location.search+"#review"); }

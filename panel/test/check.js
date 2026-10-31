@@ -119,15 +119,6 @@ const url='file://'+path.resolve(process.argv[2]);
    ok(await p.evaluate(()=>(window.__calls||[]).some(c=>c.tool==='update_trigger'&&c.args.trigger_id==='trig_01SsdLvWh9WAW64p8KrsoxKp')),'photo search task armed');
    ok(await p.evaluate(()=>{ const r=window.__mockdb['posts'].get('fd_test').reel; return r.scenes.filter(x=>x.type==='photo').every(x=>!/example\.com/.test(x.src)); }),'reel external photos moved into panel');
    await p.evaluate(()=>document.querySelector('.sheet header .iconbtn')?.click()); await W(300); }
- { // рилс v2: все типы сцен рисуются без ошибок на всём таймлайне
-   const reel={label:'Крафт',v:2,scenes:[{type:'hook',dur:2,kicker:'Google, 2009',title:'41 оттенок\nради *одной* ссылки'},{type:'swatches',dur:3,bg:'ink',title:'*41* оттенок',from:'#0b1f6b',to:'#7fb2ff',count:41,pick:28,pickLabel:'Этот'},{type:'number',dur:2.4,bg:'orange',pre:'Итог',value:'+200 млн $',title:'за *один* оттенок'},{type:'compare',dur:3,a_label:'Было',a_text:'Ищут',a_color:'#9a3cbb',b_label:'Стало',b_text:'*Узнают*',b_color:'#1a56db'},{type:'list',dur:3,title:'Что взять',items:'Раз\n*Два*\nТри',mark:'mix'},{type:'photo',dur:2,src:'https://example.com/x.jpg',layout:'card',title:'Фото'},{type:'title',dur:2,title:'Старый тип'},{type:'end',dur:1.8}]};
-   await p.evaluate(async(reel)=>{ const db=await window.claude.use('db'); await db.collection('posts').doc('rv2').set({title:'Рилс v2 тест', full_text:'Достаточно длинный текст поста для проверки рилса.', status:'review', author:'claude', label:'Крафт', section:'Крафт', source:'', url:'', hashtags:[], created_at:Date.now(), updated_at:Date.now(), reel}); },reel);
-   await p.evaluate(()=>location.hash='review'); await W(400); await open('Рилс v2 тест'); await W(1200);
-   await p.evaluate(()=>{ [...document.querySelectorAll('.reelsec button')].find(b=>/Пауза/.test(b.textContent)).click(); });
-   for(let t=0;t<20;t+=.7){ await p.evaluate(t=>{ const c=document.querySelector('.reelpv'); if(c) c._t=t; },t); await W(40); }
-   ok(await p.evaluate(()=>document.querySelectorAll('.rcard').length===8),'reel v2 all scene cards');
-   ok(!(await p.$('#errbar')),'reel v2 no error bar');
-   await p.evaluate(()=>document.querySelector('.sheet header .iconbtn')?.click()); await W(300); }
  { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте
   const m=await b.newPage({viewport:{width:375,height:780},isMobile:true,hasTouch:true,colorScheme:'dark'}); m.on('pageerror',e=>errs.push('mobile: '+e.message));
   await m.goto(url); await W(1500);

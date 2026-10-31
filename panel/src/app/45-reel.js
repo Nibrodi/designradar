@@ -197,6 +197,25 @@ async function recordReel(spec, onProgress){
 }
 
 /* редактор рилса внутри редактора поста */
+const IG_TG="t.me/designradar_lab";
+async function genIgCaption(d, spec, wish){
+  const lab=String(d.label||d.section||"");
+  const prompt=TEXT_RULES+"\n\nНапиши подпись к рилсу в Instagram по ЭТОМУ посту канала «Дизайн-Радар». ГЛАВНАЯ ЦЕЛЬ — чтобы зритель перешёл в Telegram-канал. Подпись — не пересказ поста, а крючок с недосказанностью.\n\nПОСТ:\nЗаголовок: "+d.title+"\nРубрика: "+lab+"\nТекст:\n"+String(d.full_text||"").slice(0,3200)+(spec&&spec.idea?"\n\nМЫСЛЬ РИЛСА: "+spec.idea:"")+(wish?"\n\nПОЖЕЛАНИЕ РЕДАКТОРА: "+wish:"")+
+  "\n\nПРАВИЛА:\n- Всего 180–350 знаков без хэштегов. Коротко.\n- Строка 1 — крючок до 90 знаков: цифра, парадокс или вопрос из поста. Её видно до кнопки «ещё».\n- Строки 2–3 — один-два факта, которых нет в видео. Вывод, вердикт и совет НЕ раскрывай — они ждут в Telegram.\n- Якорь на канал отдельной строкой, с причиной перейти именно по теме поста, например: «Чем это полезно тебе в работе — разобрали в Telegram 👉 "+IG_TG+" (ссылка в шапке профиля)». Адрес канала пиши ровно так: "+IG_TG+". Не пиши @designradar_lab — в Instagram это ссылка на чужой профиль.\n- Если это чужая работа — строка «Работа: <автор/студия>».\n- В конце 3–5 хэштегов на русском одной строкой.\n- Без markdown, звёздочек и ссылок в скобках; эмодзи не больше двух. Все факты — только из поста.\nОтветь только JSON: {\"caption\":\"…\"}";
+  const v=await sample.json(prompt,{modelTier:"complex",cache:false});
+  const c=v&&String(v.caption||"").trim(); if(!c) throw {message:"Claude не вернул подпись. Попробуй ещё раз."};
+  return c.replace(/\*\*|__/g,"").replace(/@designradar_lab/g,IG_TG);
+}
+function igCaptionBox(d, spec, ro, commit){
+  const ta=h("textarea",{rows:7,readonly:ro,placeholder:"Подпись к рилсу для Instagram: крючок, пара фактов и якорь на Telegram-канал"}); ta.value=spec.ig_caption||"";
+  const cnt=h("span",{class:"hint"}); const upd=()=>{ const t=ta.value; const body=t.replace(/(^|\s)#\S+/g,"").trim(); cnt.textContent=t?body.length+" знаков без хэштегов"+(t.includes(IG_TG)?"":" · ⚠ нет ссылки на канал"):""; };
+  ta.addEventListener("input",()=>{ spec.ig_caption=ta.value; commit(); upd(); }); upd();
+  const wi=h("input",{type:"text",placeholder:"Пожелание: «начни с вопроса», «ещё короче»…"});
+  const gen=(!ro&&sample)?h("button",{type:"button",class:"btn sm aibtn",onclick:async()=>{ const was=gen.textContent; gen.disabled=true; gen.textContent="Claude пишет…";
+      try{ ta.value=spec.ig_caption=await genIgCaption(d,spec,wi.value.trim()); commit(); upd(); }catch(er){ toast((er&&er.message)||"Не получилось"); } finally{ gen.disabled=false; gen.textContent=spec.ig_caption?"✦ Переписать":was; } }},spec.ig_caption?"✦ Переписать":"✦ Написать подпись"):null;
+  const cp=h("button",{type:"button",class:"btn sm",onclick:()=>{ if(ta.value.trim()) copyText(ta.value); else toast("Подпись пустая"); }},"Копировать");
+  return h("div",{class:"fld rig"}, h("label",{text:"Подпись для Instagram — ведёт в Telegram"}), ta, cnt, ro?h("div",{class:"acts"},cp):h("div",{class:"airow rwish"}, wi, gen, cp));
+}
 function reelEditor(d, o){
   const {ro, changed}=o;
   const box=h("section",{class:"sec reelsec"});
@@ -287,7 +306,8 @@ function reelEditor(d, o){
     const top=h("div",{class:"reeltop"}, h("div",{class:"reelpvw"}, pv, h("div",{class:"reelbar"},bar)),
       h("div",{class:"reelside"}, fld(spec,"label","Плашка в шапке (для всех сцен)","Крафт"), h("div",{class:"acts"}, play, rec), st, out,
         spec.idea?h("div",{class:"ridea"}, h("b",{text:"Мысль рилса: "}), spec.idea):null,
-        (!ro&&sample)?(()=>{ const wi=h("input",{type:"text",placeholder:"Пожелание: «начни с цифры 228», «больше про дугу в логотипе»…"}); return h("div",{class:"airow rwish"}, wi, h("button",{type:"button",class:"btn sm aibtn",onclick:async(e)=>{ const b=e.currentTarget; b.disabled=true; b.textContent="Claude думает…"; try{ spec=await genReel(d,wi.value.trim()); commit(); draw(); }catch(er){ toast((er&&er.message)||"Не получилось"); b.disabled=false; b.textContent="✦ Новый сценарий"; } }},"✦ Новый сценарий")); })():null,
+        igCaptionBox(d, spec, ro, commit),
+        (!ro&&sample)?(()=>{ const wi=h("input",{type:"text",placeholder:"Пожелание: «начни с цифры 228», «больше про дугу в логотипе»…"}); return h("div",{class:"airow rwish"}, wi, h("button",{type:"button",class:"btn sm aibtn",onclick:async(e)=>{ const b=e.currentTarget; b.disabled=true; b.textContent="Claude думает…"; try{ { const keep=spec&&spec.ig_caption; spec=await genReel(d,wi.value.trim()); if(keep) spec.ig_caption=keep; } commit(); draw(); }catch(er){ toast((er&&er.message)||"Не получилось"); b.disabled=false; b.textContent="✦ Новый сценарий"; } }},"✦ Новый сценарий")); })():null,
         ro?null:h("button",{type:"button",class:"btn sm ghost danger",onclick:()=>{ spec=null; d.reel=null; changed(); draw(); }},"Удалить рилс")));
     const list=h("div",{class:"cards"}); const n=spec.scenes.length;
     spec.scenes.forEach((sc,i)=>{

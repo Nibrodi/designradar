@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.11.0"; const CHANGES=[{"v": "2.11.0", "date": "31.10.2026", "items": ["«✦ Claude найдёт фото» в рилсе: задача «Поиск фото» ищет фото работы на сайте источника, у студии, на Behance и отраслевых сайтах, проверяет каждое (что на нём, есть ли люди и свой текст) и добавляет к посту. Бесплатно — только ссылки; можно написать, что искать.", "Сценарист рилса знает, что на каждом фото: фото со своим текстом ставит карточкой или не первым."]}, {"v": "2.10.2", "date": "31.10.2026", "items": ["«Скачать видео» работает: на телефоне открывается окно сохранения (можно сохранить в «Фото» или отправить), в браузере — обычная загрузка."]}, {"v": "2.10.1", "date": "31.10.2026", "items": ["Фото с сайтов источников панель сама переносит в своё хранилище (через Make, один раз на фото), чтобы они показывались в рилсе и попадали в видео."]}];
+const APP_VERSION="2.12.0"; const CHANGES=[{"v": "2.12.0", "date": "31.10.2026", "items": ["Подпись для Instagram в рилсе: «✦ Написать подпись» — короткий крючок, пара фактов и якорь на Telegram-канал (t.me/designradar_lab, ссылка в шапке профиля). Вывод и совет остаются в канале, чтобы туда переходили. Кнопка «Копировать», счётчик знаков и предупреждение, если пропала ссылка на канал."]}, {"v": "2.11.0", "date": "31.10.2026", "items": ["«✦ Claude найдёт фото» в рилсе: задача «Поиск фото» ищет фото работы на сайте источника, у студии, на Behance и отраслевых сайтах, проверяет каждое (что на нём, есть ли люди и свой текст) и добавляет к посту. Бесплатно — только ссылки; можно написать, что искать.", "Сценарист рилса знает, что на каждом фото: фото со своим текстом ставит карточкой или не первым."]}, {"v": "2.10.2", "date": "31.10.2026", "items": ["«Скачать видео» работает: на телефоне открывается окно сохранения (можно сохранить в «Фото» или отправить), в браузере — обычная загрузка."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -592,6 +592,25 @@ async function recordReel(spec, onProgress){
 }
 
 /* редактор рилса внутри редактора поста */
+const IG_TG="t.me/designradar_lab";
+async function genIgCaption(d, spec, wish){
+  const lab=String(d.label||d.section||"");
+  const prompt=TEXT_RULES+"\n\nНапиши подпись к рилсу в Instagram по ЭТОМУ посту канала «Дизайн-Радар». ГЛАВНАЯ ЦЕЛЬ — чтобы зритель перешёл в Telegram-канал. Подпись — не пересказ поста, а крючок с недосказанностью.\n\nПОСТ:\nЗаголовок: "+d.title+"\nРубрика: "+lab+"\nТекст:\n"+String(d.full_text||"").slice(0,3200)+(spec&&spec.idea?"\n\nМЫСЛЬ РИЛСА: "+spec.idea:"")+(wish?"\n\nПОЖЕЛАНИЕ РЕДАКТОРА: "+wish:"")+
+  "\n\nПРАВИЛА:\n- Всего 180–350 знаков без хэштегов. Коротко.\n- Строка 1 — крючок до 90 знаков: цифра, парадокс или вопрос из поста. Её видно до кнопки «ещё».\n- Строки 2–3 — один-два факта, которых нет в видео. Вывод, вердикт и совет НЕ раскрывай — они ждут в Telegram.\n- Якорь на канал отдельной строкой, с причиной перейти именно по теме поста, например: «Чем это полезно тебе в работе — разобрали в Telegram 👉 "+IG_TG+" (ссылка в шапке профиля)». Адрес канала пиши ровно так: "+IG_TG+". Не пиши @designradar_lab — в Instagram это ссылка на чужой профиль.\n- Если это чужая работа — строка «Работа: <автор/студия>».\n- В конце 3–5 хэштегов на русском одной строкой.\n- Без markdown, звёздочек и ссылок в скобках; эмодзи не больше двух. Все факты — только из поста.\nОтветь только JSON: {\"caption\":\"…\"}";
+  const v=await sample.json(prompt,{modelTier:"complex",cache:false});
+  const c=v&&String(v.caption||"").trim(); if(!c) throw {message:"Claude не вернул подпись. Попробуй ещё раз."};
+  return c.replace(/\*\*|__/g,"").replace(/@designradar_lab/g,IG_TG);
+}
+function igCaptionBox(d, spec, ro, commit){
+  const ta=h("textarea",{rows:7,readonly:ro,placeholder:"Подпись к рилсу для Instagram: крючок, пара фактов и якорь на Telegram-канал"}); ta.value=spec.ig_caption||"";
+  const cnt=h("span",{class:"hint"}); const upd=()=>{ const t=ta.value; const body=t.replace(/(^|\s)#\S+/g,"").trim(); cnt.textContent=t?body.length+" знаков без хэштегов"+(t.includes(IG_TG)?"":" · ⚠ нет ссылки на канал"):""; };
+  ta.addEventListener("input",()=>{ spec.ig_caption=ta.value; commit(); upd(); }); upd();
+  const wi=h("input",{type:"text",placeholder:"Пожелание: «начни с вопроса», «ещё короче»…"});
+  const gen=(!ro&&sample)?h("button",{type:"button",class:"btn sm aibtn",onclick:async()=>{ const was=gen.textContent; gen.disabled=true; gen.textContent="Claude пишет…";
+      try{ ta.value=spec.ig_caption=await genIgCaption(d,spec,wi.value.trim()); commit(); upd(); }catch(er){ toast((er&&er.message)||"Не получилось"); } finally{ gen.disabled=false; gen.textContent=spec.ig_caption?"✦ Переписать":was; } }},spec.ig_caption?"✦ Переписать":"✦ Написать подпись"):null;
+  const cp=h("button",{type:"button",class:"btn sm",onclick:()=>{ if(ta.value.trim()) copyText(ta.value); else toast("Подпись пустая"); }},"Копировать");
+  return h("div",{class:"fld rig"}, h("label",{text:"Подпись для Instagram — ведёт в Telegram"}), ta, cnt, ro?h("div",{class:"acts"},cp):h("div",{class:"airow rwish"}, wi, gen, cp));
+}
 function reelEditor(d, o){
   const {ro, changed}=o;
   const box=h("section",{class:"sec reelsec"});
@@ -682,7 +701,8 @@ function reelEditor(d, o){
     const top=h("div",{class:"reeltop"}, h("div",{class:"reelpvw"}, pv, h("div",{class:"reelbar"},bar)),
       h("div",{class:"reelside"}, fld(spec,"label","Плашка в шапке (для всех сцен)","Крафт"), h("div",{class:"acts"}, play, rec), st, out,
         spec.idea?h("div",{class:"ridea"}, h("b",{text:"Мысль рилса: "}), spec.idea):null,
-        (!ro&&sample)?(()=>{ const wi=h("input",{type:"text",placeholder:"Пожелание: «начни с цифры 228», «больше про дугу в логотипе»…"}); return h("div",{class:"airow rwish"}, wi, h("button",{type:"button",class:"btn sm aibtn",onclick:async(e)=>{ const b=e.currentTarget; b.disabled=true; b.textContent="Claude думает…"; try{ spec=await genReel(d,wi.value.trim()); commit(); draw(); }catch(er){ toast((er&&er.message)||"Не получилось"); b.disabled=false; b.textContent="✦ Новый сценарий"; } }},"✦ Новый сценарий")); })():null,
+        igCaptionBox(d, spec, ro, commit),
+        (!ro&&sample)?(()=>{ const wi=h("input",{type:"text",placeholder:"Пожелание: «начни с цифры 228», «больше про дугу в логотипе»…"}); return h("div",{class:"airow rwish"}, wi, h("button",{type:"button",class:"btn sm aibtn",onclick:async(e)=>{ const b=e.currentTarget; b.disabled=true; b.textContent="Claude думает…"; try{ { const keep=spec&&spec.ig_caption; spec=await genReel(d,wi.value.trim()); if(keep) spec.ig_caption=keep; } commit(); draw(); }catch(er){ toast((er&&er.message)||"Не получилось"); b.disabled=false; b.textContent="✦ Новый сценарий"; } }},"✦ Новый сценарий")); })():null,
         ro?null:h("button",{type:"button",class:"btn sm ghost danger",onclick:()=>{ spec=null; d.reel=null; changed(); draw(); }},"Удалить рилс")));
     const list=h("div",{class:"cards"}); const n=spec.scenes.length;
     spec.scenes.forEach((sc,i)=>{

@@ -33,6 +33,7 @@ async function buildRich(a){
   const media=[];
   if(isRendered(a)) media.push({id:"cover", media:{type:"photo", media:await uploadCover(a)}});
   else if(a.image_file_id && !a.cover_off) media.push({id:"cover", media:{type:"photo", media:a.image_file_id}});
+  else if(a.cover_url && !a.cover_off){ const fid=await uploadByUrl(a.cover_url, a.id+"_c"); await savePost(a.id,{image_file_id:fid}); media.push({id:"cover", media:{type:"photo", media:fid}}); }
   const med=mediaOf(a); let slots;
   if(med.length){
     const fresh=med.map(m=>({...m}));

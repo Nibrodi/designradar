@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.7.0"; const CHANGES=[{"v": "2.7.0", "date": "31.10.2026", "items": ["Рубрика «Находка»: свежие работы студий и авторов с рецензией редакции. В «+» — направление «Находка» (ссылку можно вставить в «Своя тема»).", "В «Идеях» у находок есть ссылка «источник ↗».", "Ежедневный охотник за находками кладёт готовый пост в «Ревью» и кандидатов в «Идеи»."]}, {"v": "2.6.0", "date": "31.10.2026", "items": ["Проверка перед выходом: пост без заголовка, почти без текста, длиннее лимита, с меткой [фото:N] без картинки или с незакрытым жирным не публикуется и не планируется — панель пишет, что поправить.", "Идеи без дублей: та же тема второй раз не добавляется, а «Отдать Claude» на существующую тему переводит её в очередь.", "Пустой новый пост, который открыли и закрыли, не остаётся в базе.", "Канал можно задать в настройках (settings/main.channel) или у поста (channel) — задел для второго канала."]}, {"v": "2.5.0", "date": "31.10.2026", "items": ["«Отклонить» спрашивает, почему: готовые причины («Ахинея в тексте», «Скучно и сухо», «Не мой тон», «Сомнительные факты» и другие) и поле для своих слов. Можно отклонить и без причины.", "Галочка «Тема хорошая — напиши заново»: Claude напишет на эту тему новый пост с нуля, учитывая причину, и пришлёт его в «Ревью».", "Причины отказов читают задачи: «Запас постов» не повторяет эти ошибки, вечерние «Уроки из правок» превращают их в правила регламента."]}];
+const APP_VERSION="2.8.0"; const CHANGES=[{"v": "2.8.0", "date": "31.10.2026", "items": ["Фото находок без лишних трат: охотник кладёт в пост только ссылки на фото (cover_url, media), а панель показывает их в превью. В Telegram фото загружаются только когда ты жмёшь «Опубликовать» или «Запланировать».", "Если сайт источника не даёт показать фото в панели, вместо картинки появится ссылка «Фото не показывается здесь — открыть ↗»."]}, {"v": "2.7.0", "date": "31.10.2026", "items": ["Рубрика «Находка»: свежие работы студий и авторов с рецензией редакции. В «+» — направление «Находка» (ссылку можно вставить в «Своя тема»).", "В «Идеях» у находок есть ссылка «источник ↗».", "Ежедневный охотник за находками кладёт готовый пост в «Ревью» и кандидатов в «Идеи»."]}, {"v": "2.6.0", "date": "31.10.2026", "items": ["Проверка перед выходом: пост без заголовка, почти без текста, длиннее лимита, с меткой [фото:N] без картинки или с незакрытым жирным не публикуется и не планируется — панель пишет, что поправить.", "Идеи без дублей: та же тема второй раз не добавляется, а «Отдать Claude» на существующую тему переводит её в очередь.", "Пустой новый пост, который открыли и закрыли, не остаётся в базе.", "Канал можно задать в настройках (settings/main.channel) или у поста (channel) — задел для второго канала."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -112,6 +112,13 @@ function mountCanvas(box, a){
 function coverMock(a){
   const c=h("div",{class:"cover","aria-label":"Обложка: "+(a.cover_title||a.title||"")});
   if(isRendered(a)){ mountCanvas(c,a); return c; }
+  if(!a.cover_off && a.cover_url && /^https:\/\//.test(a.cover_url)){
+    /* Фото находки по ссылке: показываем из источника, в Telegram оно загрузится только при публикации */
+    c.classList.add("photocover");
+    const img=h("img",{src:a.cover_url,alt:a.cover_title||a.title||"Фото",loading:"lazy",referrerpolicy:"no-referrer"});
+    img.addEventListener("error",()=>{ img.remove(); c.append(h("a",{class:"phfail",href:a.cover_url,target:"_blank",rel:"noopener",onclick:e=>e.stopPropagation()},"Фото не показывается здесь — открыть ↗")); });
+    c.append(img, h("span",{class:"has",text:a.image_file_id?"фото в Telegram":"фото из источника · загрузится при публикации"}));
+    return c; }
   const firstMedia=mediaOf(a)[0];
   if(!a.image_file_id && firstMedia){ const med=mediaOf(a); c.classList.add("mcover"); c.setAttribute("aria-label","Карусель: "+med.length+" карточек");
     med.slice(0,4).forEach((m,i)=>c.append(h("img",{src:m.url,alt:i?"":(m.caption||"Первая карточка"),loading:"lazy",class:i?"":"first"})));
@@ -123,7 +130,16 @@ function coverMock(a){
   c.append(h("span",{class:"has",text:a.image_file_id?(a.kind==="news"?"фото из источника · превью нет":"обложка в Telegram · превью нет"):"без картинки"}));
   return c;
 }
+const SCN_PHOTO_URL = 6801221;
+async function uploadByUrl(url, key){
+  const res=await mcp.callTool(MAKE, "scenarios_run", {scenarioId:SCN_PHOTO_URL, responsive:true, data:{image_url:url, topic_id:String(key).replace(/[^A-Za-z0-9_-]/g,"-").slice(0,38)}});
+  const m=JSON.stringify(res.payload??res.content??"").match(/photo_file_id\\?"\s*:\s*\\?"([A-Za-z0-9_-]{10,300})/);
+  if(!m) throw {code:"tool_error",message:"Make не загрузил фото по ссылке: "+JSON.stringify(res.payload??res.content??"").slice(0,160)};
+  return m[1];
+}
+const isExternal = u => /^https:\/\//.test(u||"") && !/\/_blob\//.test(u||"");
 async function uploadBlobUrl(url, key){
+  if(isExternal(url)) return uploadByUrl(url, key);
   const blob=await (await fetch(url)).blob();
   const b64=await new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(",")[1]); r.onerror=no; r.readAsDataURL(blob); });
   const res=await mcp.callTool(MAKE, "scenarios_run", {scenarioId:SCN_PHOTO, responsive:true, data:{image_base64:b64, key:String(key).replace(/[^A-Za-z0-9_-]/g,"_")}});
@@ -380,7 +396,7 @@ async function rewriteCard(d, spec, idx, mode){
 /* ---------- Telegram-style preview ---------- */
 function tgPreview(a){
   const box=h("div",{class:"tg"});
-  if(!a.cover_off && (a.image_file_id || isRendered(a))) box.append(coverMock(a));
+  if(!a.cover_off && (a.image_file_id || a.cover_url || isRendered(a))) box.append(coverMock(a));
   const tx=h("div",{class:"tx"});
   const med=mediaOf(a);
   const html=richHtml(a).replace(/<img src="tg:\/\/photo\?id=p(\d+)"\/>/g,(m,n)=>{ const it=med[Number(n)-1]; return it?'<img class="mi" alt="'+esc(it.caption||("фото "+n))+'" src="'+esc(it.url)+'"/>':'<div class="ph">фото '+n+' · превью нет</div>'; }).replace(/<hr\/><footer>/,'<div class="ft">').replace(/<\/footer>$/,"</div>");
@@ -472,6 +488,7 @@ async function buildRich(a){
   const media=[];
   if(isRendered(a)) media.push({id:"cover", media:{type:"photo", media:await uploadCover(a)}});
   else if(a.image_file_id && !a.cover_off) media.push({id:"cover", media:{type:"photo", media:a.image_file_id}});
+  else if(a.cover_url && !a.cover_off){ const fid=await uploadByUrl(a.cover_url, a.id+"_c"); await savePost(a.id,{image_file_id:fid}); media.push({id:"cover", media:{type:"photo", media:fid}}); }
   const med=mediaOf(a); let slots;
   if(med.length){
     const fresh=med.map(m=>({...m}));

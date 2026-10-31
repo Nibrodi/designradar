@@ -21,6 +21,13 @@ function mountCanvas(box, a){
 function coverMock(a){
   const c=h("div",{class:"cover","aria-label":"Обложка: "+(a.cover_title||a.title||"")});
   if(isRendered(a)){ mountCanvas(c,a); return c; }
+  if(!a.cover_off && a.cover_url && /^https:\/\//.test(a.cover_url)){
+    /* Фото находки по ссылке: показываем из источника, в Telegram оно загрузится только при публикации */
+    c.classList.add("photocover");
+    const img=h("img",{src:a.cover_url,alt:a.cover_title||a.title||"Фото",loading:"lazy",referrerpolicy:"no-referrer"});
+    img.addEventListener("error",()=>{ img.remove(); c.append(h("a",{class:"phfail",href:a.cover_url,target:"_blank",rel:"noopener",onclick:e=>e.stopPropagation()},"Фото не показывается здесь — открыть ↗")); });
+    c.append(img, h("span",{class:"has",text:a.image_file_id?"фото в Telegram":"фото из источника · загрузится при публикации"}));
+    return c; }
   const firstMedia=mediaOf(a)[0];
   if(!a.image_file_id && firstMedia){ const med=mediaOf(a); c.classList.add("mcover"); c.setAttribute("aria-label","Карусель: "+med.length+" карточек");
     med.slice(0,4).forEach((m,i)=>c.append(h("img",{src:m.url,alt:i?"":(m.caption||"Первая карточка"),loading:"lazy",class:i?"":"first"})));
@@ -32,7 +39,16 @@ function coverMock(a){
   c.append(h("span",{class:"has",text:a.image_file_id?(a.kind==="news"?"фото из источника · превью нет":"обложка в Telegram · превью нет"):"без картинки"}));
   return c;
 }
+const SCN_PHOTO_URL = 6801221;
+async function uploadByUrl(url, key){
+  const res=await mcp.callTool(MAKE, "scenarios_run", {scenarioId:SCN_PHOTO_URL, responsive:true, data:{image_url:url, topic_id:String(key).replace(/[^A-Za-z0-9_-]/g,"-").slice(0,38)}});
+  const m=JSON.stringify(res.payload??res.content??"").match(/photo_file_id\\?"\s*:\s*\\?"([A-Za-z0-9_-]{10,300})/);
+  if(!m) throw {code:"tool_error",message:"Make не загрузил фото по ссылке: "+JSON.stringify(res.payload??res.content??"").slice(0,160)};
+  return m[1];
+}
+const isExternal = u => /^https:\/\//.test(u||"") && !/\/_blob\//.test(u||"");
 async function uploadBlobUrl(url, key){
+  if(isExternal(url)) return uploadByUrl(url, key);
   const blob=await (await fetch(url)).blob();
   const b64=await new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(",")[1]); r.onerror=no; r.readAsDataURL(blob); });
   const res=await mcp.callTool(MAKE, "scenarios_run", {scenarioId:SCN_PHOTO, responsive:true, data:{image_base64:b64, key:String(key).replace(/[^A-Za-z0-9_-]/g,"_")}});

@@ -99,6 +99,11 @@ const url='file://'+path.resolve(process.argv[2]);
    await p.evaluate(()=>document.querySelector('.npself').click()); await W(1000);
    await p.evaluate(()=>document.querySelector('.sheet header .iconbtn').click()); await W(500);
    ok(await p.evaluate(b=>window.__mockdb['posts'].size===b,before),'empty new draft discarded'); }
+ { // находка: фото по ссылке видно в превью, кредиты не тратятся до публикации
+   await p.evaluate(async()=>{ const db=await window.claude.use('db'); await db.collection('posts').doc('fd_test').set({title:'Находка тест', full_text:'Текст находки достаточно длинный для проверки публикации.', status:'review', author:'claude', label:'Находка', section:'Находка', kind:'news', hashtags:[], photos:[], cover_render:false, cover_url:'https://example.com/a.jpg', media:[{url:'https://example.com/b.jpg', caption:'Фото: студия', ext:true}], created_at:Date.now(), updated_at:Date.now()}); });
+   await p.evaluate(()=>location.hash='review'); await W(500);
+   ok(await p.evaluate(()=>[...document.querySelectorAll('.cover.photocover img, .cover.photocover .phfail')].length>0),'find photo preview from url');
+   ok(await p.evaluate(()=>!window.__mockdb['posts'].get('fd_test').image_file_id),'no upload before publish'); }
  { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте
   const m=await b.newPage({viewport:{width:375,height:780},isMobile:true,hasTouch:true,colorScheme:'dark'}); m.on('pageerror',e=>errs.push('mobile: '+e.message));
   await m.goto(url); await W(1500);

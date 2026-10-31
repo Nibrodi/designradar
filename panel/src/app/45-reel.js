@@ -1,5 +1,11 @@
 /* ---------- рилс: spec → вертикальное видео 1080×1920, рисуется в браузере ---------- */
 const RW=1080, RH=1920, RM=80;
+/* безопасная зона Instagram: в ленте видео режется до 4:5 (по 285 px сверху и снизу), во вкладке Reels низ (~420 px) закрыт подписью, справа — колонка кнопок */
+const R_ST=300, R_SB=1480, R_RR=150;
+let R_SHOW_SAFE=false;
+function drawSafeZones(ctx){ ctx.save(); ctx.fillStyle="rgba(220,40,40,.28)"; ctx.fillRect(0,0,RW,285); ctx.fillRect(0,RH-420,RW,420); ctx.fillRect(RW-R_RR,1000,R_RR,RH-1420);
+  ctx.strokeStyle="rgba(220,40,40,.9)"; ctx.lineWidth=4; ctx.setLineDash([18,12]); ctx.strokeRect(2,285,RW-4,RH-570); ctx.setLineDash([]);
+  ctx.font="600 30px Inter, sans-serif"; ctx.fillStyle="#fff"; ctx.textBaseline="top"; ctx.fillText("обрежется в ленте",RM,120); ctx.fillText("закроет подпись Reels",RM,RH-300); ctx.restore(); }
 const R_BG={cream:[C_CREAM,C_INK,"rgb(91,86,80)","#fff"], ink:[C_INK,C_CREAM,"rgb(190,182,168)","rgb(36,35,33)"], orange:[C_OR,C_INK,"rgb(60,30,15)",C_CREAM]};
 const R_ACC={orange:C_OR, green:"rgb(31,122,58)", ink:C_INK, blue:"rgb(42,92,220)"};
 const R_SIZE={S:96,M:120,L:146};
@@ -53,40 +59,41 @@ function drawReelScene(ctx, spec, sc, local, dur, warn){
         const fx={left:0,center:.5,right:1}[sc.fx||"center"], fy={top:0,center:.5,bottom:1}[sc.fy||"center"];
         ctx.save(); ctx.globalAlpha=Math.min(rEase(local/.35),rClamp((dur-local)/.25)); ctx.drawImage(im,(RW-w)*fx,(RH-hh)*fy,w,hh); ctx.restore(); }
       const g=ctx.createLinearGradient(0,RH*.38,0,RH); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(.55,"rgba(0,0,0,.55)"); g.addColorStop(1,"rgba(0,0,0,.82)"); ctx.fillStyle=g; ctx.fillRect(0,0,RW,RH);
-      const g2=ctx.createLinearGradient(0,0,0,300); g2.addColorStop(0,"rgba(0,0,0,.45)"); g2.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=g2; ctx.fillRect(0,0,RW,300); } }
+      const g2=ctx.createLinearGradient(0,0,0,R_ST+200); g2.addColorStop(0,"rgba(0,0,0,.45)"); g2.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=g2; ctx.fillRect(0,0,RW,R_ST+200); } }
   if(sc.head!==false){ /* шапка */
     const lab=String(sc.label||spec.label||"Дизайн-Радар").toUpperCase();
-    cSet(ctx,cFont.semi(32),4); const tw=ctx.measureText(lab).width; ctx.fillStyle=(bg==="orange"?C_INK:A===C_INK&&bg==="ink"?C_OR:A); ctx.fillRect(RM,120,tw+48,64);
-    ctx.fillStyle=bg==="orange"?C_CREAM:(bg==="ink"&&A===C_CREAM?C_INK:"#fff"); ctx.fillText(lab,RM+24,120+16);
-    cSet(ctx,cFont.title(32),0); const br="Дизайн-Радар", bw=ctx.measureText(br).width; ctx.fillStyle=full?"#fff":F; ctx.fillText(br,RW-RM-bw,132);
-    ctx.fillStyle=bg==="orange"?C_INK:C_OR; ctx.beginPath(); ctx.arc(RW-RM-bw-26,152,11,0,7); ctx.fill(); }
+    cSet(ctx,cFont.semi(32),4); const tw=ctx.measureText(lab).width; ctx.fillStyle=(bg==="orange"?C_INK:A===C_INK&&bg==="ink"?C_OR:A); ctx.fillRect(RM,R_ST+10,tw+48,64);
+    ctx.fillStyle=bg==="orange"?C_CREAM:(bg==="ink"&&A===C_CREAM?C_INK:"#fff"); ctx.fillText(lab,RM+24,R_ST+10+16);
+    cSet(ctx,cFont.title(32),0); const br="Дизайн-Радар", bw=ctx.measureText(br).width; ctx.fillStyle=full?"#fff":F; ctx.fillText(br,RW-RM-bw,R_ST+22);
+    ctx.fillStyle=bg==="orange"?C_INK:C_OR; ctx.beginPath(); ctx.arc(RW-RM-bw-26,R_ST+42,11,0,7); ctx.fill(); }
   ctx.save(); ctx.globalAlpha=Math.min(ins,out); ctx.translate(0,(1-ins)*70);
-  const size=R_SIZE[sc.size]||R_SIZE.M, W=RW-2*RM;
-  const lines=(t,font,lh,track)=>{ cSet(ctx,font,track); const out=[]; const ps=String(t||"").split("\n"); ps.forEach((p,pi)=>{ const ls=cWrap(ctx,cTypo(p,true),W); (ls.length?ls:[""]).forEach(l=>out.push({l,lh,last:pi===ps.length-1})); }); return out; };
-  const place=(h)=> sc.align==="top"?420 : sc.align==="bottom"?Math.max(420,RH-420-h) : Math.max(380,(RH-h)/2-60);
+  const size=R_SIZE[sc.size]||R_SIZE.M, W=RW-2*RM, TW=RW-RM-R_RR;
+  const lines=(t,font,lh,track)=>{ cSet(ctx,font,track); const out=[]; const ps=String(t||"").split("\n"); ps.forEach((p,pi)=>{ const ls=cWrap(ctx,cTypo(p,true),TW); (ls.length?ls:[""]).forEach(l=>out.push({l,lh,last:pi===ps.length-1})); }); return out; };
+  const place=(h)=> sc.align==="top"?430 : sc.align==="bottom"?Math.max(430,R_SB-h) : Math.max(430,Math.min(R_SB-h,(R_ST+80+R_SB-h)/2));
   if(isPhoto){
     const tc=full?"#fff":F, mc=full?"rgba(255,255,255,.82)":M;
     const tl=lines(sc.title||"", cFont.title(size), Math.round(size*1.0), -2), sl=sc.sub?lines(sc.sub, cFont.body(44), 56, 0):[];
     const cr=sc.credit?String(sc.credit):"";
-    if(full){ let y=RH-330-(cr?60:0)-sl.length*56-(sl.length?30:0)-tl.length*tl[0].lh; if(sc.align==="top") y=330; else if(sc.align==="center") y=Math.max(330,(RH-(tl.length*tl[0].lh+sl.length*56))/2);
+    if(full){ const bh=(cr?60:0)+sl.length*56+(sl.length?30:0)+tl.length*tl[0].lh; let y=R_SB-bh; if(sc.align==="top") y=430; else if(sc.align==="center") y=Math.max(430,(R_ST+80+R_SB-bh)/2);
       cSet(ctx,cFont.title(size),-2); tl.forEach(ln=>{ ctx.fillStyle=(sc.hl&&ln.last)?(A===C_INK?C_OR:A):tc; ctx.fillText(ln.l,RM,y); y+=ln.lh; });
       if(sl.length){ y+=30; cSet(ctx,cFont.body(44),0); ctx.fillStyle=mc; sl.forEach(l=>{ ctx.fillText(l.l,RM,y); y+=56; }); }
       if(cr){ cSet(ctx,cFont.mono(26),1); ctx.fillStyle="rgba(255,255,255,.7)"; ctx.fillText("ФОТО: "+cr.toUpperCase(),RM,y+30); }
-      if(y>RH-260) warn.push("текст уходит под кнопки соцсети внизу"); }
-    else { const top=sc.align==="bottom"?560:sc.align==="center"?420:300; let ph=820;
-      if(pim&&pim.img){ const im=pim.img; ph=Math.min(1000,Math.round(W*im.naturalHeight/im.naturalWidth)); }
+      if(y+(cr?60:0)>R_SB+10) warn.push("текст уходит под подпись Instagram внизу — сократи"); }
+    else { const tlh=tl.length*Math.round(Math.min(size,110))+(sl.length?24+sl.length*54:0)+(cr?30:0)+60; const maxPh=Math.max(420,R_SB-430-tlh); let ph=Math.min(820,maxPh);
+      if(pim&&pim.img){ const im=pim.img; ph=Math.min(maxPh,Math.round(W*im.naturalHeight/im.naturalWidth)); }
+      const top=sc.align==="top"?430:sc.align==="bottom"?Math.max(430,R_SB-tlh-ph):Math.max(430,(R_ST+80+R_SB-tlh-ph)/2);
       ctx.save(); ctx.beginPath(); ctx.roundRect(RM,top,W,ph,40); ctx.clip(); ctx.fillStyle="rgb(220,214,202)"; ctx.fillRect(RM,top,W,ph);
       if(pim&&pim.img){ const im=pim.img, z=sc.zoom==="none"?1:sc.zoom==="out"?1.1-.1*rClamp(local/dur):1+.1*rClamp(local/dur); const k0=Math.max(W/im.naturalWidth,ph/im.naturalHeight)*z, w=im.naturalWidth*k0, hh=im.naturalHeight*k0; ctx.drawImage(im,RM+(W-w)/2,top+(ph-hh)/2,w,hh); }
       ctx.restore(); let y=top+ph+60;
       if(cr){ cSet(ctx,cFont.mono(24),1); ctx.fillStyle=M; ctx.fillText("ФОТО: "+cr.toUpperCase(),RM,top+ph+20); y+=30; }
       cSet(ctx,cFont.title(Math.min(size,110)),-2); tl.forEach(ln=>{ ctx.fillStyle=(sc.hl&&ln.last)?A:tc; ctx.fillText(ln.l,RM,y); y+=Math.round(Math.min(size,110)); });
       if(sl.length){ y+=24; cSet(ctx,cFont.body(42),0); ctx.fillStyle=mc; sl.forEach(l=>{ ctx.fillText(l.l,RM,y); y+=54; }); }
-      if(y>RH-260) warn.push("текст уходит под кнопки соцсети — сократи или выбери «на весь экран»"); }
-    if(!pim||pim.st==="loading"){ cSet(ctx,cFont.body(36),0); ctx.fillStyle=full?"rgba(255,255,255,.6)":M; if(sc.src) ctx.fillText("фото загружается…",RM,full?RH/2:500); }
+      if(y>R_SB+10) warn.push("текст уходит под подпись Instagram — сократи или выбери «на весь экран»"); }
+    if(!pim||pim.st==="loading"){ cSet(ctx,cFont.body(36),0); ctx.fillStyle=full?"rgba(255,255,255,.6)":M; if(sc.src) ctx.fillText("фото загружается…",RM,full?RH/2:520); }
     if(tl.length>5) warn.push("заголовок длиннее 5 строк");
   } else if(sc.type==="ui"){
     const ph=(sc.phases||[]).filter(Boolean).slice(0,3); const n=Math.max(1,ph.length); const k=Math.min(n-1,Math.floor(local/(dur/n))); const p=ph[k]||{}; const pl=local-k*dur/n, pd=dur/n;
-    const top=sc.align==="top"?300:sc.align==="bottom"?560:420, ch=1080;
+    const top=410, ch=R_SB-top-110;
     if(p.tag){ cSet(ctx,cFont.title(46),0); const tw=ctx.measureText(p.tag.toUpperCase()).width; ctx.fillStyle=(k===n-1&&n>1)?A:F; ctx.fillRect(RM,top,tw+44,74); ctx.fillStyle=(k===n-1&&n>1)?(A===C_CREAM?C_INK:"#fff"):B; ctx.fillText(p.tag.toUpperCase(),RM+22,top+14); }
     const y0=top+110; ctx.fillStyle=CARD; ctx.strokeStyle=bg==="cream"?"rgb(216,210,198)":"rgba(0,0,0,.12)"; ctx.lineWidth=3; ctx.beginPath(); ctx.roundRect(RM,y0,W,ch,44); ctx.fill(); ctx.stroke();
     const ink=bg==="ink"?C_CREAM:C_INK, soft=bg==="ink"?"rgb(70,67,62)":"rgb(226,220,208)";
@@ -95,7 +102,7 @@ function drawReelScene(ctx, spec, sc, local, dur, warn){
     const kind=p.kind||"list";
     if(kind==="list"||kind==="skeleton"){ const sk=kind==="skeleton"; const pulse=sk?.55+.45*Math.sin(local*7):1;
       if(sk&&!p.head){ ctx.fillStyle=soft; ctx.beginPath(); ctx.roundRect(x,y,300,56,28); ctx.fill(); y+=120; }
-      for(let i=0;i<4;i++){ const yy=y+i*150; const a0=ctx.globalAlpha; if(sk) ctx.globalAlpha=a0*pulse;
+      for(let i=0;i<(p.caption?3:4);i++){ const yy=y+i*150; const a0=ctx.globalAlpha; if(sk) ctx.globalAlpha=a0*pulse;
         ctx.fillStyle=sk?soft:"rgb(255,211,194)"; ctx.beginPath(); ctx.arc(x+48,yy+48,48,0,7); ctx.fill();
         ctx.fillStyle=sk?soft:ink; ctx.beginPath(); ctx.roundRect(x+140,yy+20,iw*.68,28,14); ctx.fill();
         ctx.fillStyle=sk?soft:"rgb(185,180,171)"; ctx.beginPath(); ctx.roundRect(x+140,yy+66,iw*.42,28,14); ctx.fill(); ctx.globalAlpha=a0; } }
@@ -122,7 +129,7 @@ function drawReelScene(ctx, spec, sc, local, dur, warn){
     if(sl.length){ y+=44; const k=words?rEase((local-1)/.5):1; const a0=ctx.globalAlpha; ctx.globalAlpha=a0*k; cSet(ctx,cFont.body(46),0); ctx.fillStyle=M;
       sl.forEach(s=>{ const ww=isEnd?ctx.measureText(s.l).width:0; ctx.fillText(s.l,isEnd?(RW-ww)/2:RM,y); y+=58; }); ctx.globalAlpha=a0; }
     if(tl.length>6) warn.push("заголовок длиннее 6 строк — уменьши размер или текст");
-    if(y>RH-300) warn.push("текст уходит под кнопки соцсети внизу");
+    if(y>R_SB+10) warn.push("текст уходит под подпись Instagram внизу — сократи");
   }
   ctx.restore();
 }
@@ -245,7 +252,7 @@ function reelEditor(d, o){
   const commit=()=>{ d.reel=spec; changed(); clearTimeout(tT); tT=setTimeout(redrawThumbs,250); };
   const stop=()=>{ cancelAnimationFrame(raf); raf=0; };
   const loop=()=>{ if(!pv||!pv.isConnected){ stop(); return; } const tot=reelDur(spec); const t=playing?((performance.now()-t0)/1000)%tot:pv._t||0; pv._t=t;
-    pctx.setTransform(1,0,0,1,0,0); pctx.clearRect(0,0,pv.width,pv.height); pctx.setTransform(pv.width/RW,0,0,pv.height/RH,0,0); pctx.textBaseline="top"; const r=drawReelFrame(pctx,spec,t);
+    pctx.setTransform(1,0,0,1,0,0); pctx.clearRect(0,0,pv.width,pv.height); pctx.setTransform(pv.width/RW,0,0,pv.height/RH,0,0); pctx.textBaseline="top"; const r=drawReelFrame(pctx,spec,t); if(R_SHOW_SAFE) drawSafeZones(pctx);
     if(bar) bar.style.width=(t/tot*100)+"%"; if(curScene!==r.i){ curScene=r.i; thumbs.forEach((th,i)=>th&&th.card.classList.toggle("on",i===r.i)); }
     if(rImgTick!==seenTick){ seenTick=rImgTick; clearTimeout(tT); tT=setTimeout(redrawThumbs,120); }
     raf=requestAnimationFrame(loop); };
@@ -304,7 +311,7 @@ function reelEditor(d, o){
       catch(e){ st.textContent=(e&&e.message)||"Не получилось записать видео"; } finally{ rec.disabled=false; } }},"Собрать видео");
     const head=h("div",{class:"sech"},h("h4",{text:"Рилс"}),h("span",{text:spec.scenes.length+" сцен · "+reelDur(spec).toFixed(1).replace(".0","")+" с"}));
     const top=h("div",{class:"reeltop"}, h("div",{class:"reelpvw"}, pv, h("div",{class:"reelbar"},bar)),
-      h("div",{class:"reelside"}, fld(spec,"label","Плашка в шапке (для всех сцен)","Крафт"), h("div",{class:"acts"}, play, rec), st, out,
+      h("div",{class:"reelside"}, fld(spec,"label","Плашка в шапке (для всех сцен)","Крафт"), h("div",{class:"acts"}, play, rec, (()=>{ const sb=h("button",{type:"button",class:"btn sm ghost",onclick:()=>{ R_SHOW_SAFE=!R_SHOW_SAFE; sb.textContent=R_SHOW_SAFE?"Скрыть зоны Instagram":"Зоны Instagram"; }},R_SHOW_SAFE?"Скрыть зоны Instagram":"Зоны Instagram"); return sb; })()), st, out,
         spec.idea?h("div",{class:"ridea"}, h("b",{text:"Мысль рилса: "}), spec.idea):null,
         igCaptionBox(d, spec, ro, commit),
         (!ro&&sample)?(()=>{ const wi=h("input",{type:"text",placeholder:"Пожелание: «начни с цифры 228», «больше про дугу в логотипе»…"}); return h("div",{class:"airow rwish"}, wi, h("button",{type:"button",class:"btn sm aibtn",onclick:async(e)=>{ const b=e.currentTarget; b.disabled=true; b.textContent="Claude думает…"; try{ { const keep=spec&&spec.ig_caption; spec=await genReel(d,wi.value.trim()); if(keep) spec.ig_caption=keep; } commit(); draw(); }catch(er){ toast((er&&er.message)||"Не получилось"); b.disabled=false; b.textContent="✦ Новый сценарий"; } }},"✦ Новый сценарий")); })():null,

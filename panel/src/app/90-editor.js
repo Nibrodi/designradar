@@ -251,6 +251,8 @@ function drawSheet(){
   };
   const drawThumbsOnly=async()=>{ await carFonts(); for(let i=0;i<carThumbs.length;i++){ const c=drawCarCard(carSpec,i); const th=carThumbs[i]; th.cv.getContext("2d").drawImage(c,0,0,th.cv.width,th.cv.height); th.w.textContent=c.warn.length?"⚠ "+c.warn.join(", "):""; th.w.hidden=!c.warn.length; } };
   if(!SAFE_MODE){ try{ drawCar(); }catch(e){ console.error(e); showErr("Карусель не загрузилась", e); carSec.replaceChildren(h("div",{class:"notice err",text:"Карусель не загрузилась: "+(e&&e.message||e)})); } }
+  /* рилс */
+  let reelSec=null; if(!SAFE_MODE){ try{ reelSec=reelEditor(d,{ro, changed:()=>{ editing.dirty=true; setSaveState("Рилс изменён"); clearTimeout(sync.as); sync.as=setTimeout(autosave,2500); }}); }catch(e){ console.error(e); showErr("Рилс не загрузился", e); } }
   const covInfo=h("div",{class:"covinfo"});
 
   const covBox=h("div"); const drawEd=()=>{ covBox.replaceChildren(coverMock(d));
@@ -284,7 +286,7 @@ function drawSheet(){
   drawEd();
   covSecRef=cov; if(!SAFE_MODE){ try{ drawLayout(); applyLayout(d.layout,true); }catch(e){ console.error(e); showErr("Оформление не загрузилось", e); } }
   if(SAFE_MODE){ layoutSec.hidden=true; carSec.hidden=true; }
-  form.append(layoutSec, cov, carSec, mediaFld, sec("Источник и хэштеги", null, h("div",{class:"row2"}, field("Хэштеги",tTags), field("Источник",tSrc)), field("Ссылка на первоисточник",tUrl,"Для новостей и разборов: в канале появится строка «Открыть первоисточник ↗».")));
+  form.append(layoutSec, cov, carSec, reelSec, mediaFld, sec("Источник и хэштеги", null, h("div",{class:"row2"}, field("Хэштеги",tTags), field("Источник",tSrc)), field("Ссылка на первоисточник",tUrl,"Для новостей и разборов: в канале появится строка «Открыть первоисточник ↗».")));
   const ed=h("div",{class:"ed"},form);
   panes.append(ed,pv);
   const saveState=h("span",{class:"savestate"});
@@ -298,7 +300,7 @@ function drawSheet(){
     editing.lastVerText=text; editing.lastVerAt=now;
     verCol().doc().set({title:d.title||"", full_text:text||"", by:S.me||"", source, at:now}).catch(()=>{});
   }
-  function mkPatch(){ return {title:(d.title||"").trim(), cover_title:(d.cover_title||"").trim(), label:d.label, section:d.section, full_text:(d.full_text||"").replace(/\r\n?/g,"\n").trim(), hashtags:d.hashtags, source:(d.source||"").trim(), url:(d.url||"").trim(), cover_render:!!(d.cover_render||isRendered(d)), cover_seed:Number(d.cover_seed)||0, cover_art:d.cover_art||"", cover_art_prev:d.cover_art_prev||"", carousel:d.carousel||null, cover_off:!!d.cover_off, layout:d.layout||"cover", ...((d.media||[]).some(m=>m.pending)?{}:{media:(d.media||[]).map(m=>({url:m.url, asset_id:m.asset_id||"", caption:m.caption||"", source_url:m.source_url||"", file_id:m.file_id||"", ...(m.gen?{gen:true}:{})}))})}; }
+  function mkPatch(){ return {title:(d.title||"").trim(), cover_title:(d.cover_title||"").trim(), label:d.label, section:d.section, full_text:(d.full_text||"").replace(/\r\n?/g,"\n").trim(), hashtags:d.hashtags, source:(d.source||"").trim(), url:(d.url||"").trim(), cover_render:!!(d.cover_render||isRendered(d)), cover_seed:Number(d.cover_seed)||0, cover_art:d.cover_art||"", cover_art_prev:d.cover_art_prev||"", carousel:d.carousel||null, reel:d.reel||null, ...(d.reel_video_url&&/^https:/.test(d.reel_video_url)?{reel_video_url:d.reel_video_url, reel_video_asset:d.reel_video_asset||"", reel_video_type:d.reel_video_type||"", reel_video_at:d.reel_video_at||0}:{}), cover_off:!!d.cover_off, layout:d.layout||"cover", ...((d.media||[]).some(m=>m.pending)?{}:{media:(d.media||[]).map(m=>({url:m.url, asset_id:m.asset_id||"", caption:m.caption||"", source_url:m.source_url||"", file_id:m.file_id||"", ...(m.gen?{gen:true}:{})}))})}; }
   async function uploadPendingSlides(){
     const pend=(d.media||[]).filter(m=>m.pending); if(!pend.length) return true;
     if(!assets){ toast("Загрузка картинок недоступна в этом окне"); return false; }

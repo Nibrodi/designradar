@@ -591,3 +591,28 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
 .cover.photocover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cover.photocover .has{position:absolute;right:10px;bottom:8px;z-index:1;background:rgba(20,20,20,.72);color:#F2EBDD;font:600 11px/1.4 var(--mono);padding:3px 8px;border-radius:999px}
 .cover .phfail{position:absolute;inset:0;display:grid;place-items:center;color:#F2EBDD;font-weight:600;text-decoration:none}
+
+/* рилс */
+.reelsec .cards{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.reeltop{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.reelpvw{flex:none;width:216px}
+.reelpv{width:216px;height:384px;border-radius:18px;display:block;background:var(--chip);box-shadow:0 10px 30px -14px rgba(0,0,0,.45)}
+.reelbar{height:4px;border-radius:2px;background:var(--line);margin-top:8px;overflow:hidden}
+.reelbar i{display:block;height:100%;width:0;background:var(--orange)}
+.reelside{flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px}
+.reelout{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.reelvid{width:160px;border-radius:12px;background:#000}
+.rthumb{width:54px;height:96px;border-radius:6px;flex:none;background:var(--chip);box-shadow:0 4px 12px -6px rgba(0,0,0,.4)}
+.rcard.on>summary{background:var(--chip)}
+.rcard .ctt .hint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rseg{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+.rsl{font-size:12.5px;color:var(--muted,#8a847b);min-width:96px}
+.rseg input[type=range]{flex:1;min-width:120px}
+.chipb{border:1px solid var(--line);background:var(--field);color:inherit;border-radius:999px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer}
+.chipb.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rphase{border:1px dashed var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.rphh{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.rphh .sp{flex:1}
+.rdz{margin:8px 0}
+.rdz summary{cursor:pointer;font-weight:600;font-size:13.5px;padding:4px 0}
+@media (max-width:640px){ .reelpvw{width:100%;display:flex;flex-direction:column;align-items:center} .reelpv{width:200px;height:356px} .rsl{min-width:100%} }

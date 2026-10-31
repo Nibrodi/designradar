@@ -1,6 +1,6 @@
 (() => {
 "use strict";
-const CHANNEL = "@designradar_lab";
+const CHANNEL = "@designradar_lab"; /* канал по умолчанию; можно переопределить в settings/main.channel или полем поста channel */
 const MAKE = "Make";
 const TOOL_TG = "s6801242_dr_util_telegram_api";
 const TOOL_COVER = "s6749993_design_radar_2000640";

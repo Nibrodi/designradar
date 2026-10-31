@@ -82,6 +82,23 @@ const url='file://'+path.resolve(process.argv[2]);
    await p.evaluate(()=>{ document.querySelector('.rjchip').click(); document.querySelector('.rjbox textarea').value='Тема хорошая, текст пересказ'; document.getElementById('rjAgain').click(); [...document.querySelectorAll('.rjacts .btn')].find(b=>b.textContent==='Отклонить').click(); }); await W(600);
    ok(await p.evaluate(()=>[...window.__mockdb['posts'].values()].some(x=>x.status==='rejected'&&x.reject_tags&&x.reject_tags.length&&x.reject_reason)),'reject reason saved');
    ok(await p.evaluate(()=>[...(window.__mockdb['ideas']||new Map()).values()].some(i=>i.rewrite_of&&i.status==='requested')),'rewrite requested as idea'); }
+ { // защиты: пустой пост не публикуется, идеи без дублей, пустой новый черновик не остаётся
+   await p.evaluate(async()=>{ const db=await window.claude.use('db'); await db.collection('posts').doc('zz_empty').set({title:'', full_text:'', status:'review', author:'claude', label:'Крафт', section:'Крафт', kind:'original', hashtags:[], photos:[], created_at:Date.now(), updated_at:Date.now()}); });
+   await p.evaluate(()=>location.hash='review'); await W(500);
+   await p.evaluate(()=>{ const c=[...document.querySelectorAll('.card.open')].find(c=>c.querySelector('h3')&&c.querySelector('h3').textContent===''); [...c.querySelectorAll('button')].find(b=>b.textContent==='Опубликовать').click(); }); await W(200);
+   await p.evaluate(()=>{ [...document.querySelectorAll('.confirm button')].find(b=>b.textContent.includes('Да')).click(); }); await W(500);
+   ok(await p.evaluate(()=>window.__mockdb['posts'].get('zz_empty').status==='review'),'empty post not published');
+   ok(await p.evaluate(()=>document.body.textContent.includes('Не публикую')),'publish problem shown');
+   const n0=await p.evaluate(()=>(window.__mockdb['ideas']||new Map()).size);
+   await p.evaluate(()=>location.hash='ideas'); await W(300);
+   for(let i=0;i<2;i++){ await p.fill('#ideaInput','Тестовая идея про дубли'); await p.evaluate(()=>[...document.querySelectorAll('.ideabox .btn.primary')][0].click()); await W(400); }
+   ok(await p.evaluate(n0=>(window.__mockdb['ideas']||new Map()).size===n0+1,n0),'idea dedupe');
+   await p.evaluate(()=>location.hash='review'); await W(300);
+   const before=await p.evaluate(()=>window.__mockdb['posts'].size);
+   await p.evaluate(()=>document.querySelector('.leadacts .btn.newpost').click()); await W(300);
+   await p.evaluate(()=>document.querySelector('.npself').click()); await W(1000);
+   await p.evaluate(()=>document.querySelector('.sheet header .iconbtn').click()); await W(500);
+   ok(await p.evaluate(b=>window.__mockdb['posts'].size===b,before),'empty new draft discarded'); }
  { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте
   const m=await b.newPage({viewport:{width:375,height:780},isMobile:true,hasTouch:true,colorScheme:'dark'}); m.on('pageerror',e=>errs.push('mobile: '+e.message));
   await m.goto(url); await W(1500);

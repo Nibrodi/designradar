@@ -106,7 +106,7 @@ function renderIdeas(){
   if(S.canWrite){
     const inp=h("input",{id:"ideaInput",type:"text",placeholder:"Тема или зацепка: например, «пустые состояния в B2B-таблицах»","aria-label":"Новая идея"});
     const out=h("div",{class:"hint",id:"ideaOut"});
-    const add=async()=>{ const t=inp.value.trim(); if(!t) return; await ideasCol().add({text:t, angle:"", author:S.me||"", status:"new", created_at:Date.now()}); inp.value=""; toast("Идея сохранена"); };
+    const add=async()=>{ const t=inp.value.trim(); if(!t) return; const r=await addIdea({text:t, angle:"", author:S.me||"", status:"new", created_at:Date.now()}); inp.value=""; toast(r.dup?"Такая идея уже есть":"Идея сохранена"); };
     const gen=async(btn)=>{
       if(!sample){ out.textContent="Генерация идей недоступна в этом окне."; return; }
       btn.disabled=true; out.textContent="Думаю над темами…";
@@ -115,7 +115,7 @@ function renderIdeas(){
       try{
         const res=await sample.json("Ты редактор Telegram-канала «Дизайн-Радар» для продуктовых дизайнеров (тон: профессиональный, редакционный, без воды; рубрики: новости, разборы интерфейсов и брендинга, крафт — паттерны и приёмы, мнения, вакансии, книги и фильмы). Предложи 5 тем для постов"+(seed?" вокруг направления: «"+seed+"»":"")+". Каждая тема должна давать читателю практический вывод и опираться на то, что можно проверить по открытым источникам (дизайн-системы, гайдлайны, статьи практиков). Не повторяй уже вышедшие темы:\n"+(recent||"—")+"\nОтветь только JSON-массивом объектов {\"title\": заголовок до 70 знаков, \"angle\": одно предложение — тезис и чем полезно, \"rubric\": одна из «Крафт», «Разбор», «Мнение», «Новости»}.",{modelTier:"default"});
         const arr=Array.isArray(res)?res:(res&&res.ideas)||[];
-        for(const it of arr.slice(0,6)) if(it&&it.title) await ideasCol().add({text:String(it.title).slice(0,140), angle:String(it.angle||"").slice(0,400), rubric:String(it.rubric||"").slice(0,30), author:S.me||"", by_ai:true, status:"new", created_at:Date.now()});
+        for(const it of arr.slice(0,6)) if(it&&it.title) await addIdea({text:String(it.title).slice(0,140), angle:String(it.angle||"").slice(0,400), rubric:String(it.rubric||"").slice(0,30), author:S.me||"", by_ai:true, status:"new", created_at:Date.now()});
         out.textContent=arr.length?"Добавила "+Math.min(arr.length,6)+" идей. Оставь нужные, остальные удали.":"Не получилось придумать — попробуй уточнить направление.";
       }catch(e){ out.textContent=e&&e.code==="not_granted"?"Чтобы генерировать идеи, разреши панели обращаться к Claude.":"Не удалось сгенерировать идеи. Попробуй ещё раз позже."; }
       finally{ btn.disabled=false; }

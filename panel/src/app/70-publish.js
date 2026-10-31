@@ -1,4 +1,18 @@
 /* ---------- publishing ---------- */
+const chanOf = a => (a&&a.channel) || (S.settings&&S.settings.channel) || CHANNEL;
+/* Проверка перед выходом: пустой заголовок, пустой текст, длина, метки картинок без картинок, незакрытый жирный. */
+function prePublishProblems(a){
+  const p=[];
+  if(!plain(a.title||"").trim()) p.push("нет заголовка");
+  if(plain(a.full_text||"").trim().length<40) p.push("почти нет текста");
+  if(textLength(a)>LIMIT) p.push("пост длиннее "+LIMIT+" знаков");
+  const n=Math.max(0,...[...String(a.full_text||"").matchAll(/\[фото:(\d{1,2})\]/g)].map(m=>+m[1]));
+  const have=(mediaOf(a).length||photoList(a).filter(Boolean).length);
+  if(n>have) p.push("в тексте [фото:"+n+"], а картинок "+have);
+  const fmt=lintText(String(a.full_text||""),have).filter(x=>x.kind==="fmt");
+  if(fmt.length) p.push(fmt[0].msg.toLowerCase());
+  return p;
+}
 function findMessageId(x, depth=0){
   if(x==null || depth>6) return 0;
   if(typeof x==="string"){ try{ return findMessageId(JSON.parse(x),depth+1);}catch{ return 0; } }
@@ -41,7 +55,7 @@ async function updateInChannel(id, draft){
   if(textLength(a)>LIMIT){ toast("Пост длиннее "+LIMIT+" знаков. Сократи текст."); return; }
   S.busy[id]=true; render();
   try{
-    const body={chat_id:CHANNEL, message_id:mid, rich_message:await buildRich(a)};
+    const body={chat_id:chanOf(a), message_id:mid, rich_message:await buildRich(a)};
     const res=await mcp.callTool(MAKE, TOOL_TG, {method:"editMessageText", body:JSON.stringify(body)});
     const raw=JSON.stringify(res.payload??res.content??"");
     if(/"ok"\s*:\s*false|error_code/.test(raw)) throw {message:raw.slice(0,200)};
@@ -101,12 +115,13 @@ async function armDispatcher(extra){
   catch(e){ toast("Не удалось поставить таймер публикации — попробуй ещё раз"); throw e; }
 }
 async function prepareOutbox(a){
-  const body={chat_id:CHANNEL, rich_message:await buildRich(a)};
+  const body={chat_id:chanOf(a), rich_message:await buildRich(a)};
   return {body:JSON.stringify(body), prepared_at:Date.now()};
 }
 const myEd=()=>S.me&&S.editors[S.me]||{};
 const canPub=a=>S.owner || (!!myEd().can_publish && !S.paused && (a.author||"")===S.me);
 async function scheduleAt(a, ms){
+  { const pr=prePublishProblems(a); if(pr.length){ S.errors[a.id]="Не планирую: "+pr.join(", ")+". Открой пост и поправь."; render(); return; } }
   if(ms>Date.now()+5*6e4){ const c=slotConflict(ms,a.id); if(c){ S.errors[a.id]="Время занято постом «"+c.title.slice(0,50)+"» ("+authorName(c.author)+"). Выбери другое."; render(); return; } }
   if(!S.owner){
     if(!canPub(a)) return;
@@ -156,19 +171,19 @@ document.addEventListener("DOMContentLoaded",()=>{ const sl=document.getElementB
 setTimeout(()=>{ const sl=document.getElementById("themeSlot"); if(sl) sl.replaceWith(themeBtn()); },0);
 async function publish(a){
   if(!mcp){ S.errors[a.id]="Публикация недоступна в этом окне: открой панель в Claude."; render(); return; }
-  if(textLength(a)>LIMIT){ S.errors[a.id]="Пост длиннее "+LIMIT+" знаков вместе с заголовком и хэштегами. Сократи текст."; render(); return; }
+  { const pr=prePublishProblems(a); if(pr.length){ S.errors[a.id]="Не публикую: "+pr.join(", ")+". Открой пост и поправь."; render(); return; } }
   S.busy[a.id]=true; S.errors[a.id]=""; S.confirm=null; render();
   try{ a=await adoptPost(a); }catch(e){ S.busy[a.id]=false; S.errors[a.id]="Не удалось забрать пост автора в общую ленту."; render(); return; }
   let sent=false;
   try{
-    const body={chat_id:CHANNEL, rich_message:await buildRich(a)};
+    const body={chat_id:chanOf(a), rich_message:await buildRich(a)};
     await savePost(a.id,{status:"publishing", publish_error:""});
     const res=await mcp.callTool(MAKE, TOOL_TG, {method:"sendRichMessage", body:JSON.stringify(body)});
     sent=true;
     const raw=JSON.stringify(res.payload??res.content??"");
     const mid=findMessageId(res.payload??res.content);
     if(!mid){ await savePost(a.id,{status:"publish_unknown", publish_error:"Make ответил без номера сообщения: "+raw.slice(0,200)}); toast("Проверь канал: ответ Telegram неясный"); return; }
-    const patch={status:"published", published_at:Date.now(), published_message_id:mid, published_url:"https://t.me/"+CHANNEL.slice(1)+"/"+mid};
+    const patch={status:"published", published_at:Date.now(), published_message_id:mid, published_url:"https://t.me/"+chanOf(a).slice(1)+"/"+mid};
     if(a.owner_edited && a.orig_text!=null) patch.edit_logged=false;
     await savePost(a.id,patch);
     toast("Опубликовано в канал");

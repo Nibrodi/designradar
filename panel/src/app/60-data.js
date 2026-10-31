@@ -2,6 +2,13 @@
 const postsCol = () => db.collection("posts");
 const ideasCol = () => db.collection("ideas");
 /* Посты авторов живут в byauthor/<uid>/posts: правила базы дают автору писать только туда. Общие посты (posts) пишет только главный редактор. */
+/* Идеи без дублей: та же тема (без регистра и знаков) не добавляется второй раз, пока первая не готова. */
+const normIdea = s => String(s||"").toLowerCase().replace(/ё/g,"е").replace(/[^a-zа-я0-9]+/g," ").trim();
+async function addIdea(data){
+  const k=normIdea(data.text); const twin=(S.ideas||[]).find(i=>i.status!=="done" && normIdea(i.text)===k);
+  if(twin){ if(data.status==="requested" && twin.status!=="requested") await ideasCol().doc(twin.id).update({status:"requested", requested_by:data.requested_by||"", requested_at:Date.now(), ...(data.rewrite_of?{rewrite_of:data.rewrite_of, avoid:data.avoid, angle:data.angle}:{})}); return {dup:true, id:twin.id}; }
+  const r=await ideasCol().add(data); return {dup:false, id:r&&r.id};
+}
 const authorCol = uid => db.collection("byauthor/"+uid+"/posts");
 const baseOf = id => (S.baseOverride&&S.baseOverride[id]) || ((S.posts.find(p=>p.id===id)||{})._base) || "posts";
 const mayEdit = a => !!a && (S.owner || (S.canWrite && (a._base||"posts")!=="posts" && (a.author||"")===S.me));

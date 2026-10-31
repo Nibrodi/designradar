@@ -14,7 +14,7 @@ function openReject(a){
     try{
       await savePost(a.id,{status:"rejected", rejected_at:Date.now(), rejected_by:S.me||"", reject_tags:list, reject_reason:reason, reject_learned:false, rewrite_requested:again.checked});
       if(again.checked){
-        await ideasCol().add({text:plain(a.title).slice(0,140), angle:"Написать заново: прошлый текст отклонён. Причина: "+(list.join(", ")||"—")+(reason?". "+reason:""), rubric:a.label||a.section||"", author:S.me||"", status:"requested", requested_by:S.me||"", requested_at:Date.now(), created_at:Date.now(), rewrite_of:a.id, avoid:{tags:list, reason}});
+        await addIdea({text:plain(a.title).slice(0,140), angle:"Написать заново: прошлый текст отклонён. Причина: "+(list.join(", ")||"—")+(reason?". "+reason:""), rubric:a.label||a.section||"", author:S.me||"", status:"requested", requested_by:S.me||"", requested_at:Date.now(), created_at:Date.now(), rewrite_of:a.id, avoid:{tags:list, reason}});
       }
       close(); toast(again.checked?"Отклонено. Claude напишет на эту тему заново с учётом причины":"Отклонено. Учту причину в следующих постах");
     }catch(e){ go.disabled=false; st.textContent="Не удалось сохранить. Попробуй ещё раз."; }

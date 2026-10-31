@@ -13,6 +13,7 @@ Claude — оператор проекта: пишет черновики, ри�
 | [docs/DATA.md](docs/DATA.md) | База панели: коллекции, поля, правила доступа |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Выпуск версий, автопроверка, подводные камни, секреты |
 | [docs/HISTORY.md](docs/HISTORY.md) | История: этапы с 27.10.2026 и ключевые решения |
+| [docs/AUDIT.md](docs/AUDIT.md) | Аудит 31.10: что исправлено, риски при росте, план для новых людей и каналов |
 | [docs/automation/](docs/automation/) | Полные инструкции всех задач по расписанию |
 | [docs/panel.md](docs/panel.md), [docs/bot-engine.md](docs/bot-engine.md) | Рабочие заметки по панели и старому боту |
 | [panel/CHANGELOG.md](panel/CHANGELOG.md) | Что менялось в панели по версиям |

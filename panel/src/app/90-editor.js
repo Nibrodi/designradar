@@ -6,7 +6,8 @@ function newPost(prefill={}){
   const ref=S.owner?postsCol().doc():authorCol(S.me).doc();
   const now=Date.now();
   const lb=prefill.label||"Крафт"; const a={title:prefill.title||"", cover_title:prefill.title||"", label:lb, section:lb, kind:"original", full_text:"", hashtags:[], photos:[], status:"draft", author:S.me||"", created_at:now, updated_at:now, idea:prefill.idea||null};
-  ref.set(a).then(()=>{ if(prefill.idea) ideasCol().doc(prefill.idea).update({status:"taken"}); const tryOpen=n=>{ if(S.posts.some(p=>p.id===ref.id)) openEditor(ref.id); else if(n<40) setTimeout(()=>tryOpen(n+1),100); else toast("Черновик создан — открой его во вкладке «Черновики»"); }; tryOpen(0); });
+  ref.set(a).then(()=>{ if(prefill.idea) ideasCol().doc(prefill.idea).update({status:"taken"}); S.newIds=S.newIds||new Set(); S.newIds.add(ref.id);
+    const tryOpen=n=>{ if(S.posts.some(p=>p.id===ref.id)) openEditor(ref.id); else if(n<40) setTimeout(()=>tryOpen(n+1),100); else toast("Черновик создан — открой его во вкладке «Черновики»"); }; tryOpen(0); });
 }
 function openEditor(id){
   const a=S.posts.find(p=>p.id===id); if(!a) return;
@@ -44,7 +45,10 @@ function showErr(where, e){
 }
 window.addEventListener("error",ev=>{ if(ev && ev.error) showErr("Ошибка в панели", ev.error); });
 window.addEventListener("unhandledrejection",ev=>{ const r=ev&&ev.reason; if(r && r.code!=="not_granted" && r.code!=="rate_limited") showErr("Ошибка в панели", r); });
-function closeEditor(){ try{ (editing&&editing.unsubs||[]).forEach(f=>{ try{ f&&f(); }catch(_){} }); }catch(_){} editing=null; $("#sheetRoot").replaceChildren(); document.body.style.overflow=""; }
+function closeEditor(){
+  /* Пустой новый черновик (ничего не написали) удаляем, чтобы в базе не копились пустышки. */
+  try{ if(editing && S.newIds && S.newIds.has(editing.id)){ const d=editing.draft||{}; if(!String(d.title||"").trim() && !String(d.full_text||"").trim() && !(d.media||[]).length){ const id=editing.id, base=baseOf(id); S.newIds.delete(id); db.collection(base).doc(id).delete().catch(()=>{}); } } }catch(_){}
+  try{ (editing&&editing.unsubs||[]).forEach(f=>{ try{ f&&f(); }catch(_){} }); }catch(_){} editing=null; $("#sheetRoot").replaceChildren(); document.body.style.overflow=""; }
 function drawSheet(){
   const root=$("#sheetRoot"); const d=editing.draft; const ro=!mayEdit(d)||(d.status==="published"&&!S.owner);
   document.body.style.overflow="hidden";

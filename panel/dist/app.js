@@ -1,6 +1,6 @@
 (() => {
 "use strict";
-const CHANNEL = "@designradar_lab";
+const CHANNEL = "@designradar_lab"; /* канал по умолчанию; можно переопределить в settings/main.channel или полем поста channel */
 const MAKE = "Make";
 const TOOL_TG = "s6801242_dr_util_telegram_api";
 const TOOL_COVER = "s6749993_design_radar_2000640";
@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.5.0"; const CHANGES=[{"v": "2.5.0", "date": "31.10.2026", "items": ["«Отклонить» спрашивает, почему: готовые причины («Ахинея в тексте», «Скучно и сухо», «Не мой тон», «Сомнительные факты» и другие) и поле для своих слов. Можно отклонить и без причины.", "Галочка «Тема хорошая — напиши заново»: Claude напишет на эту тему новый пост с нуля, учитывая причину, и пришлёт его в «Ревью».", "Причины отказов читают задачи: «Запас постов» не повторяет эти ошибки, вечерние «Уроки из правок» превращают их в правила регламента."]}, {"v": "2.4.1", "date": "31.10.2026", "items": ["Новые рубрики в редакторе: «Мысль», «Чек-лист», «Плохо и хорошо», «Итоги недели», «Разбор портфолио». Рубрика, которой нет в списке, больше не сбрасывается при сохранении.", "«Переписать с Claude» пишет живее: можно иронию и 1–3 смайлика, подзаголовки жирной строкой вместо «##», абзацы вместо списков."]}, {"v": "2.4.0", "date": "31.10.2026", "items": ["Нижняя панель стала плавающей капсулой и поднята над краем: в приложении Claude её видно и при открытой, и при спрятанной шапке Claude.", "Отступ сверху у редактора, меню и окон: шапка редактора больше не уходит под строку со временем.", "В «Настроить вид» два новых ползунка: «Подъём от нижнего края» и «Отступ сверху», чтобы подогнать под свой телефон."]}];
+const APP_VERSION="2.6.0"; const CHANGES=[{"v": "2.6.0", "date": "31.10.2026", "items": ["Проверка перед выходом: пост без заголовка, почти без текста, длиннее лимита, с меткой [фото:N] без картинки или с незакрытым жирным не публикуется и не планируется — панель пишет, что поправить.", "Идеи без дублей: та же тема второй раз не добавляется, а «Отдать Claude» на существующую тему переводит её в очередь.", "Пустой новый пост, который открыли и закрыли, не остаётся в базе.", "Канал можно задать в настройках (settings/main.channel) или у поста (channel) — задел для второго канала."]}, {"v": "2.5.0", "date": "31.10.2026", "items": ["«Отклонить» спрашивает, почему: готовые причины («Ахинея в тексте», «Скучно и сухо», «Не мой тон», «Сомнительные факты» и другие) и поле для своих слов. Можно отклонить и без причины.", "Галочка «Тема хорошая — напиши заново»: Claude напишет на эту тему новый пост с нуля, учитывая причину, и пришлёт его в «Ревью».", "Причины отказов читают задачи: «Запас постов» не повторяет эти ошибки, вечерние «Уроки из правок» превращают их в правила регламента."]}, {"v": "2.4.1", "date": "31.10.2026", "items": ["Новые рубрики в редакторе: «Мысль», «Чек-лист», «Плохо и хорошо», «Итоги недели», «Разбор портфолио». Рубрика, которой нет в списке, больше не сбрасывается при сохранении.", "«Переписать с Claude» пишет живее: можно иронию и 1–3 смайлика, подзаголовки жирной строкой вместо «##», абзацы вместо списков."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -393,6 +393,13 @@ function tgPreview(a){
 const postsCol = () => db.collection("posts");
 const ideasCol = () => db.collection("ideas");
 /* Посты авторов живут в byauthor/<uid>/posts: правила базы дают автору писать только туда. Общие посты (posts) пишет только главный редактор. */
+/* Идеи без дублей: та же тема (без регистра и знаков) не добавляется второй раз, пока первая не готова. */
+const normIdea = s => String(s||"").toLowerCase().replace(/ё/g,"е").replace(/[^a-zа-я0-9]+/g," ").trim();
+async function addIdea(data){
+  const k=normIdea(data.text); const twin=(S.ideas||[]).find(i=>i.status!=="done" && normIdea(i.text)===k);
+  if(twin){ if(data.status==="requested" && twin.status!=="requested") await ideasCol().doc(twin.id).update({status:"requested", requested_by:data.requested_by||"", requested_at:Date.now(), ...(data.rewrite_of?{rewrite_of:data.rewrite_of, avoid:data.avoid, angle:data.angle}:{})}); return {dup:true, id:twin.id}; }
+  const r=await ideasCol().add(data); return {dup:false, id:r&&r.id};
+}
 const authorCol = uid => db.collection("byauthor/"+uid+"/posts");
 const baseOf = id => (S.baseOverride&&S.baseOverride[id]) || ((S.posts.find(p=>p.id===id)||{})._base) || "posts";
 const mayEdit = a => !!a && (S.owner || (S.canWrite && (a._base||"posts")!=="posts" && (a.author||"")===S.me));
@@ -431,6 +438,20 @@ async function savePost(id, patch){
 }
 
 /* ---------- publishing ---------- */
+const chanOf = a => (a&&a.channel) || (S.settings&&S.settings.channel) || CHANNEL;
+/* Проверка перед выходом: пустой заголовок, пустой текст, длина, метки картинок без картинок, незакрытый жирный. */
+function prePublishProblems(a){
+  const p=[];
+  if(!plain(a.title||"").trim()) p.push("нет заголовка");
+  if(plain(a.full_text||"").trim().length<40) p.push("почти нет текста");
+  if(textLength(a)>LIMIT) p.push("пост длиннее "+LIMIT+" знаков");
+  const n=Math.max(0,...[...String(a.full_text||"").matchAll(/\[фото:(\d{1,2})\]/g)].map(m=>+m[1]));
+  const have=(mediaOf(a).length||photoList(a).filter(Boolean).length);
+  if(n>have) p.push("в тексте [фото:"+n+"], а картинок "+have);
+  const fmt=lintText(String(a.full_text||""),have).filter(x=>x.kind==="fmt");
+  if(fmt.length) p.push(fmt[0].msg.toLowerCase());
+  return p;
+}
 function findMessageId(x, depth=0){
   if(x==null || depth>6) return 0;
   if(typeof x==="string"){ try{ return findMessageId(JSON.parse(x),depth+1);}catch{ return 0; } }
@@ -473,7 +494,7 @@ async function updateInChannel(id, draft){
   if(textLength(a)>LIMIT){ toast("Пост длиннее "+LIMIT+" знаков. Сократи текст."); return; }
   S.busy[id]=true; render();
   try{
-    const body={chat_id:CHANNEL, message_id:mid, rich_message:await buildRich(a)};
+    const body={chat_id:chanOf(a), message_id:mid, rich_message:await buildRich(a)};
     const res=await mcp.callTool(MAKE, TOOL_TG, {method:"editMessageText", body:JSON.stringify(body)});
     const raw=JSON.stringify(res.payload??res.content??"");
     if(/"ok"\s*:\s*false|error_code/.test(raw)) throw {message:raw.slice(0,200)};
@@ -533,12 +554,13 @@ async function armDispatcher(extra){
   catch(e){ toast("Не удалось поставить таймер публикации — попробуй ещё раз"); throw e; }
 }
 async function prepareOutbox(a){
-  const body={chat_id:CHANNEL, rich_message:await buildRich(a)};
+  const body={chat_id:chanOf(a), rich_message:await buildRich(a)};
   return {body:JSON.stringify(body), prepared_at:Date.now()};
 }
 const myEd=()=>S.me&&S.editors[S.me]||{};
 const canPub=a=>S.owner || (!!myEd().can_publish && !S.paused && (a.author||"")===S.me);
 async function scheduleAt(a, ms){
+  { const pr=prePublishProblems(a); if(pr.length){ S.errors[a.id]="Не планирую: "+pr.join(", ")+". Открой пост и поправь."; render(); return; } }
   if(ms>Date.now()+5*6e4){ const c=slotConflict(ms,a.id); if(c){ S.errors[a.id]="Время занято постом «"+c.title.slice(0,50)+"» ("+authorName(c.author)+"). Выбери другое."; render(); return; } }
   if(!S.owner){
     if(!canPub(a)) return;
@@ -588,19 +610,19 @@ document.addEventListener("DOMContentLoaded",()=>{ const sl=document.getElementB
 setTimeout(()=>{ const sl=document.getElementById("themeSlot"); if(sl) sl.replaceWith(themeBtn()); },0);
 async function publish(a){
   if(!mcp){ S.errors[a.id]="Публикация недоступна в этом окне: открой панель в Claude."; render(); return; }
-  if(textLength(a)>LIMIT){ S.errors[a.id]="Пост длиннее "+LIMIT+" знаков вместе с заголовком и хэштегами. Сократи текст."; render(); return; }
+  { const pr=prePublishProblems(a); if(pr.length){ S.errors[a.id]="Не публикую: "+pr.join(", ")+". Открой пост и поправь."; render(); return; } }
   S.busy[a.id]=true; S.errors[a.id]=""; S.confirm=null; render();
   try{ a=await adoptPost(a); }catch(e){ S.busy[a.id]=false; S.errors[a.id]="Не удалось забрать пост автора в общую ленту."; render(); return; }
   let sent=false;
   try{
-    const body={chat_id:CHANNEL, rich_message:await buildRich(a)};
+    const body={chat_id:chanOf(a), rich_message:await buildRich(a)};
     await savePost(a.id,{status:"publishing", publish_error:""});
     const res=await mcp.callTool(MAKE, TOOL_TG, {method:"sendRichMessage", body:JSON.stringify(body)});
     sent=true;
     const raw=JSON.stringify(res.payload??res.content??"");
     const mid=findMessageId(res.payload??res.content);
     if(!mid){ await savePost(a.id,{status:"publish_unknown", publish_error:"Make ответил без номера сообщения: "+raw.slice(0,200)}); toast("Проверь канал: ответ Telegram неясный"); return; }
-    const patch={status:"published", published_at:Date.now(), published_message_id:mid, published_url:"https://t.me/"+CHANNEL.slice(1)+"/"+mid};
+    const patch={status:"published", published_at:Date.now(), published_message_id:mid, published_url:"https://t.me/"+chanOf(a).slice(1)+"/"+mid};
     if(a.owner_edited && a.orig_text!=null) patch.edit_logged=false;
     await savePost(a.id,patch);
     toast("Опубликовано в канал");
@@ -723,7 +745,7 @@ function renderIdeas(){
   if(S.canWrite){
     const inp=h("input",{id:"ideaInput",type:"text",placeholder:"Тема или зацепка: например, «пустые состояния в B2B-таблицах»","aria-label":"Новая идея"});
     const out=h("div",{class:"hint",id:"ideaOut"});
-    const add=async()=>{ const t=inp.value.trim(); if(!t) return; await ideasCol().add({text:t, angle:"", author:S.me||"", status:"new", created_at:Date.now()}); inp.value=""; toast("Идея сохранена"); };
+    const add=async()=>{ const t=inp.value.trim(); if(!t) return; const r=await addIdea({text:t, angle:"", author:S.me||"", status:"new", created_at:Date.now()}); inp.value=""; toast(r.dup?"Такая идея уже есть":"Идея сохранена"); };
     const gen=async(btn)=>{
       if(!sample){ out.textContent="Генерация идей недоступна в этом окне."; return; }
       btn.disabled=true; out.textContent="Думаю над темами…";
@@ -732,7 +754,7 @@ function renderIdeas(){
       try{
         const res=await sample.json("Ты редактор Telegram-канала «Дизайн-Радар» для продуктовых дизайнеров (тон: профессиональный, редакционный, без воды; рубрики: новости, разборы интерфейсов и брендинга, крафт — паттерны и приёмы, мнения, вакансии, книги и фильмы). Предложи 5 тем для постов"+(seed?" вокруг направления: «"+seed+"»":"")+". Каждая тема должна давать читателю практический вывод и опираться на то, что можно проверить по открытым источникам (дизайн-системы, гайдлайны, статьи практиков). Не повторяй уже вышедшие темы:\n"+(recent||"—")+"\nОтветь только JSON-массивом объектов {\"title\": заголовок до 70 знаков, \"angle\": одно предложение — тезис и чем полезно, \"rubric\": одна из «Крафт», «Разбор», «Мнение», «Новости»}.",{modelTier:"default"});
         const arr=Array.isArray(res)?res:(res&&res.ideas)||[];
-        for(const it of arr.slice(0,6)) if(it&&it.title) await ideasCol().add({text:String(it.title).slice(0,140), angle:String(it.angle||"").slice(0,400), rubric:String(it.rubric||"").slice(0,30), author:S.me||"", by_ai:true, status:"new", created_at:Date.now()});
+        for(const it of arr.slice(0,6)) if(it&&it.title) await addIdea({text:String(it.title).slice(0,140), angle:String(it.angle||"").slice(0,400), rubric:String(it.rubric||"").slice(0,30), author:S.me||"", by_ai:true, status:"new", created_at:Date.now()});
         out.textContent=arr.length?"Добавила "+Math.min(arr.length,6)+" идей. Оставь нужные, остальные удали.":"Не получилось придумать — попробуй уточнить направление.";
       }catch(e){ out.textContent=e&&e.code==="not_granted"?"Чтобы генерировать идеи, разреши панели обращаться к Claude.":"Не удалось сгенерировать идеи. Попробуй ещё раз позже."; }
       finally{ btn.disabled=false; }
@@ -1020,7 +1042,8 @@ function newPost(prefill={}){
   const ref=S.owner?postsCol().doc():authorCol(S.me).doc();
   const now=Date.now();
   const lb=prefill.label||"Крафт"; const a={title:prefill.title||"", cover_title:prefill.title||"", label:lb, section:lb, kind:"original", full_text:"", hashtags:[], photos:[], status:"draft", author:S.me||"", created_at:now, updated_at:now, idea:prefill.idea||null};
-  ref.set(a).then(()=>{ if(prefill.idea) ideasCol().doc(prefill.idea).update({status:"taken"}); const tryOpen=n=>{ if(S.posts.some(p=>p.id===ref.id)) openEditor(ref.id); else if(n<40) setTimeout(()=>tryOpen(n+1),100); else toast("Черновик создан — открой его во вкладке «Черновики»"); }; tryOpen(0); });
+  ref.set(a).then(()=>{ if(prefill.idea) ideasCol().doc(prefill.idea).update({status:"taken"}); S.newIds=S.newIds||new Set(); S.newIds.add(ref.id);
+    const tryOpen=n=>{ if(S.posts.some(p=>p.id===ref.id)) openEditor(ref.id); else if(n<40) setTimeout(()=>tryOpen(n+1),100); else toast("Черновик создан — открой его во вкладке «Черновики»"); }; tryOpen(0); });
 }
 function openEditor(id){
   const a=S.posts.find(p=>p.id===id); if(!a) return;
@@ -1058,7 +1081,10 @@ function showErr(where, e){
 }
 window.addEventListener("error",ev=>{ if(ev && ev.error) showErr("Ошибка в панели", ev.error); });
 window.addEventListener("unhandledrejection",ev=>{ const r=ev&&ev.reason; if(r && r.code!=="not_granted" && r.code!=="rate_limited") showErr("Ошибка в панели", r); });
-function closeEditor(){ try{ (editing&&editing.unsubs||[]).forEach(f=>{ try{ f&&f(); }catch(_){} }); }catch(_){} editing=null; $("#sheetRoot").replaceChildren(); document.body.style.overflow=""; }
+function closeEditor(){
+  /* Пустой новый черновик (ничего не написали) удаляем, чтобы в базе не копились пустышки. */
+  try{ if(editing && S.newIds && S.newIds.has(editing.id)){ const d=editing.draft||{}; if(!String(d.title||"").trim() && !String(d.full_text||"").trim() && !(d.media||[]).length){ const id=editing.id, base=baseOf(id); S.newIds.delete(id); db.collection(base).doc(id).delete().catch(()=>{}); } } }catch(_){}
+  try{ (editing&&editing.unsubs||[]).forEach(f=>{ try{ f&&f(); }catch(_){} }); }catch(_){} editing=null; $("#sheetRoot").replaceChildren(); document.body.style.overflow=""; }
 function drawSheet(){
   const root=$("#sheetRoot"); const d=editing.draft; const ro=!mayEdit(d)||(d.status==="published"&&!S.owner);
   document.body.style.overflow="hidden";
@@ -1508,7 +1534,7 @@ function openNewPost(){
     const write=h("button",{type:"button",class:"btn",onclick:()=>{ close(); newPost({title:topic(), label:dr.label}); }},"Написать самой");
     const give=h("button",{type:"button",class:"btn accent",onclick:async()=>{
       give.disabled=true;
-      try{ await ideasCol().add({text:topic().slice(0,140), angle:dr.t+": "+dr.d, rubric:dr.label, author:S.me||"", status:"requested", requested_by:S.me||"", requested_at:Date.now(), created_at:Date.now(), dir:dr.id});
+      try{ await addIdea({text:topic().slice(0,140), angle:dr.t+": "+dr.d, rubric:dr.label, author:S.me||"", status:"requested", requested_by:S.me||"", requested_at:Date.now(), created_at:Date.now(), dir:dr.id});
         close(); toast("Отдала Claude — черновик придёт на согласование"); }
       catch(e){ give.disabled=false; st.textContent="Не удалось сохранить. Попробуй ещё раз."; } }},"Отдать Claude");
     box.replaceChildren(
@@ -1578,7 +1604,7 @@ function openReject(a){
     try{
       await savePost(a.id,{status:"rejected", rejected_at:Date.now(), rejected_by:S.me||"", reject_tags:list, reject_reason:reason, reject_learned:false, rewrite_requested:again.checked});
       if(again.checked){
-        await ideasCol().add({text:plain(a.title).slice(0,140), angle:"Написать заново: прошлый текст отклонён. Причина: "+(list.join(", ")||"—")+(reason?". "+reason:""), rubric:a.label||a.section||"", author:S.me||"", status:"requested", requested_by:S.me||"", requested_at:Date.now(), created_at:Date.now(), rewrite_of:a.id, avoid:{tags:list, reason}});
+        await addIdea({text:plain(a.title).slice(0,140), angle:"Написать заново: прошлый текст отклонён. Причина: "+(list.join(", ")||"—")+(reason?". "+reason:""), rubric:a.label||a.section||"", author:S.me||"", status:"requested", requested_by:S.me||"", requested_at:Date.now(), created_at:Date.now(), rewrite_of:a.id, avoid:{tags:list, reason}});
       }
       close(); toast(again.checked?"Отклонено. Claude напишет на эту тему заново с учётом причины":"Отклонено. Учту причину в следующих постах");
     }catch(e){ go.disabled=false; st.textContent="Не удалось сохранить. Попробуй ещё раз."; }

@@ -51,7 +51,7 @@ function openNewPost(){
     const write=h("button",{type:"button",class:"btn",onclick:()=>{ close(); newPost({title:topic(), label:dr.label}); }},"Написать самой");
     const give=h("button",{type:"button",class:"btn accent",onclick:async()=>{
       give.disabled=true;
-      try{ await ideasCol().add({text:topic().slice(0,140), angle:dr.t+": "+dr.d, rubric:dr.label, author:S.me||"", status:"requested", requested_by:S.me||"", requested_at:Date.now(), created_at:Date.now(), dir:dr.id});
+      try{ await addIdea({text:topic().slice(0,140), angle:dr.t+": "+dr.d, rubric:dr.label, author:S.me||"", status:"requested", requested_by:S.me||"", requested_at:Date.now(), created_at:Date.now(), dir:dr.id});
         close(); toast("Отдала Claude — черновик придёт на согласование"); }
       catch(e){ give.disabled=false; st.textContent="Не удалось сохранить. Попробуй ещё раз."; } }},"Отдать Claude");
     box.replaceChildren(

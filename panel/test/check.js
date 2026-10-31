@@ -76,6 +76,12 @@ const url='file://'+path.resolve(process.argv[2]);
   ok(src&&src.status==='moved','author copy marked moved');
   ok(!(await p.evaluate(()=>[...document.querySelectorAll('.card.open')].some(c=>c.textContent.includes('Пост Ани')&&c.closest('main')&&location.hash==='#review'))),'moved post left review');
  }
+ { await p.evaluate(()=>location.hash='review'); await W(400);
+   await p.evaluate(()=>{ const c=[...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('Пустой экран')||c.textContent.includes('Токен')); [...c.querySelectorAll('button')].find(b=>b.textContent==='Отклонить').click(); }); await W(200);
+   ok(await p.$('.rjbox'),'reject asks why');
+   await p.evaluate(()=>{ document.querySelector('.rjchip').click(); document.querySelector('.rjbox textarea').value='Тема хорошая, текст пересказ'; document.getElementById('rjAgain').click(); [...document.querySelectorAll('.rjacts .btn')].find(b=>b.textContent==='Отклонить').click(); }); await W(600);
+   ok(await p.evaluate(()=>[...window.__mockdb['posts'].values()].some(x=>x.status==='rejected'&&x.reject_tags&&x.reject_tags.length&&x.reject_reason)),'reject reason saved');
+   ok(await p.evaluate(()=>[...(window.__mockdb['ideas']||new Map()).values()].some(i=>i.rewrite_of&&i.status==='requested')),'rewrite requested as idea'); }
  { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте
   const m=await b.newPage({viewport:{width:375,height:780},isMobile:true,hasTouch:true,colorScheme:'dark'}); m.on('pageerror',e=>errs.push('mobile: '+e.message));
   await m.goto(url); await W(1500);

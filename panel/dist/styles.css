@@ -572,3 +572,17 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
   .ed{padding-bottom:16px}
 }
 @media (max-width:640px){.tabs{gap:0;padding:5px 4px}.tab{padding:6px 0;letter-spacing:-.02em}}
+
+/* отклонение с причиной */
+.rjbox{width:min(560px,100%);max-height:min(88vh,760px);overflow:auto;background:var(--sheet);color:var(--ink);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.rjpost{margin:-4px 0 0;font-weight:600;font-size:15px;color:var(--muted)}
+.rjchips{display:flex;flex-wrap:wrap;gap:8px}
+.rjchip{min-height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--line2);background:var(--field);color:var(--ink);font-size:14px;font-weight:600}
+.rjchip.on{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,var(--field));color:var(--ink)}
+.rjbox textarea{width:100%;border:1px solid var(--line2);background:var(--field);color:var(--ink);border-radius:12px;padding:12px 14px;font:inherit;resize:vertical}
+.rjagain{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:14px;border:1px solid var(--line2);background:var(--field);cursor:pointer}
+.rjagain input{width:22px;height:22px;margin-top:1px;accent-color:var(--orange);flex:none}
+.rjagain b{display:block;font-size:15px}.rjagain small{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.rjacts{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+.rjacts .btn{min-height:48px;font-size:15px}
+.btn.danger-fill{background:var(--bad);border-color:var(--bad);color:var(--on-orange)}

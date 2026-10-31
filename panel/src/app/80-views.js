@@ -66,7 +66,7 @@ function postCard(a){
     }
     if(!S.owner && canPub(a) && a.status==="draft") sub.append(link("На согласование",()=>savePost(a.id,{status:"review"}).then(()=>toast("Отправлено на согласование"))));
     if(a.status==="review" && mayEdit(a)) sub.append(link("В черновики",()=>savePost(a.id,{status:"draft"}).then(()=>toast("Перенесено в черновики"))));
-    if(S.owner && a.status!=="published") sub.append(link("Отклонить",()=>savePost(a.id,{status:"rejected"}).then(()=>toast("Отклонено")),"danger"));
+    if(S.owner && a.status!=="published") sub.append(link("Отклонить",()=>openReject(a),"danger"));
   }
   if(main.childNodes.length===1) main.classList.add("one");
   if(sub.childNodes.length===1) sub.classList.add("one");

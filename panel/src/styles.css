@@ -586,3 +586,4 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
 .rjacts{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
 .rjacts .btn{min-height:48px;font-size:15px}
 .btn.danger-fill{background:var(--bad);border-color:var(--bad);color:var(--on-orange)}
+.srclink{color:var(--orange);font-weight:600;text-decoration:none}

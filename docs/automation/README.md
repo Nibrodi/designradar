@@ -11,6 +11,7 @@
 | Файл | Задача | id | Расписание (МСК) |
 |---|---|---|---|
 | [stock.md](stock.md) | Запас постов в панели | trig_01Wi3nfDWb5VVTw5kXbNg5gi | `41 9-21 * * *` |
+| [finds.md](finds.md) | Охотник за находками | trig_01YYQmJ3E1ycXG2xVXLaqDk6 | `23 10 * * *` |
 | [thought.md](thought.md) | Короткая мысль | trig_01EqNBWJw9jSiVaDHaXGeKfa | `17 12,20 * * *` |
 | [lessons.md](lessons.md) | Уроки из правок Екатерины | trig_01GQeZMjLGweegHgik9EhLo6 | `13 22 * * *` |
 | [dispatch.md](dispatch.md) | Отложенная публикация | trig_01WWyd17PvLVN5jSuiwHkRwb | разово, время ставит панель |

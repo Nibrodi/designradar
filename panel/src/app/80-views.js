@@ -130,7 +130,7 @@ function renderIdeas(){
   for(const it of list){
     const st={new:null,requested:"отдано редакции",taken:"в работе"}[it.status];
     f.append(h("div",{class:"idea"},
-      h("div",{class:"meta"}, it.rubric?h("span",{class:"label",text:it.rubric}):null, st?h("span",{class:"status review",text:st}):null, h("span",{text:it.by_ai?"предложил Claude":authorName(it.author)}), h("span",{text:ago(it.created_at)})),
+      h("div",{class:"meta"}, it.rubric?h("span",{class:"label",text:it.rubric}):null, (it.url&&/^https:\/\//.test(it.url))?h("a",{href:it.url,target:"_blank",rel:"noopener",class:"srclink",onclick:e=>e.stopPropagation()},"источник ↗"):null, st?h("span",{class:"status review",text:st}):null, h("span",{text:it.by_ai?"предложил Claude":authorName(it.author)}), h("span",{text:ago(it.created_at)})),
       h("h4",{text:it.text}), it.angle?h("p",{text:it.angle}):null,
       S.canWrite?h("div",{class:"acts"},
         it.status!=="requested"?h("button",{class:"btn sm primary",onclick:()=>ideasCol().doc(it.id).update({status:"requested",requested_by:S.me||"",requested_at:Date.now()}).then(()=>toast("Редакция напишет пост и пришлёт на согласование"))},"Отдать редакции"):null,

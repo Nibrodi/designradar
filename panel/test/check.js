@@ -119,6 +119,15 @@ const url='file://'+path.resolve(process.argv[2]);
    ok(await p.evaluate(()=>(window.__calls||[]).some(c=>c.tool==='update_trigger'&&c.args.trigger_id==='trig_01SsdLvWh9WAW64p8KrsoxKp')),'photo search task armed');
    ok(await p.evaluate(()=>{ const r=window.__mockdb['posts'].get('fd_test').reel; return r.scenes.filter(x=>x.type==='photo').every(x=>!/example\.com/.test(x.src)); }),'reel external photos moved into panel');
    await p.evaluate(()=>document.querySelector('.sheet header .iconbtn')?.click()); await W(300); }
+ { // рилс: новые сцены в текущем стиле рисуются на всём таймлайне
+   const reel={label:'Крафт',scenes:[{type:'title',dur:2.5,bg:'cream',accent:'orange',size:'L',title:'41 оттенок синего ради одной ссылки'},{type:'swatches',dur:3.4,bg:'ink',title:'Проверили все 41',from:'#0b1f6b',to:'#7fb2ff',count:41,pick:28,pickLabel:'Победил этот'},{type:'number',dur:2.8,bg:'orange',pre:'Итог теста',value:'+200 млн $',title:'в год —\nза один оттенок',hl:true},{type:'compare',dur:3.6,bg:'cream',title:'Почему синий',a_label:'Другой цвет',a_text:'Ссылку ищут глазами',b_label:'Синий',b_text:'Ссылку узнают сразу'},{type:'list',dur:3.8,bg:'ink',title:'Что взять себе',items:'Не меняй цвет ссылок без теста\nОдин цвет — одна роль\nПроверяй на людях',mark:'num'},{type:'end',dur:2}]};
+   await p.evaluate(async(reel)=>{ const db=await window.claude.use('db'); await db.collection('posts').doc('rv2').set({title:'Рилс сцены тест', full_text:'Достаточно длинный текст поста для проверки рилса.', status:'review', author:'claude', label:'Крафт', section:'Крафт', source:'', url:'', hashtags:[], created_at:Date.now(), updated_at:Date.now(), reel}); },reel);
+   await p.evaluate(()=>location.hash='review'); await W(400); await open('Рилс сцены тест'); await W(1200);
+   await p.evaluate(()=>{ [...document.querySelectorAll('.reelsec button')].find(b=>/Пауза/.test(b.textContent)).click(); });
+   for(let t=0;t<19;t+=.7){ await p.evaluate(t=>{ const c=document.querySelector('.reelpv'); if(c) c._t=t; },t); await W(40); }
+   ok(await p.evaluate(()=>document.querySelectorAll('.rcard').length===6),'reel new scenes cards');
+   ok(!(await p.$('#errbar')),'reel new scenes no error bar');
+   await p.evaluate(()=>document.querySelector('.sheet header .iconbtn')?.click()); await W(300); }
  { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте
   const m=await b.newPage({viewport:{width:375,height:780},isMobile:true,hasTouch:true,colorScheme:'dark'}); m.on('pageerror',e=>errs.push('mobile: '+e.message));
   await m.goto(url); await W(1500);

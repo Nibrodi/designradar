@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.14.2"; const CHANGES=[{"v": "2.14.2", "date": "31.10.2026", "items": ["Рилсы вернули к виду 2.13.0: прежний стиль сцен и сценариста. Новые сцены 2.14 («Цифра», «Цвета», «Было / стало», «Список», кинетический текст) убраны."]}, {"v": "2.13.0", "date": "31.10.2026", "items": ["Рилс больше не режется в Instagram: шапка, тексты и фото держатся в безопасной зоне — в ленте видео обрезается до 4:5 (по ~285 px сверху и снизу), во вкладке Reels низ закрывает подпись, справа — кнопки. Шапка «Находка · Дизайн-Радар» опущена, текст не заходит под кнопки справа.", "Кнопка «Зоны Instagram» в превью рилса подсвечивает, что обрежется в ленте и что закроет подпись. Предупреждение, если текст уходит вниз под подпись.", "Уже собранные видео нужно собрать заново («Собрать видео»)."]}, {"v": "2.12.0", "date": "31.10.2026", "items": ["Подпись для Instagram в рилсе: «✦ Написать подпись» — короткий крючок, пара фактов и якорь на Telegram-канал (t.me/designradar_lab, ссылка в шапке профиля). Вывод и совет остаются в канале, чтобы туда переходили. Кнопка «Копировать», счётчик знаков и предупреждение, если пропала ссылка на канал."]}];
+const APP_VERSION="2.15.0"; const CHANGES=[{"v": "2.15.0", "date": "31.10.2026", "items": ["В рилсах новые сцены в привычном стиле: «Цифра» (число досчитывает от нуля), «Цвета» (сетка оттенков, выбранный — в рамке), «Было / стало» (две карточки как в «Интерфейсе», вторая выезжает; можно цвет или фото), «Список» (крупные номера 01 02 03 или ✓/✕, пункты по одному).", "Шрифты, переходы, шапка и финал — как были. Claude ставит эти сцены вместо абзацев текста, когда в посте есть цифра, цвета, сравнение или список."]}, {"v": "2.14.2", "date": "31.10.2026", "items": ["Рилсы вернули к виду 2.13.0: прежний стиль сцен и сценариста. Новые сцены 2.14 («Цифра», «Цвета», «Было / стало», «Список», кинетический текст) убраны."]}, {"v": "2.13.0", "date": "31.10.2026", "items": ["Рилс больше не режется в Instagram: шапка, тексты и фото держатся в безопасной зоне — в ленте видео обрезается до 4:5 (по ~285 px сверху и снизу), во вкладке Reels низ закрывает подпись, справа — кнопки. Шапка «Находка · Дизайн-Радар» опущена, текст не заходит под кнопки справа.", "Кнопка «Зоны Instagram» в превью рилса подсвечивает, что обрежется в ленте и что закроет подпись. Предупреждение, если текст уходит вниз под подпись.", "Уже собранные видео нужно собрать заново («Собрать видео»)."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -404,7 +404,7 @@ function drawSafeZones(ctx){ ctx.save(); ctx.fillStyle="rgba(220,40,40,.28)"; ct
 const R_BG={cream:[C_CREAM,C_INK,"rgb(91,86,80)","#fff"], ink:[C_INK,C_CREAM,"rgb(190,182,168)","rgb(36,35,33)"], orange:[C_OR,C_INK,"rgb(60,30,15)",C_CREAM]};
 const R_ACC={orange:C_OR, green:"rgb(31,122,58)", ink:C_INK, blue:"rgb(42,92,220)"};
 const R_SIZE={S:96,M:120,L:146};
-const R_TYPES=[["title","Заголовок"],["photo","Фото"],["ui","Интерфейс"],["text","Тезис"],["end","Финал"]];
+const R_TYPES=[["title","Заголовок"],["photo","Фото"],["number","Цифра"],["swatches","Цвета"],["compare","Было / стало"],["list","Список"],["ui","Интерфейс"],["text","Тезис"],["end","Финал"]];
 /* фото: грузим с CORS (тогда видео можно записать), без CORS — только для превью */
 const R_IMG=new Map(), R_LOCAL=new Map(); let rImgTick=0;
 function rImg(url){ if(!url) return null; const u=R_LOCAL.get(url)||url; let e=R_IMG.get(u); if(e) return e;
@@ -436,6 +436,13 @@ function reelPhotosFrom(d,add,credit,out){
 const R_KINDS=[["list","Список"],["skeleton","Скелетон"],["progress","Прогресс"]];
 const rClamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 const rEase=x=>1-Math.pow(1-rClamp(x),3);
+const rHex=s=>{ const m=String(s||"").trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i); if(!m) return null; let h=m[1]; if(h.length===3) h=h.split("").map(c=>c+c).join(""); return "#"+h.toLowerCase(); };
+function rMix(a,b,t){ const p=x=>[1,3,5].map(i=>parseInt(x.slice(i,i+2),16)); const A=p(a), B=p(b); return "rgb("+A.map((v,i)=>Math.round(v+(B[i]-v)*t)).join(",")+")"; }
+function rSwatches(sc){ const list=String(sc.colors||"").split(/[\s,;]+/).map(rHex).filter(Boolean); if(list.length>1) return list.slice(0,60);
+  const a=rHex(sc.from)||"#0b1f6b", b=rHex(sc.to)||"#7fb2ff", n=Math.max(4,Math.min(60,Number(sc.count)||24)); return Array.from({length:n},(_,i)=>rMix(a,b,i/(n-1))); }
+/* счётчик: «+200 млн $» досчитывает от нуля, единицы и знаки остаются */
+function rCount(v, k){ const s=String(v||""); const m=s.match(/\d[\d\s\u00A0.,]*/); if(!m) return s; const raw=m[0].replace(/[\s\u00A0]/g,""); const dec=(raw.match(/[.,](\d+)$/)||[])[1]||""; const num=parseFloat(raw.replace(",","."));
+  if(!isFinite(num)) return s; const cur=num*k; const f=dec?cur.toFixed(dec.length).replace(".",","):String(Math.round(cur)).replace(/\B(?=(\d{3})+(?!\d))/g,"\u00A0"); return s.slice(0,m.index)+f+(/[\s\u00A0]$/.test(m[0])?" ":"")+s.slice(m.index+m[0].length); }
 const reelDur=spec=>(spec&&spec.scenes||[]).reduce((s,x)=>s+rClamp(Number(x.dur)||3,1.5,8),0)||1;
 const reelCaption=(sc,i)=>(i+1)+" · "+((R_TYPES.find(t=>t[0]===sc.type)||[])[1]||"Сцена");
 function reelAcc(sc,bg){ let a=R_ACC[sc.accent||"orange"]||C_OR; if(bg==="orange"&&a===C_OR) a=C_CREAM; if(bg==="ink"&&a===C_INK) a=C_OR; return a; }
@@ -508,6 +515,58 @@ function drawReelScene(ctx, spec, sc, local, dur, warn){
     if(p.caption){ cSet(ctx,cFont.title(50),0); const cl=cWrap(ctx,cTypo(p.caption,true),iw); ctx.fillStyle=p.capColor==="green"?R_ACC.green:p.capColor==="mute"?"rgb(138,132,123)":(A===C_CREAM?C_OR:A);
       cl.forEach((l,i)=>ctx.fillText(l,x,y0+ch-70-(cl.length-i)*60)); if(cl.length>2) warn.push("подпись карточки длиннее 2 строк"); }
     if(p.head&&p.head.length>34) warn.push("заголовок карточки длинный");
+  } else if(sc.type==="number"){
+    /* цифра: счётчик крупным начертанием, подпись — как заголовок сцены */
+    const vs=String(sc.value||"0"); cSet(ctx,cFont.num(100),-2); const w100=ctx.measureText(vs).width||1;
+    const ns=Math.max(100,Math.min(Math.round(300*size/R_SIZE.M),Math.floor(100*TW/w100*.97)));
+    const ts=Math.round(size*.8), tl=sc.title?lines(sc.title,cFont.title(ts),ts,-2):[];
+    const pre=sc.pre?String(sc.pre).toUpperCase():"";
+    const h0=(pre?70:0)+ns+(tl.length?40+tl.length*ts:0); let y=place(h0);
+    if(pre){ cSet(ctx,cFont.semi(34),4); ctx.fillStyle=A===C_CREAM&&bg==="cream"?C_OR:(bg==="orange"?C_INK:A); ctx.fillText(pre,RM,y); y+=70; }
+    const k=rEase((local-.1)/.9); cSet(ctx,cFont.num(ns),-Math.round(ns/50)); ctx.fillStyle=bg==="orange"?C_INK:(A===C_INK&&bg==="ink"?C_OR:A);
+    ctx.fillText(rCount(vs,sc.count===false?1:k),RM,y); y+=ns+40;
+    const ka=rEase((local-.6)/.4); const a0=ctx.globalAlpha; ctx.globalAlpha=a0*ka; cSet(ctx,cFont.title(ts),-2);
+    tl.forEach(ln=>{ ctx.fillStyle=(sc.hl!==false&&ln.last&&tl.length>1)?A:F; if(ctx.fillStyle===C_CREAM&&bg==="cream") ctx.fillStyle=C_OR; ctx.fillText(ln.l,RM,y+(1-ka)*30); y+=ts; }); ctx.globalAlpha=a0;
+    if(ns<=100&&w100*1>TW) warn.push("число слишком длинное");
+    if(y>R_SB+10) warn.push("текст уходит под подпись Instagram внизу — сократи");
+  } else if(sc.type==="swatches"){
+    /* цвета: сетка оттенков, выбранный выделяется рамкой */
+    const cols=rSwatches(sc), n=cols.length; const ts=Math.round(size*.8), tl=sc.title?lines(sc.title,cFont.title(ts),ts,-2):[];
+    let y=430; cSet(ctx,cFont.title(ts),-2); tl.forEach(ln=>{ ctx.fillStyle=(sc.hl!==false&&ln.last&&tl.length>1)?A:F; ctx.fillText(ln.l,RM,y); y+=ts; }); if(tl.length) y+=40;
+    const gw=W, areaH=R_SB-y-(sc.pickLabel?110:0); let c=Math.max(3,Math.min(9,Math.ceil(Math.sqrt(n*gw/Math.max(200,areaH)))));
+    { let best=c, bs=1e9; for(let q=Math.max(3,c-2);q<=Math.min(10,c+2);q++){ const rw=Math.ceil(n/q), cw0=(gw-(q-1)*12)/q; if(rw*(Math.min(cw0*1.2,(areaH-(rw-1)*12)/rw)+12)>areaH+12) continue; const sc0=(rw*q-n)*3+Math.abs(q-c); if(sc0<bs){ bs=sc0; best=q; } } c=best; }
+    const rows=Math.ceil(n/c), gap=12, cw=(gw-(c-1)*gap)/c, ch=Math.min(cw*1.2,(areaH-(rows-1)*gap)/rows);
+    const pick=Math.min(n-1,Math.max(0,(Number(sc.pick)||Math.ceil(n*.6))-1)); const fade=rEase((local-Math.max(1.1,dur*.5))/.4);
+    cols.forEach((col,i)=>{ const r=Math.floor(i/c), q=i%c; const x=RM+q*(cw+gap), yy=y+r*(ch+gap); const t0=.1+i*Math.min(.035,1/n); const kk=rEase((local-t0)/.3); if(kk<=0) return;
+      ctx.save(); ctx.globalAlpha*=kk*(i===pick?1:1-fade*.6); ctx.fillStyle=col; ctx.beginPath(); ctx.roundRect(x,yy+(1-kk)*20,cw,ch,Math.min(16,cw*.16)); ctx.fill();
+      if(i===pick&&fade>0){ ctx.lineWidth=8; ctx.strokeStyle=bg==="ink"?C_CREAM:C_INK; ctx.stroke(); } ctx.restore(); });
+    if(sc.pickLabel&&fade>0){ const a0=ctx.globalAlpha; ctx.globalAlpha=a0*fade; cSet(ctx,cFont.title(56),-1); ctx.fillStyle=F; ctx.fillText(sc.pickLabel,RM,y+rows*(ch+gap)+30); ctx.globalAlpha=a0; }
+  } else if(sc.type==="compare"){
+    /* было / стало: две карточки как в сцене «Интерфейс», вторая выезжает справа */
+    const ts=Math.round(size*.7), tl=sc.title?lines(sc.title,cFont.title(ts),ts,-2):[];
+    let y=420; cSet(ctx,cFont.title(ts),-2); tl.forEach(ln=>{ ctx.fillStyle=F; ctx.fillText(ln.l,RM,y); y+=ts; }); if(tl.length) y+=36;
+    const gap=40, ph=(R_SB-y-gap)/2; const ink=bg==="ink"?C_CREAM:C_INK;
+    const card=(yy,lab,txt,col,src,last,k)=>{ if(k<=0) return; ctx.save(); ctx.globalAlpha*=k; ctx.translate((1-k)*120,0);
+      const fill=rHex(col); ctx.fillStyle=fill||CARD; ctx.strokeStyle=bg==="cream"?"rgb(216,210,198)":"rgba(0,0,0,.12)"; ctx.lineWidth=3; ctx.beginPath(); ctx.roundRect(RM,yy,W,ph,44); ctx.fill(); if(!fill) ctx.stroke();
+      const im=src?rImg(src):null; if(im&&im.img){ ctx.save(); ctx.beginPath(); ctx.roundRect(RM,yy,W,ph,44); ctx.clip(); const kz=Math.max(W/im.img.naturalWidth,ph/im.img.naturalHeight); const iw=im.img.naturalWidth*kz, ih=im.img.naturalHeight*kz; ctx.drawImage(im.img,RM+(W-iw)/2,yy+(ph-ih)/2,iw,ih);
+        const g=ctx.createLinearGradient(0,yy+ph*.35,0,yy+ph); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,.72)"); ctx.fillStyle=g; ctx.fillRect(RM,yy,W,ph); ctx.restore(); }
+      const L=String(lab||"").toUpperCase(); cSet(ctx,cFont.title(46),0); const tw=ctx.measureText(L).width; ctx.fillStyle=last?A:(fill||im&&im.img?C_INK:ink); ctx.fillRect(RM+50,yy+50,tw+44,74); ctx.fillStyle=last?(A===C_CREAM||A===C_INK&&bg==="ink"?C_INK:"#fff"):(fill||im&&im.img?"#fff":B); ctx.fillText(L,RM+72,yy+64);
+      if(txt){ const light=fill&&/^#(f|e|d|c)/i.test(fill); const tc=im&&im.img?"#fff":fill?(light?C_INK:"#fff"):ink; cSet(ctx,cFont.title(68),-1); const ls=cWrap(ctx,cTypo(txt,true),W-110); ctx.fillStyle=tc;
+        ls.forEach((l,i)=>ctx.fillText(l,RM+50,yy+ph-50-(ls.length-i)*76)); if(ls.length>3) warn.push("текст «"+(lab||"")+"» длиннее 3 строк"); }
+      ctx.restore(); };
+    card(y,sc.a_label||"Было",sc.a_text,sc.a_color,sc.a_src,false,1);
+    card(y+ph+gap,sc.b_label||"Стало",sc.b_text,sc.b_color,sc.b_src,true,rEase((local-Math.max(.8,dur*.35))/.45));
+  } else if(sc.type==="list"){
+    /* список: крупные номера 01 02 03, как в каруселях; пункты появляются по одному */
+    const items=String(sc.items||"").split("\n").map(x=>x.trim()).filter(Boolean).slice(0,5); const ts=Math.round(size*.8), tl=sc.title?lines(sc.title,cFont.title(ts),ts,-2):[];
+    let y=430; cSet(ctx,cFont.title(ts),-2); tl.forEach(ln=>{ ctx.fillStyle=(sc.hl!==false&&ln.last&&tl.length>1)?A:F; ctx.fillText(ln.l,RM,y); y+=ts; }); if(tl.length) y+=50;
+    const n=Math.max(1,items.length), slot=(R_SB-y)/n, step=Math.max(.4,(dur-.9)/n), ink=bg==="ink"?C_CREAM:C_INK;
+    items.forEach((it,i)=>{ const k=rEase((local-(tl.length?.45:.1)-i*step)/.35); if(k<=0) return; const yy=y+i*slot; const a0=ctx.globalAlpha; ctx.globalAlpha=a0*k;
+      const mk=sc.mark||"num"; const no=mk==="no"||(mk==="mix"&&i<n-1); const sym=mk==="num"?String(i+1).padStart(2,"0"):no?"✕":"✓";
+      cSet(ctx,cFont.num(96),-3); ctx.fillStyle=mk==="num"?(bg==="orange"?C_INK:A):no?"rgb(190,60,50)":R_ACC.green; ctx.fillText(sym,RM,yy+(1-k)*30);
+      cSet(ctx,cFont.title(60),-1); ctx.fillStyle=ink; const ls=cWrap(ctx,cTypo(it,true),TW-170); ls.forEach((l,j)=>ctx.fillText(l,RM+170,yy+14+j*66+(1-k)*30)); if(ls.length*66>slot-10) warn.push("пункт "+(i+1)+" длинный");
+      ctx.globalAlpha=a0; });
+    if(!items.length) warn.push("добавь пункты — по одному на строку");
   } else {
     const isEnd=sc.type==="end";
     const tl=lines(sc.title||(isEnd?"Дизайн-Радар":""), cFont.title(size), Math.round(size*1.0), -2);
@@ -535,10 +594,14 @@ function drawReelFrame(ctx, spec, t){
 }
 function reelSceneStart(spec,i){ let a=0; for(let k=0;k<i;k++) a+=rClamp(Number(spec.scenes[k].dur)||3,1.5,8); return a; }
 function reelThumb(spec,i,cv){ const c=document.createElement("canvas"); c.width=RW; c.height=RH; const ctx=c.getContext("2d"); ctx.textBaseline="top";
-  const sc=spec.scenes[i], d=rClamp(Number(sc.dur)||3,1.5,8); const w=[]; drawReelScene(ctx,spec,sc,sc.type==="ui"?Math.min(d-.4,d/((sc.phases||[]).length||1)*.6):Math.min(d-.4,2.2),d,w);
+  const sc=spec.scenes[i], d=rClamp(Number(sc.dur)||3,1.5,8); const w=[]; drawReelScene(ctx,spec,sc,sc.type==="ui"?Math.min(d-.4,d/((sc.phases||[]).length||1)*.6):/^(number|swatches|compare|list)$/.test(sc.type)?d-.35:Math.min(d-.4,2.2),d,w);
   if(cv) cv.getContext("2d").drawImage(c,0,0,cv.width,cv.height); return w; }
 
 function reelBlank(type){
+  if(type==="number") return {type:"number",dur:2.8,bg:"cream",accent:"orange",size:"M",pre:"",value:"228",title:"дней на\nдве линии",hl:true};
+  if(type==="swatches") return {type:"swatches",dur:3.4,bg:"cream",accent:"orange",size:"M",title:"41 оттенок синего",from:"#0b1f6b",to:"#7fb2ff",count:41,pick:28,pickLabel:"Победил этот"};
+  if(type==="compare") return {type:"compare",dur:3.6,bg:"cream",accent:"orange",size:"M",title:"",a_label:"Было",a_text:"Что было",b_label:"Стало",b_text:"Что стало"};
+  if(type==="list") return {type:"list",dur:3.8,bg:"cream",accent:"orange",size:"M",title:"Что взять себе",items:"Первое\nВторое\nТретье",mark:"num"};
   if(type==="photo") return {type:"photo",dur:3,layout:"full",zoom:"in",size:"M",src:"",title:"",sub:"",credit:"",hl:false,bg:"ink",accent:"orange"};
   if(type==="ui") return {type:"ui",dur:5.5,bg:"cream",accent:"orange",phases:[{tag:"Было",head:"Заголовок экрана",kind:"list",caption:"Подпись"},{tag:"Стало",head:"",kind:"skeleton",caption:"Подпись"}]};
   if(type==="text") return {type:"text",dur:3,bg:"cream",accent:"orange",size:"M",title:"Главная мысль\nвторой строкой",hl:true};
@@ -565,20 +628,22 @@ async function genReel(d, wish){
     thought:"Это короткая мысль. Схема: 2–3 сцены text, каждая — одна фраза мысли, последняя с выводом; потом end. Никакого ui."};
   const prompt=TEXT_RULES+"\n\nСделай сценарий вертикального видео (рилс, 10–16 секунд) по ЭТОМУ посту канала «Дизайн-Радар». Видео рисуется кодом из сцен: ты пишешь тексты и выбираешь сцены.\n\nПОСТ:\nЗаголовок: "+d.title+"\nРубрика: "+lab+"\nТекст:\n"+String(d.full_text||"").slice(0,3200)+"\n\nФОТО ПОСТА:\n"+photos+(wish?"\n\nПОЖЕЛАНИЕ РЕДАКТОРА: "+wish:"")+
   "\n\nСНАЧАЛА сформулируй одну мысль рилса одной фразой (поле idea) — каждая сцена работает на неё по порядку: зацепить → показать → объяснить → вердикт → в канал. Все факты, цифры и имена — только из текста поста выше; ничего не бери из других тем и примеров.\nСХЕМА ДЛЯ ЭТОГО ПОСТА: "+plans[kind]+
-  "\n\nТИПЫ СЦЕН:\n- photo: {type:\"photo\", photo: номер фото из списка, layout: \"full\"|\"card\" (card — для горизонтальных фото и фото со своим текстом), title (до 50 знаков, строки через \\n), sub (до 80, необязательно), hl: true если последнюю строку выделить цветом, fx: \"left\"|\"center\"|\"right\", fy: \"top\"|\"center\"|\"bottom\" (кадрирование), zoom: \"in\"|\"out\"}\n- title: {type:\"title\", title (крючок до 45 знаков), sub (до 90, необязательно)}\n- ui: {type:\"ui\", phases:[1–3 × {tag (до 14 знаков), head (до 30), kind: \"list\"|\"skeleton\"|\"progress\", value (для progress, 1–100), note (для progress, до 20), caption (до 28)}]}\n- text: {type:\"text\", title (до 80 знаков, строки через \\n, последняя выделится), bg: \"cream\"|\"ink\"|\"orange\"}\n- end: {type:\"end\", title:\"Дизайн-Радар\", sub (до 50, зови в канал по теме поста)}\nУ каждой сцены dur в секундах: photo 2.5–3.5, title 2.5–3, ui 4–6, text 2.5–3.5, end 2. Голос — живой, коротко, как в канале.\nОтветь только JSON: {\"idea\":\"…\",\"label\":\"рубрика 1–2 слова\",\"scenes\":[…]}";
+  "\n\nПОКАЗЫВАЙ ФАКТЫ КАРТИНКОЙ, где это есть в посте: яркая цифра → number (счётчик), цвета и оттенки → swatches, «было/стало» или «плохо/хорошо» → compare, 3+ правила, ошибки или шага → list. Каждая такая сцена — вместо абзаца текста, а не в дополнение. Не больше 6 сцен.\n\nТИПЫ СЦЕН:\n- number: {type:\"number\", pre (необяз., 1–4 слова над числом), value (число с единицей, как в посте: «41», «+200 млн $», «228 дней», до 12 знаков), title (что значит число, до 50 знаков, строки через \\n)}\n- swatches: {type:\"swatches\", title (до 40 знаков), colors (hex через пробел, 6–48) ИЛИ from/to (hex) + count, pick (номер выделенного, с 1), pickLabel (до 26 знаков)}\n- compare: {type:\"compare\", title (необяз., до 40), a_label (1–2 слова: «Было», «Плохо»), a_text (до 45 знаков), a_color (необяз. hex), a_photo (необяз. номер фото), b_label, b_text, b_color, b_photo}\n- list: {type:\"list\", title (до 35 знаков), items (2–4 пункта через \\n, каждый до 40 знаков), mark: \"num\"|\"ok\"|\"no\"|\"mix\"}\n- photo: {type:\"photo\", photo: номер фото из списка, layout: \"full\"|\"card\" (card — для горизонтальных фото и фото со своим текстом), title (до 50 знаков, строки через \\n), sub (до 80, необязательно), hl: true если последнюю строку выделить цветом, fx: \"left\"|\"center\"|\"right\", fy: \"top\"|\"center\"|\"bottom\" (кадрирование), zoom: \"in\"|\"out\"}\n- title: {type:\"title\", title (крючок до 45 знаков), sub (до 90, необязательно)}\n- ui: {type:\"ui\", phases:[1–3 × {tag (до 14 знаков), head (до 30), kind: \"list\"|\"skeleton\"|\"progress\", value (для progress, 1–100), note (для progress, до 20), caption (до 28)}]}\n- text: {type:\"text\", title (до 80 знаков, строки через \\n, последняя выделится), bg: \"cream\"|\"ink\"|\"orange\"}\n- end: {type:\"end\", title:\"Дизайн-Радар\", sub (до 50, зови в канал по теме поста)}\nУ каждой сцены dur в секундах: photo 2.5–3.5, title 2.5–3, number 2.5–3, swatches 3–4, compare 3.5–4, list 3.5–4.5, ui 4–6, text 2.5–3.5, end 2. Голос — живой, коротко, как в канале.\nОтветь только JSON: {\"idea\":\"…\",\"label\":\"рубрика 1–2 слова\",\"scenes\":[…]}";
   const v=await sample.json(prompt,{modelTier:"complex",cache:false});
   if(!v||!Array.isArray(v.scenes)||!v.scenes.length) throw {message:"Claude вернул сценарий не в том виде. Попробуй ещё раз."};
   const cr=(ph[0]&&ph[0].cap)||"";
   v.scenes=v.scenes.slice(0,7).map(s0=>{ const t=R_TYPES.some(x=>x[0]===s0.type)?s0.type:"text"; const o={...reelBlank(t), ...s0, type:t};
     if(t==="photo"){ const n=Math.max(1,Math.min(ph.length,Number(s0.photo)||1)); const p=ph[n-1]; if(!p) return {...reelBlank("text"), title:String(s0.title||"")}; o.src=p.url; o.credit=p.cap||cr; delete o.photo; }
     if(t==="ui") o.phases=Array.isArray(s0.phases)?s0.phases.slice(0,3):reelBlank("ui").phases; else delete o.phases;
+    if(t==="compare") ["a","b"].forEach(k=>{ const n=Number(s0[k+"_photo"]); if(n&&ph[n-1]) o[k+"_src"]=ph[n-1].url; delete o[k+"_photo"]; });
+    if(Array.isArray(o.items)) o.items=o.items.join("\n"); if(Array.isArray(o.colors)) o.colors=o.colors.join(" ");
     return o; });
   return {idea:String(v.idea||""), label:String(v.label||lab||""), scenes:v.scenes};
 }
 
 async function recordReel(spec, onProgress){
   await carFonts();
-  const phs=(spec.scenes||[]).filter(x=>x.type==="photo"&&x.src).map(x=>rImg(x.src));
+  const phs=[].concat(...(spec.scenes||[]).map(x=>x.type==="photo"?[x.src]:x.type==="compare"?[x.a_src,x.b_src]:[])).filter(Boolean).map(u=>rImg(u));
   for(let i=0;i<40&&phs.some(e=>e.st==="loading");i++) await new Promise(r=>setTimeout(r,250));
   if(phs.some(e=>e.st!=="ok")) throw {message:"Какое-то фото не открылось. Выбери в сцене другое фото или загрузи своё."};
   if(phs.some(e=>!e.clean)) throw {message:"Сайт источника не разрешает записывать его фото в видео: в превью они видны, а в запись не попадут. В сценах с фото нажми «Своё фото» и загрузи картинку (например, из чата с ботом или сохранённую с сайта)."};
@@ -625,10 +690,10 @@ function reelEditor(d, o){
   let lastBlob=null; let raf=0, playing=true, t0=performance.now(), pv=null, pctx=null, thumbs=[], tT=null;
   const impSt=h("div",{class:"hint rimp",hidden:true}); let importing=false;
   const ensurePhotos=async()=>{ if(importing||ro||!spec) return; d.photo_assets=d.photo_assets||{};
-    const ext=[...new Set(spec.scenes.filter(x=>x.type==="photo"&&rIsExt(x.src)).map(x=>x.src))]; if(!ext.length) return;
+    const srcs=[].concat(...spec.scenes.map(x=>x.type==="photo"?[x.src]:x.type==="compare"?[x.a_src,x.b_src]:[])); const ext=[...new Set(srcs.filter(rIsExt))]; if(!ext.length) return;
     const todo=ext.filter(u=>!d.photo_assets[u]); importing=true;
     try{ for(let i=0;i<todo.length;i++){ impSt.hidden=false; impSt.textContent="Переношу фото источника в панель "+(i+1)+" из "+todo.length+"… (Make, ~3 операции на фото, один раз)"; d.photo_assets[todo[i]]=await importPhoto(todo[i]); }
-      spec.scenes.forEach(x=>{ if(x.type==="photo"&&d.photo_assets[x.src]) x.src=d.photo_assets[x.src]; }); impSt.hidden=true; commit(); draw(); }
+      spec.scenes.forEach(x=>{ ["src","a_src","b_src"].forEach(k=>{ if(x[k]&&d.photo_assets[x[k]]) x[k]=d.photo_assets[x[k]]; }); }); impSt.hidden=true; commit(); draw(); }
     catch(e){ impSt.hidden=false; impSt.textContent=((e&&e.message)||"Фото не перенеслось")+" — загрузи фото вручную кнопкой «Своё фото»."; }
     finally{ importing=false; } };
   const PHOTO_TRIG="trig_01SsdLvWh9WAW64p8KrsoxKp";
@@ -663,15 +728,15 @@ function reelEditor(d, o){
     seg(sc,"align",[["top","Выше"],["center","Центр"],["bottom","Ниже"]],"Место","center"),
     seg(sc,"head",[[true,"Шапка"],[false,"Без шапки"]],"Верх",true),
     (()=>{ const r=h("input",{type:"range",min:"1.5",max:"8",step:"0.5",value:String(sc.dur||3),disabled:ro}); const v=h("b",{text:(sc.dur||3)+" с"}); r.addEventListener("input",()=>{ sc.dur=Number(r.value); v.textContent=r.value+" с"; commit(); }); return h("div",{class:"rseg"},h("span",{class:"rsl",text:"Длительность"}),r,v); })());
-  const photoPick=(sc,redraw)=>{ const list=reelPhotos(d); if(sc.src&&!list.some(p=>p.url===sc.src)) list.push({url:sc.src,cap:sc.credit||""});
+  const photoPick=(sc,redraw,key,lab)=>{ key=key||"src"; const list=reelPhotos(d); if(sc[key]&&!list.some(p=>p.url===sc[key])) list.push({url:sc[key],cap:sc.credit||""});
     const row=h("div",{class:"rpick"});
     list.forEach(p=>{ const im=h("img",{src:R_LOCAL.get(p.url)||p.url,alt:"",referrerpolicy:"no-referrer",loading:"lazy"}); im.addEventListener("error",()=>{ im.replaceWith(h("span",{class:"rpfail",text:"не открылось"})); });
-      row.append(h("button",{type:"button",class:"rph"+(sc.src===p.url?" on":""),disabled:ro,title:p.cap||"",onclick:()=>{ sc.src=p.url; if(!sc.credit&&p.cap) sc.credit=p.cap; commit(); redraw(); ensurePhotos(); }},im)); });
+      row.append(h("button",{type:"button",class:"rph"+(sc[key]===p.url?" on":""),disabled:ro,title:p.cap||"",onclick:()=>{ sc[key]=(key!=="src"&&sc[key]===p.url)?"":p.url; if(key==="src"&&!sc.credit&&p.cap) sc.credit=p.cap; commit(); redraw(); ensurePhotos(); }},im)); });
     if(!ro){ const inp=h("input",{type:"file",accept:"image/*",hidden:true}); inp.addEventListener("change",async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; const blobUrl=URL.createObjectURL(f);
-        sc.src=blobUrl; commit(); redraw();
-        if(assets){ try{ const r=await assets.upload(f); R_LOCAL.set(r.url,blobUrl); sc.src=r.url; commit(); redraw(); }catch(e){ toast("Фото не сохранилось в панели — оно останется только до закрытия вкладки"); } } });
+        sc[key]=blobUrl; commit(); redraw();
+        if(assets){ try{ const r=await assets.upload(f); R_LOCAL.set(r.url,blobUrl); sc[key]=r.url; commit(); redraw(); }catch(e){ toast("Фото не сохранилось в панели — оно останется только до закрытия вкладки"); } } });
       row.append(h("button",{type:"button",class:"rph add",onclick:()=>inp.click()},"+ Своё фото"), inp); }
-    return h("div",{class:"fld"}, h("label",{text:list.length?"Фото — выбери или загрузи своё":"У поста нет фото по ссылке — загрузи своё"}), row); };
+    return h("div",{class:"fld"}, h("label",{text:lab||(list.length?"Фото — выбери или загрузи своё":"У поста нет фото по ссылке — загрузи своё")}), row); };
   const phaseFields=(sc,j,redraw)=>{ const p=sc.phases[j];
     return h("div",{class:"rphase"}, h("div",{class:"rphh"}, h("b",{text:"Экран "+(j+1)}), ro?null:h("span",{class:"sp"}),
         (!ro&&sc.phases.length>1)?h("button",{type:"button",class:"btn sm ghost danger",onclick:()=>{ sc.phases.splice(j,1); commit(); redraw(); }},"Убрать"):null),
@@ -716,9 +781,17 @@ function reelEditor(d, o){
       const cv=h("canvas",{class:"rthumb",width:"108",height:"192"}); const w=h("div",{class:"cwarn",hidden:true});
       const body=h("div",{class:"cbody"}); const redraw=()=>{ fill(); redrawThumbs(); };
       const fill=()=>{ const f=[];
-        f.push(seg(sc,"type",R_TYPES,"Тип сцены","title",()=>{ if(sc.type==="ui"&&!(sc.phases&&sc.phases.length)) sc.phases=reelBlank("ui").phases; if(sc.type==="photo"&&!sc.src){ const p=reelPhotos(d)[0]; if(p){ sc.src=p.url; sc.credit=sc.credit||p.cap; } sc.layout=sc.layout||"full"; } redraw(); }));
+        f.push(seg(sc,"type",R_TYPES,"Тип сцены","title",()=>{ const nb=reelBlank(sc.type); Object.keys(nb).forEach(k=>{ if(sc[k]==null||sc[k]==="") sc[k]=nb[k]; }); if(sc.type==="ui"&&!(sc.phases&&sc.phases.length)) sc.phases=reelBlank("ui").phases; if(sc.type==="photo"&&!sc.src){ const p=reelPhotos(d)[0]; if(p){ sc.src=p.url; sc.credit=sc.credit||p.cap; } sc.layout=sc.layout||"full"; } redraw(); }));
         if(sc.type==="ui"){ if(!Array.isArray(sc.phases)||!sc.phases.length) sc.phases=reelBlank("ui").phases; sc.phases.forEach((_,j)=>f.push(phaseFields(sc,j,redraw)));
           if(!ro&&sc.phases.length<3) f.push(h("button",{type:"button",class:"btn sm",onclick:()=>{ sc.phases.push({tag:"",head:"",kind:"list",caption:""}); commit(); redraw(); }},"+ Экран")); }
+        else if(sc.type==="number"){ f.push(fld(sc,"pre","Над числом","необязательно: «Google, 2009»")); f.push(fld(sc,"value","Число","41 · +200 млн $ · 228 дней")); f.push(fld(sc,"title","Что значит число","Новая строка — Enter",true,2));
+          f.push(seg(sc,"hl",[[true,"Последняя строка"],[false,"Без выделения"]],"Цветом акцента",true)); }
+        else if(sc.type==="swatches"){ f.push(fld(sc,"title","Заголовок","41 оттенок синего",true,2)); f.push(fld(sc,"colors","Цвета — hex через пробел (или оставь пустым и задай переход ниже)","#1a73e8 #2962ff …",true,2));
+          f.push(h("div",{class:"row2"}, fld(sc,"from","От цвета","#0b1f6b"), fld(sc,"to","До цвета","#7fb2ff"))); f.push(h("div",{class:"row2"}, fld(sc,"count","Сколько оттенков","41"), fld(sc,"pick","Какой выделить (номер)","28"))); f.push(fld(sc,"pickLabel","Подпись к выделенному","Победил этот")); }
+        else if(sc.type==="compare"){ f.push(fld(sc,"title","Над карточками","необязательно",true,2));
+          f.push(h("div",{class:"rphase"}, h("b",{text:"Верхняя карточка"}), h("div",{class:"row2"}, fld(sc,"a_label","Плашка","Было"), fld(sc,"a_color","Цвет карточки (hex)","необязательно")), fld(sc,"a_text","Текст","Что было",true,2), photoPick(sc,redraw,"a_src","Фото в карточку (необязательно; нажми ещё раз — убрать)")));
+          f.push(h("div",{class:"rphase"}, h("b",{text:"Нижняя карточка"}), h("div",{class:"row2"}, fld(sc,"b_label","Плашка","Стало"), fld(sc,"b_color","Цвет карточки (hex)","необязательно")), fld(sc,"b_text","Текст","Что стало",true,2), photoPick(sc,redraw,"b_src","Фото в карточку (необязательно; нажми ещё раз — убрать)"))); }
+        else if(sc.type==="list"){ f.push(fld(sc,"title","Заголовок","Что взять себе",true,2)); f.push(fld(sc,"items","Пункты — каждый с новой строки","Первое\nВторое\nТретье",true,4)); f.push(seg(sc,"mark",[["num","01 02 03"],["ok","✓"],["no","✕"],["mix","✕ … ✓"]],"Значки","num")); }
         else if(sc.type==="photo"){ f.push(photoPick(sc,redraw));
           f.push(fld(sc,"title","Текст на фото","Новая строка — Enter",true,3)); f.push(fld(sc,"sub","Подпись мельче","необязательно",true,2)); f.push(fld(sc,"credit","Автор фото","Студия Артемия Лебедева"));
           f.push(seg(sc,"layout",[["full","На весь экран"],["card","Карточкой"]],"Как показать","full",redraw));
@@ -736,7 +809,7 @@ function reelEditor(d, o){
           n>1?h("button",{type:"button",class:"btn sm ghost danger",onclick:()=>{ spec.scenes.splice(i,1); commit(); draw(); }},"Удалить"):null));
         body.replaceChildren(...f.filter(Boolean)); };
       fill();
-      const card=h("details",{class:"card1 rcard",open:i===0}, h("summary",{onclick:()=>jump(i)}, cv, h("div",{class:"ctt"}, h("b",{text:reelCaption(sc,i)}), h("span",{class:"hint",text:plain(sc.title||(sc.phases&&sc.phases.map(p=>p.caption).filter(Boolean).join(" → "))||"").slice(0,48)}), w)), body);
+      const card=h("details",{class:"card1 rcard",open:i===0}, h("summary",{onclick:()=>jump(i)}, cv, h("div",{class:"ctt"}, h("b",{text:reelCaption(sc,i)}), h("span",{class:"hint",text:plain(sc.title||sc.value||(sc.phases&&sc.phases.map(p=>p.caption).filter(Boolean).join(" → "))||(sc.a_text?sc.a_text+" → "+(sc.b_text||""):"")||"").slice(0,48)}), w)), body);
       thumbs[i]={cv,w,card}; list.append(card); });
     const add=ro?null:h("div",{class:"acts"}, h("span",{class:"hint",text:"Добавить сцену:"}), ...R_TYPES.map(([t,lab])=>h("button",{type:"button",class:"btn sm",onclick:()=>{ const at=spec.scenes.length && spec.scenes[spec.scenes.length-1].type==="end"?spec.scenes.length-1:spec.scenes.length; spec.scenes.splice(at,0,reelBlank(t)); commit(); draw(); }},"+ "+lab)));
     box.replaceChildren(head, impSt, top, photoBar, list, add); setTimeout(ensurePhotos,0);

@@ -15,7 +15,7 @@ const VIEWS = [
   {id:"team", name:"Колонки", short:"Команда"}
 ];
 const S = {posts:[], ideas:[], invites:[], settings:{}, editors:{}, me:null, owner:false, canWrite:false, view:"review", ready:false, dbOk:null, confirm:null, busy:{}, errors:{}, names:{}};
-let db=null, user=null, mcp=null, sample=null, assets=null;
+let db=null, user=null, mcp=null, sample=null, assets=null, downloads=null;
 
 const $ = (s, r=document) => r.querySelector(s);
 const h = (tag, attrs={}, ...kids) => {
@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.10.1"; const CHANGES=[{"v": "2.10.1", "date": "31.10.2026", "items": ["Фото с сайтов источников панель сама переносит в своё хранилище (через Make, один раз на фото), чтобы они показывались в рилсе и попадали в видео."]}, {"v": "2.10.0", "date": "31.10.2026", "items": ["Сцена «Фото»: фото поста на весь экран или карточкой, плавное приближение, кадрирование, подпись автора; можно загрузить своё фото.", "Сценарий строится по логике поста: сначала одна мысль рилса, потом сцены по схеме рубрики («Находка» — на фото поста, «Крафт» — экран с приёмом именно этого поста, «Мысль» — только текст). Поле пожелания к сценарию."]}, {"v": "2.9.0", "date": "31.10.2026", "items": ["Рилсы: в редакторе поста раздел «Рилс» — вертикальное видео 1080×1920 из сцен (заголовок, интерфейс, тезис, финал). Превью играет сразу.", "Каждую сцену можно переписать, дополнить строками, поменять фон, акцент, размер текста, место и длительность; сцены двигаются, копируются и удаляются.", "«✦ Сделать рилс из текста» — Claude пишет сценарий по посту. «Собрать видео» записывает MP4 прямо в браузере, без операций Make."]}];
+const APP_VERSION="2.10.2"; const CHANGES=[{"v": "2.10.2", "date": "31.10.2026", "items": ["«Скачать видео» работает: на телефоне открывается окно сохранения (можно сохранить в «Фото» или отправить), в браузере — обычная загрузка."]}, {"v": "2.10.1", "date": "31.10.2026", "items": ["Фото с сайтов источников панель сама переносит в своё хранилище (через Make, один раз на фото), чтобы они показывались в рилсе и попадали в видео."]}, {"v": "2.10.0", "date": "31.10.2026", "items": ["Сцена «Фото»: фото поста на весь экран или карточкой, плавное приближение, кадрирование, подпись автора; можно загрузить своё фото.", "Сценарий строится по логике поста: сначала одна мысль рилса, потом сцены по схеме рубрики («Находка» — на фото поста, «Крафт» — экран с приёмом именно этого поста, «Мысль» — только текст). Поле пожелания к сценарию."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -595,7 +595,7 @@ function reelEditor(d, o){
   const {ro, changed}=o;
   const box=h("section",{class:"sec reelsec"});
   let spec=d.reel?JSON.parse(JSON.stringify(d.reel)):null;
-  let raf=0, playing=true, t0=performance.now(), pv=null, pctx=null, thumbs=[], tT=null;
+  let lastBlob=null; let raf=0, playing=true, t0=performance.now(), pv=null, pctx=null, thumbs=[], tT=null;
   const impSt=h("div",{class:"hint rimp",hidden:true}); let importing=false;
   const ensurePhotos=async()=>{ if(importing||ro||!spec) return; d.photo_assets=d.photo_assets||{};
     const ext=[...new Set(spec.scenes.filter(x=>x.type==="photo"&&rIsExt(x.src)).map(x=>x.src))]; if(!ext.length) return;
@@ -649,9 +649,16 @@ function reelEditor(d, o){
     pv=h("canvas",{class:"reelpv",width:"360",height:"640"}); pctx=pv.getContext("2d");
     bar=h("i"); const play=h("button",{type:"button",class:"btn sm",onclick:()=>{ playing=!playing; if(playing) t0=performance.now()-(pv._t||0)*1000; play.textContent=playing?"❚❚ Пауза":"▶ Играть"; }},"❚❚ Пауза");
     const st=h("div",{class:"hint"}); const out=h("div",{class:"reelout"});
-    const showVideo=()=>{ out.replaceChildren(); if(d.reel_video_url){ out.append(h("video",{src:d.reel_video_url,controls:true,playsinline:true,class:"reelvid"}), h("a",{class:"btn sm ghost",href:d.reel_video_url,target:"_blank",rel:"noopener",download:"reel_"+(d.id||"post")+".mp4"},"Скачать видео ↗")); } };
+    const saveVideo=async(btn)=>{ btn.disabled=true; try{
+        let blob=lastBlob; if(!blob){ st.textContent="Готовлю файл…"; const r=await fetch(d.reel_video_url); if(!r.ok) throw {message:"Не получилось взять видео — собери его ещё раз"}; blob=await r.blob(); }
+        if(!downloads) throw {message:"Скачивание недоступно в этом окне — открой панель в браузере на claude.ai"};
+        const ext=/webm/.test(blob.type||d.reel_video_type||"")?"webm":"mp4";
+        await downloads.save({filename:"reel_"+String(d.id||"post").replace(/[^A-Za-z0-9_-]/g,"_")+"."+ext, data:blob}); st.textContent="Видео сохранено."; }
+      catch(e){ st.textContent=e&&e.code==="declined"?"Скачивание отменено.":e&&e.code==="rate_limited"?"Окно сохранения уже открыто — подожди секунду.":((e&&e.message)||"Не получилось скачать"); }
+      finally{ btn.disabled=false; } };
+    const showVideo=()=>{ out.replaceChildren(); if(d.reel_video_url){ const sb=h("button",{type:"button",class:"btn sm",onclick:()=>saveVideo(sb)},"Скачать видео"); out.append(h("video",{src:d.reel_video_url,controls:true,playsinline:true,class:"reelvid"}), sb); } };
     const rec=ro?null:h("button",{type:"button",class:"btn accent",onclick:async()=>{ rec.disabled=true; try{ st.textContent="Записываю видео… это столько же секунд, сколько длится рилс. Не закрывай вкладку.";
-        const blob=await recordReel(spec,p=>{ st.textContent="Записываю видео… "+Math.round(p*100)+"%"; });
+        const blob=lastBlob=await recordReel(spec,p=>{ st.textContent="Записываю видео… "+Math.round(p*100)+"%"; });
         const ext=/mp4/.test(blob.type)?"mp4":"webm";
         if(assets){ st.textContent="Сохраняю видео…"; const r=await assets.upload(new File([blob],"reel_"+(d.id||Date.now())+"."+ext,{type:blob.type})); d.reel_video_url=r.url; d.reel_video_asset=r.id||""; d.reel_video_type=blob.type; d.reel_video_at=Date.now(); changed(); }
         else { d.reel_video_url=URL.createObjectURL(blob); }
@@ -1959,7 +1966,7 @@ route();
 (async()=>{
   const c=window.claude;
   if(!c||!c.use){ S.dbOk=false; render(); return; }
-  [db,user,mcp,sample,assets]=await Promise.all(["db","user","mcp","sample","assets"].map(n=>c.use(n).catch(()=>null)));
+  [db,user,mcp,sample,assets,downloads]=await Promise.all(["db","user","mcp","sample","assets","downloads"].map(n=>c.use(n).catch(()=>null)));
   if(!db){ S.dbOk=false; render(); return; }
   S.dbOk=true;
   if(user){

@@ -200,7 +200,7 @@ function reelEditor(d, o){
   const {ro, changed}=o;
   const box=h("section",{class:"sec reelsec"});
   let spec=d.reel?JSON.parse(JSON.stringify(d.reel)):null;
-  let raf=0, playing=true, t0=performance.now(), pv=null, pctx=null, thumbs=[], tT=null;
+  let lastBlob=null; let raf=0, playing=true, t0=performance.now(), pv=null, pctx=null, thumbs=[], tT=null;
   const impSt=h("div",{class:"hint rimp",hidden:true}); let importing=false;
   const ensurePhotos=async()=>{ if(importing||ro||!spec) return; d.photo_assets=d.photo_assets||{};
     const ext=[...new Set(spec.scenes.filter(x=>x.type==="photo"&&rIsExt(x.src)).map(x=>x.src))]; if(!ext.length) return;
@@ -254,9 +254,16 @@ function reelEditor(d, o){
     pv=h("canvas",{class:"reelpv",width:"360",height:"640"}); pctx=pv.getContext("2d");
     bar=h("i"); const play=h("button",{type:"button",class:"btn sm",onclick:()=>{ playing=!playing; if(playing) t0=performance.now()-(pv._t||0)*1000; play.textContent=playing?"❚❚ Пауза":"▶ Играть"; }},"❚❚ Пауза");
     const st=h("div",{class:"hint"}); const out=h("div",{class:"reelout"});
-    const showVideo=()=>{ out.replaceChildren(); if(d.reel_video_url){ out.append(h("video",{src:d.reel_video_url,controls:true,playsinline:true,class:"reelvid"}), h("a",{class:"btn sm ghost",href:d.reel_video_url,target:"_blank",rel:"noopener",download:"reel_"+(d.id||"post")+".mp4"},"Скачать видео ↗")); } };
+    const saveVideo=async(btn)=>{ btn.disabled=true; try{
+        let blob=lastBlob; if(!blob){ st.textContent="Готовлю файл…"; const r=await fetch(d.reel_video_url); if(!r.ok) throw {message:"Не получилось взять видео — собери его ещё раз"}; blob=await r.blob(); }
+        if(!downloads) throw {message:"Скачивание недоступно в этом окне — открой панель в браузере на claude.ai"};
+        const ext=/webm/.test(blob.type||d.reel_video_type||"")?"webm":"mp4";
+        await downloads.save({filename:"reel_"+String(d.id||"post").replace(/[^A-Za-z0-9_-]/g,"_")+"."+ext, data:blob}); st.textContent="Видео сохранено."; }
+      catch(e){ st.textContent=e&&e.code==="declined"?"Скачивание отменено.":e&&e.code==="rate_limited"?"Окно сохранения уже открыто — подожди секунду.":((e&&e.message)||"Не получилось скачать"); }
+      finally{ btn.disabled=false; } };
+    const showVideo=()=>{ out.replaceChildren(); if(d.reel_video_url){ const sb=h("button",{type:"button",class:"btn sm",onclick:()=>saveVideo(sb)},"Скачать видео"); out.append(h("video",{src:d.reel_video_url,controls:true,playsinline:true,class:"reelvid"}), sb); } };
     const rec=ro?null:h("button",{type:"button",class:"btn accent",onclick:async()=>{ rec.disabled=true; try{ st.textContent="Записываю видео… это столько же секунд, сколько длится рилс. Не закрывай вкладку.";
-        const blob=await recordReel(spec,p=>{ st.textContent="Записываю видео… "+Math.round(p*100)+"%"; });
+        const blob=lastBlob=await recordReel(spec,p=>{ st.textContent="Записываю видео… "+Math.round(p*100)+"%"; });
         const ext=/mp4/.test(blob.type)?"mp4":"webm";
         if(assets){ st.textContent="Сохраняю видео…"; const r=await assets.upload(new File([blob],"reel_"+(d.id||Date.now())+"."+ext,{type:blob.type})); d.reel_video_url=r.url; d.reel_video_asset=r.id||""; d.reel_video_type=blob.type; d.reel_video_at=Date.now(); changed(); }
         else { d.reel_video_url=URL.createObjectURL(blob); }

@@ -43,6 +43,7 @@
     "user":{"scopes":["profile"]},
     "sample":{},
     "assets":{"upload":"interact"},
+    "downloads":true,
     "mcp":{"servers":[
       {"server":"Make","tools":["s6801242_dr_util_telegram_api","s6749993_design_radar_2000640","scenarios_run"]},
       {"server":"Claude Code Remote","tools":["fire_trigger","update_trigger"]}]}}

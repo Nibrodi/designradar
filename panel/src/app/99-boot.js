@@ -13,7 +13,7 @@ route();
 (async()=>{
   const c=window.claude;
   if(!c||!c.use){ S.dbOk=false; render(); return; }
-  [db,user,mcp,sample,assets]=await Promise.all(["db","user","mcp","sample","assets"].map(n=>c.use(n).catch(()=>null)));
+  [db,user,mcp,sample,assets,downloads]=await Promise.all(["db","user","mcp","sample","assets","downloads"].map(n=>c.use(n).catch(()=>null)));
   if(!db){ S.dbOk=false; render(); return; }
   S.dbOk=true;
   if(user){

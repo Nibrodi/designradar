@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.14.0"; const CHANGES=[{"v": "2.14.0", "date": "31.10.2026", "items": ["Рилсы по приёмам сильных рилсмейкеров: крючок в первую секунду, одна мысль на сцену, «показывай, а не рассказывай», ритм 1,5–3 с, дуга крючок → доказательство → поворот → вывод → призыв.", "Новые сцены: «Крючок», «Цифра» (счётчик досчитывает до числа), «Цвета» (сетка оттенков с выбранным), «Было / стало» (два экрана, второй выезжает), «Список» (пункты по одному, 1-2-3 или ✓/✕).", "Кинетический текст: слова появляются по одному, *ключевое слово* выделяется маркером; текст сам подбирает размер и заполняет безопасную зону.", "Фото: затемнение, размытый фон из того же фото в режиме «Карточкой».", "Claude пишет сценарий по этим правилам и считает длительность сцен по количеству слов. Старые рилсы пересобери кнопкой «✦ Новый сценарий»."]}, {"v": "2.13.0", "date": "31.10.2026", "items": ["Рилс больше не режется в Instagram: шапка, тексты и фото держатся в безопасной зоне — в ленте видео обрезается до 4:5 (по ~285 px сверху и снизу), во вкладке Reels низ закрывает подпись, справа — кнопки. Шапка «Находка · Дизайн-Радар» опущена, текст не заходит под кнопки справа.", "Кнопка «Зоны Instagram» в превью рилса подсвечивает, что обрежется в ленте и что закроет подпись. Предупреждение, если текст уходит вниз под подпись.", "Уже собранные видео нужно собрать заново («Собрать видео»)."]}, {"v": "2.12.0", "date": "31.10.2026", "items": ["Подпись для Instagram в рилсе: «✦ Написать подпись» — короткий крючок, пара фактов и якорь на Telegram-канал (t.me/designradar_lab, ссылка в шапке профиля). Вывод и совет остаются в канале, чтобы туда переходили. Кнопка «Копировать», счётчик знаков и предупреждение, если пропала ссылка на канал."]}];
+const APP_VERSION="2.14.1"; const CHANGES=[{"v": "2.14.1", "date": "31.10.2026", "items": ["Убран радар с фона рилсов. В финале — знак «ДР», как на аватарке.", "Типографика: маркер выделяет группу слов одним блоком и не рисует «хвост» до появления слова; предлоги и тире не отрываются от слова (в том числе внутри выделения); нет висячих слов в последней строке; число в сцене «Цифра» без пустоты под ним.", "Сцены сменяются жёсткой склейкой с лёгким «толчком» — без пустых кадров между сценами.", "Сетка «Цвета» подбирает число колонок так, чтобы в последнем ряду не оставалась одна клетка."]}, {"v": "2.14.0", "date": "31.10.2026", "items": ["Рилсы по приёмам сильных рилсмейкеров: крючок в первую секунду, одна мысль на сцену, «показывай, а не рассказывай», ритм 1,5–3 с, дуга крючок → доказательство → поворот → вывод → призыв.", "Новые сцены: «Крючок», «Цифра» (счётчик досчитывает до числа), «Цвета» (сетка оттенков с выбранным), «Было / стало» (два экрана, второй выезжает), «Список» (пункты по одному, 1-2-3 или ✓/✕).", "Кинетический текст: слова появляются по одному, *ключевое слово* выделяется маркером; текст сам подбирает размер и заполняет безопасную зону.", "Фото: затемнение, размытый фон из того же фото в режиме «Карточкой».", "Claude пишет сценарий по этим правилам и считает длительность сцен по количеству слов. Старые рилсы пересобери кнопкой «✦ Новый сценарий»."]}, {"v": "2.13.0", "date": "31.10.2026", "items": ["Рилс больше не режется в Instagram: шапка, тексты и фото держатся в безопасной зоне — в ленте видео обрезается до 4:5 (по ~285 px сверху и снизу), во вкладке Reels низ закрывает подпись, справа — кнопки. Шапка «Находка · Дизайн-Радар» опущена, текст не заходит под кнопки справа.", "Кнопка «Зоны Instagram» в превью рилса подсвечивает, что обрежется в ленте и что закроет подпись. Предупреждение, если текст уходит вниз под подпись.", "Уже собранные видео нужно собрать заново («Собрать видео»)."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -447,17 +447,25 @@ const R_SX=RM, R_SW=RW-RM-R_RR, R_SY0=410, R_SY1=R_SB;
 function kParse(t, hlLast){
   const ps=String(t||"").replace(/\r/g,"").split("\n").filter((p,i,a)=>p.trim()||a.length===1);
   const hasMark=/\*[^*]+\*/.test(String(t||""));
-  return ps.map((p,pi)=>{ const toks=[]; let on=false;
-    cTypo(p,true).split(" ").forEach(w=>{ if(!w) return; let s=w, cur=on;
+  return ps.map((p,pi)=>{ const parts=[]; let on=false;
+    p.split(/[ \u00A0]+/).filter(Boolean).forEach(w=>{ let s=w, cur=on;
       if(/^[«"(]*\*/.test(s)){ cur=true; s=s.replace(/^([«"(]*)\*/,"$1"); }
       let close=false; if(/\*[»".,!?:;)…—]*$/.test(s)){ close=true; s=s.replace(/\*([»".,!?:;)…—]*)$/,"$1"); }
       s=s.replace(/\*/g,""); if(!s) return;
-      toks.push({w:s, hl:cur||(!hasMark&&hlLast&&pi===ps.length-1&&ps.length>1)}); on=cur&&!close; });
+      parts.push({s, hl:cur||(!hasMark&&hlLast&&pi===ps.length-1&&ps.length>1)}); on=cur&&!close; });
+    /* неразрывные пробелы — как в обложках: предлоги и тире не отрываются от слова */
+    const segs=cTypo(parts.map(x=>x.s).join(" "),true).split(/([ \u00A0])/); const toks=[];
+    if((segs.length+1)/2===parts.length){ let cur=null; parts.forEach((pt,i)=>{ const sep=i?segs[2*i-1]:" "; if(!cur||sep===" "){ cur={parts:[]}; toks.push(cur); } cur.parts.push(pt); }); }
+    else parts.forEach(pt=>toks.push({parts:[pt]}));
+    toks.forEach(t=>{ t.w=t.parts.map(x=>x.s).join("\u00A0"); t.hl=t.parts.some(x=>x.hl); });
     return toks; }); }
 function kLayout(ctx, paras, maxW, s, font){ cSet(ctx,font(s),-Math.round(s/60)); const sp=ctx.measureText(" ").width; const lines=[];
-  paras.forEach(toks=>{ let cur=null;
-    toks.forEach(t=>{ const tw=ctx.measureText(t.w).width; if(!cur||cur.w+sp+tw>maxW&&cur.toks.length){ cur={toks:[],w:0}; lines.push(cur); } const x=cur.toks.length?cur.w+sp:0; cur.toks.push({...t,x,tw}); cur.w=x+tw; });
-    if(!toks.length) lines.push({toks:[],w:0}); });
+  paras.forEach(toks=>{ let cur=null; const p0=lines.length;
+    toks.forEach(t=>{ const tw=ctx.measureText(t.w).width; let pre=""; t.parts=t.parts.map(pt=>{ const off=pre?ctx.measureText(pre+"\u00A0").width:0; pre=pre?pre+"\u00A0"+pt.s:pt.s; return {...pt,off,pw:ctx.measureText(pt.s).width}; }); if(!cur||cur.w+sp+tw>maxW&&cur.toks.length){ cur={toks:[],w:0}; lines.push(cur); } const x=cur.toks.length?cur.w+sp:0; cur.toks.push({...t,x,tw}); cur.w=x+tw; });
+    if(!toks.length) lines.push({toks:[],w:0});
+    /* висячее слово: последнюю строку из одного слова дополняем словом сверху, если влезает */
+    const n=lines.length; if(n-1>p0&&cur&&cur.toks.length===1){ const prev=lines[n-2]; if(prev.toks.length>=3){ const mv=prev.toks[prev.toks.length-1]; const nw=mv.tw+sp+cur.w;
+      if(nw<=maxW){ prev.toks.pop(); prev.w=prev.toks.length?prev.toks[prev.toks.length-1].x+prev.toks[prev.toks.length-1].tw:0; const last=cur.toks[0]; cur.toks=[{...mv,x:0},{...last,x:mv.tw+sp}]; cur.w=nw; } } } });
   return lines; }
 const K_CACHE=new Map(); try{ document.fonts&&document.fonts.addEventListener("loadingdone",()=>K_CACHE.clear()); }catch(_){ }
 function kFit(ctx, text, maxW, maxH, maxS, minS, o){ o=o||{}; const font=o.font||cFont.title; const key=[text,maxW,maxH,maxS,minS,font===cFont.num?'n':font===cFont.body?'b':'t',o.hlLast?1:0,o.lh||0].join('|'); const ready=!document.fonts||document.fonts.check(font(Math.round(maxS))); const ch=ready&&K_CACHE.get(key); if(ch) return ch; const r=kFit0(ctx,text,maxW,maxH,maxS,minS,o,font); if(ready){ if(K_CACHE.size>400) K_CACHE.clear(); K_CACHE.set(key,r); } return r; }
@@ -468,20 +476,18 @@ function kFit0(ctx, text, maxW, maxH, maxS, minS, o, font){ const paras=kParse(t
 /* рисует подогнанный текст; возвращает {end, done} */
 function kDraw(ctx, f, x, y, local, o){ o=o||{}; const st=o.start||0, sg=o.stagger??.075; let i=0, done=0;
   cSet(ctx,f.font(f.s),-Math.round(f.s/60));
-  f.L.forEach((ln,li)=>{ const lx=o.align==="center"?x+(f.maxW-ln.w)/2:x, ly=y+li*f.lh;
+  f.L.forEach((ln,li)=>{ const lx=o.align==="center"?x+(f.maxW-ln.w)/2:x, ly=y+li*f.lh; const i0=i;
+    /* маркер — одним блоком на группу выделенных слов в строке, растёт слева направо */
+    const pad=Math.round(f.s*.07); let g=null; const groups=[];
+    ln.toks.forEach((t,j)=>t.parts.forEach(pt=>{ const a=t.x+pt.off, b=a+pt.pw; if(pt.hl){ if(!g){ g={a,b,j0:j}; groups.push(g); } else g.b=b; } else g=null; }));
+    groups.forEach(g=>{ const t0=st+(i0+g.j0)*sg+.08; const m=o.instant?1:rEase((local-t0)/(.22+.06*(g.b-g.a)/Math.max(1,f.s))); if(m<=0) return;
+      ctx.save(); ctx.fillStyle=o.hl||C_OR; ctx.beginPath(); ctx.roundRect(lx+g.a-pad*m, ly+f.s*.1, (g.b-g.a+pad*2)*m, f.s*.94, Math.round(f.s*.1)); ctx.fill(); ctx.restore(); });
     ln.toks.forEach(t=>{ const t0=st+i*sg; i++; const k=o.instant?1:rClamp((local-t0)/.26); if(k<=0) return; const e=rBack(k); done++;
       const tx=lx+t.x, tw=t.tw;
-      if(t.hl){ const m=o.instant?1:rEase((local-t0-.1)/.28); const pad=Math.round(f.s*.1);
-        ctx.save(); ctx.globalAlpha*=Math.min(1,k*1.5); ctx.fillStyle=o.hl||C_OR; ctx.beginPath(); ctx.roundRect(tx-pad, ly+f.s*.06, (tw+pad*2)*m, f.s*1.0, Math.round(f.s*.12)); ctx.fill(); ctx.restore(); }
       ctx.save(); ctx.globalAlpha*=Math.min(1,k*1.6); const sc=1+.28*(1-e); ctx.translate(tx+tw/2, ly+f.s*.55); ctx.scale(sc,sc);
-      ctx.fillStyle=t.hl?(o.hlText||"#fff"):(o.color||C_INK); ctx.fillText(t.w,-tw/2,-f.s*.55); ctx.restore(); }); });
+      t.parts.forEach(pt=>{ ctx.fillStyle=pt.hl?(o.hlText||"#fff"):(o.color||C_INK); ctx.fillText(pt.s,-tw/2+pt.off,-f.s*.55); }); ctx.restore(); }); });
   return {end:y+f.h, words:i}; }
 const kWords=t=>String(t||"").replace(/\*/g,"").split(/\s+/).filter(Boolean).length;
-
-/* фирменный мотив: радар в углу медленно вращается */
-function rRadar(ctx, cx, cy, r, col, acc, t, a){ ctx.save(); ctx.globalAlpha*=a; ctx.strokeStyle=col; ctx.lineWidth=4;
-  [1,.75,.5,.25].forEach(k=>{ ctx.beginPath(); ctx.arc(cx,cy,r*k,0,7); ctx.stroke(); });
-  const ang=t*1.2; ctx.fillStyle=acc; ctx.globalAlpha*=.9; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,ang,ang+.55); ctx.closePath(); ctx.fill(); ctx.restore(); }
 
 /* фото: размытый фон из того же фото (уменьшить и растянуть) */
 function rBlurBg(ctx, im, dim){ const c=document.createElement("canvas"); c.width=27; c.height=48; const x=c.getContext("2d");
@@ -502,7 +508,7 @@ function drawReelScene(ctx, spec, sc, local, dur, warn, idx){
   const bg=R_BG[sc.bg]?sc.bg:"cream"; const [B,F,M,CARD]=R_BG[bg]; const A=reelAcc(sc,bg);
   const onA=(A===C_INK||A===R_ACC.blue||A===R_ACC.green||A===C_OR)?"#fff":C_INK;
   ctx.fillStyle=B; ctx.fillRect(0,0,RW,RH);
-  const first=idx===0, ins=first?1:rEase(local/.2), out=rClamp((dur-local)/.16);
+  const first=idx===0;
   const size=R_SIZE[sc.size]||R_SIZE.M, mul=size/R_SIZE.M;
   const isPhoto=type==="photo", full=isPhoto&&sc.layout!=="card"; let pim=null;
   /* фон */
@@ -514,7 +520,7 @@ function drawReelScene(ctx, spec, sc, local, dur, warn, idx){
         const dm=sc.dim==null?.6:Number(sc.dim); const g=ctx.createLinearGradient(0,RH*.3,0,RH); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(.5,"rgba(0,0,0,"+(dm*.75)+")"); g.addColorStop(1,"rgba(0,0,0,"+Math.min(.92,dm*1.2)+")"); ctx.fillStyle=g; ctx.fillRect(0,0,RW,RH);
         const g2=ctx.createLinearGradient(0,0,0,R_ST+220); g2.addColorStop(0,"rgba(0,0,0,.5)"); g2.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=g2; ctx.fillRect(0,0,RW,R_ST+220); }
       else rBlurBg(ctx,pim.img,sc.dim==null?.5:Number(sc.dim)); } }
-  else if(type==="hook"||type==="text"||type==="number"||type==="end"){ rRadar(ctx,RW-60,RH-470,520,F,A,local+idx,bg==="cream"?.07:.12); }
+
   /* шапка */
   const dark=isPhoto||bg==="ink";
   if(sc.head!==false){ const lab=String(sc.label||spec.label||"Дизайн-Радар").toUpperCase();
@@ -522,9 +528,9 @@ function drawReelScene(ctx, spec, sc, local, dur, warn, idx){
     ctx.fillStyle="#fff"; ctx.fillText(lab,RM+24,R_ST+26);
     cSet(ctx,cFont.title(32),0); const br="Дизайн-Радар", bw=ctx.measureText(br).width; ctx.fillStyle=dark?"#fff":F; ctx.fillText(br,RW-R_RR-bw,R_ST+22);
     ctx.fillStyle=bg==="orange"?C_INK:C_OR; ctx.beginPath(); ctx.arc(RW-R_RR-bw-26,R_ST+42,11,0,7); ctx.fill(); }
-  ctx.save(); ctx.globalAlpha=Math.min(ins,out); const pz=1+.035*(1-ins); ctx.translate(RW/2,RH/2); ctx.scale(pz,pz); ctx.translate(-RW/2,-RH/2);
+  ctx.save(); const pz=1+.04*(1-rEase(local/.2))*(first?0:1); ctx.translate(RW/2,RH/2); ctx.scale(pz,pz); ctx.translate(-RW/2,-RH/2);
   const tc=dark?"#fff":F, mc=dark?"rgba(255,255,255,.78)":M;
-  const st0=first?-.6:.08;
+  const st0=first?-.6:-.12;
   const kick=(txt,y,col)=>{ if(!txt) return 0; cSet(ctx,cFont.mono(40),3); ctx.fillStyle=col||A; const k=first?1:rEase((local-.02)/.25); const a0=ctx.globalAlpha; ctx.globalAlpha=a0*k; ctx.fillText(String(txt).toUpperCase(),R_SX,y); ctx.globalAlpha=a0; return 76; };
   const subT=(txt,y,start,col,align)=>{ if(!txt) return y; const f=kFit(ctx,txt,R_SW,260,Math.round(46*Math.min(mul,1.1)),34,{font:cFont.body,lh:1.28}); const k=rEase((local-start)/.35); const a0=ctx.globalAlpha; ctx.globalAlpha=a0*k;
     kDraw(ctx,f,R_SX,y+(1-k)*20,local,{instant:true,color:col||mc,align}); ctx.globalAlpha=a0; return y+f.h; };
@@ -539,18 +545,18 @@ function drawReelScene(ctx, spec, sc, local, dur, warn, idx){
   } else if(type==="number"){
     const kh=sc.pre?76:0; const k=rEase((local-(first?0:.1))/.9);
     const val=rCount(sc.value||"0",sc.count===false?1:k);
-    const nf=kFit(ctx,String(sc.value||"0"),R_SW,420,Math.round(360*mul),120,{font:cFont.num});
+    const vs=String(sc.value||"0"); cSet(ctx,cFont.num(100),-2); const w100=ctx.measureText(vs).width||1; const ns=Math.max(90,Math.min(Math.round(340*mul),Math.floor(100*R_SW/w100*.97))); const nf={s:ns,h:Math.round(ns*1.02),over:ns<=90&&w100*.9>R_SW};
     const tf=sc.title?kFit(ctx,sc.title,R_SW,520,Math.round(96*mul),54):null;
     const total=kh+nf.h+(tf?40+tf.h:0); let y=sc.align==="top"?R_SY0:sc.align==="bottom"?R_SY1-total:R_SY0+Math.max(0,(R_SY1-R_SY0-total)/2);
     y+=kick(sc.pre,y);
-    cSet(ctx,cFont.num(nf.s),-Math.round(nf.s/60)); const vw=ctx.measureText(val).width; if(vw>R_SW){ const k2=R_SW/vw; cSet(ctx,cFont.num(Math.floor(nf.s*k2)),-Math.round(nf.s/60)); } ctx.fillStyle=A===C_INK&&bg==="ink"?C_OR:(bg==="orange"?C_INK:A); const pop=1+.06*Math.sin(rClamp((local-.9)/.25)*Math.PI);
+    cSet(ctx,cFont.num(nf.s),-Math.round(nf.s/50)); ctx.fillStyle=A===C_INK&&bg==="ink"?C_OR:(bg==="orange"?C_INK:A); const pop=1+.06*Math.sin(rClamp((local-.9)/.25)*Math.PI);
     ctx.save(); ctx.translate(R_SX,y+nf.s*.5); ctx.scale(pop,pop); ctx.fillText(val,0,-nf.s*.5); ctx.restore();
     if(tf) kDraw(ctx,tf,R_SX,y+nf.h+40,local,{start:(first?0:.5),stagger:.06,color:tc,hl:A,hlText:onA});
     if(nf.over) warn.push("число слишком длинное"); if(tf&&tf.over) warn.push("подпись не влезает");
   } else if(type==="swatches"){
     const cols=rSwatches(sc), n=cols.length; const tf=sc.title?kFit(ctx,sc.title,R_SW,300,Math.round(104*mul),56):null;
     let y=R_SY0; if(tf){ kDraw(ctx,tf,R_SX,y,local,{start:st0,stagger:.06,color:tc,hl:A,hlText:onA}); y+=tf.h+40; }
-    const gw=RW-2*RM, areaH=R_SY1-y-(sc.pickLabel?120:20); let c=Math.ceil(Math.sqrt(n*gw/areaH)); c=Math.max(3,Math.min(9,c)); const rows=Math.ceil(n/c);
+    const gw=RW-2*RM, areaH=R_SY1-y-(sc.pickLabel?120:20); let c=Math.max(3,Math.min(9,Math.ceil(Math.sqrt(n*gw/areaH)))); { let best=c, bs=1e9; for(let q=Math.max(3,c-2);q<=Math.min(10,c+2);q++){ const rw=Math.ceil(n/q), empty=rw*q-n; const cw0=(gw-(q-1)*10)/q; if(rw*(Math.min(cw0*1.25,(areaH-(rw-1)*10)/rw)+10)>areaH+10) continue; const sc0=empty*3+Math.abs(q-c); if(sc0<bs){ bs=sc0; best=q; } } c=best; } const rows=Math.ceil(n/c);
     const gap=10, cw=(gw-(c-1)*gap)/c, ch=Math.min(cw*1.25,(areaH-(rows-1)*gap)/rows);
     const pick=Math.min(n-1,Math.max(0,(Number(sc.pick)||Math.ceil(n*.55))-1)); const tp=Math.max(1.2,dur*.55); const fade=sc.pick===0?0:rEase((local-tp)/.4);
     cols.forEach((col,i)=>{ const r=Math.floor(i/c), q=i%c; const x=RM+q*(cw+gap), yy=y+r*(ch+gap); const t0=.15+i*Math.min(.04,1.1/n); const k=rBack(rClamp((local-t0)/.3)); if(k<=0) return;
@@ -622,8 +628,10 @@ function drawReelScene(ctx, spec, sc, local, dur, warn, idx){
       cl.forEach((l,i)=>ctx.fillText(l,x,y0+ch-70-(cl.length-i)*60)); if(cl.length>2) warn.push("подпись карточки длиннее 2 строк"); }
     if(p.head&&p.head.length>34) warn.push("заголовок карточки длинный");
   } else { /* end */
-    const f=kFit(ctx,sc.title||"Больше разборов —\nв *Дизайн-Радаре*",R_SW,600,Math.round(130*mul),60);
-    const total=f.h+(sc.sub?150:0); let y=R_SY0+Math.max(0,(R_SY1-R_SY0-total)/2);
+    const f=kFit(ctx,sc.title||"Больше разборов —\nв *Дизайн-Радаре*",R_SW,560,Math.round(130*mul),60);
+    const total=200+f.h+(sc.sub?150:0); let y=R_SY0+Math.max(0,(R_SY1-R_SY0-total)/2);
+    { const k=rBack(rClamp(local/.4)); ctx.save(); ctx.translate(R_SX+80,y+80); ctx.scale(k,k); ctx.fillStyle=bg==="orange"?C_INK:C_OR; ctx.beginPath(); ctx.arc(0,0,80,0,7); ctx.fill();
+      cSet(ctx,cFont.num(76),-3); ctx.fillStyle=bg==="orange"?C_OR:C_INK; const mw=ctx.measureText("ДР").width; ctx.fillText("ДР",-mw/2,-44); ctx.restore(); y+=200; }
     const r=kDraw(ctx,f,R_SX,y,local,{start:.05,stagger:.07,color:tc,hl:A,hlText:onA}); subT(sc.sub,r.end+40,.5);
   }
   ctx.restore();

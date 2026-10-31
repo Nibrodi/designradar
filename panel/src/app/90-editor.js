@@ -77,7 +77,7 @@ function drawSheet(){
   const inp=(id,val,ph)=>{ const e=h("input",{id,type:"text",value:val||"",placeholder:ph||"",readonly:ro}); return e; };
   const tTitle=inp("fTitle",d.title,"Заголовок поста");
   const tCover=h("textarea",{id:"fCover",rows:2,class:"covtitle",readonly:ro,placeholder:"До 50 знаков. Enter — перенос строки там, где хочешь"}); tCover.value=d.cover_title||"";
-  const tLabel=h("select",{id:"fLabel",disabled:ro}); ["Крафт","Разбор","Новости","Мнение","Вакансии","Книга","Фильм","Мем","Редакция","Вопрос читателя","Инсайд","Колонка"].forEach(x=>tLabel.append(h("option",{value:x,selected:(d.label||d.section)===x},x)));
+  const tLabel=h("select",{id:"fLabel",disabled:ro}); ["Крафт","Разбор","Новости","Мнение","Вакансии","Книга","Фильм","Мем","Редакция","Вопрос читателя","Инсайд","Колонка","Мысль","Чек-лист","Плохо и хорошо","Итоги недели","Разбор портфолио"].forEach(x=>tLabel.append(h("option",{value:x,selected:(d.label||d.section)===x},x))); { const cur=d.label||d.section; if(cur && ![...tLabel.options].some(o=>o.value===cur)) tLabel.append(h("option",{value:cur,selected:true},cur)); }
   const tText=h("textarea",{id:"fText",readonly:ro,spellcheck:"true"}); tText.value=d.full_text||"";
   const lintBox=h("details",{class:"lint"}); let lintOpen=false; lintBox.addEventListener("toggle",()=>{ lintOpen=lintBox.open; });
   const drawLint=()=>{ const L=lintText(tText.value,(d.media||[]).length); lintBox.hidden=!L.length; if(!L.length){ lintBox.replaceChildren(); return; }

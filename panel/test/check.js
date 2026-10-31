@@ -114,6 +114,9 @@ const url='file://'+path.resolve(process.argv[2]);
    await p.evaluate(()=>{ const c=document.querySelectorAll('.rcard')[1]; c.querySelector('.rdz').open=true; [...c.querySelectorAll('.chipb')].find(x=>x.textContent==='Тёмный').click(); }); await W(3200);
    const r=(await doc('fd_test')).reel; ok(r&&r.scenes&&r.scenes[1].type==='ui','reel scene type saved'); ok(r&&r.scenes[1].phases[0].caption==='Прозрачные условия','reel caption edit saved'); ok(r&&r.scenes[1].bg==='ink','reel scene design saved');
    ok(!(await p.$('#errbar')),'reel no error bar');
+   await p.evaluate(()=>[...document.querySelectorAll('.rphotobar button')].find(b=>/найдёт фото/.test(b.textContent)).click()); await W(800);
+   ok(await p.evaluate(()=>(window.__mockdb['posts'].get('fd_test').photo_request||{}).status==='requested'),'photo search requested');
+   ok(await p.evaluate(()=>(window.__calls||[]).some(c=>c.tool==='update_trigger'&&c.args.trigger_id==='trig_01SsdLvWh9WAW64p8KrsoxKp')),'photo search task armed');
    ok(await p.evaluate(()=>{ const r=window.__mockdb['posts'].get('fd_test').reel; return r.scenes.filter(x=>x.type==='photo').every(x=>!/example\.com/.test(x.src)); }),'reel external photos moved into panel');
    await p.evaluate(()=>document.querySelector('.sheet header .iconbtn')?.click()); await W(300); }
  { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте

@@ -626,3 +626,4 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
 .rwish{display:flex;gap:8px;flex-wrap:wrap}
 .rwish input{flex:1;min-width:180px}
 .rimp{padding:8px 10px;border-radius:10px;background:var(--chip);margin-bottom:10px}
+.rphotobar{display:flex;flex-direction:column;gap:8px;margin:12px 0;padding:10px 12px;border:1px dashed var(--line);border-radius:12px}

@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.10.2"; const CHANGES=[{"v": "2.10.2", "date": "31.10.2026", "items": ["«Скачать видео» работает: на телефоне открывается окно сохранения (можно сохранить в «Фото» или отправить), в браузере — обычная загрузка."]}, {"v": "2.10.1", "date": "31.10.2026", "items": ["Фото с сайтов источников панель сама переносит в своё хранилище (через Make, один раз на фото), чтобы они показывались в рилсе и попадали в видео."]}, {"v": "2.10.0", "date": "31.10.2026", "items": ["Сцена «Фото»: фото поста на весь экран или карточкой, плавное приближение, кадрирование, подпись автора; можно загрузить своё фото.", "Сценарий строится по логике поста: сначала одна мысль рилса, потом сцены по схеме рубрики («Находка» — на фото поста, «Крафт» — экран с приёмом именно этого поста, «Мысль» — только текст). Поле пожелания к сценарию."]}];
+const APP_VERSION="2.11.0"; const CHANGES=[{"v": "2.11.0", "date": "31.10.2026", "items": ["«✦ Claude найдёт фото» в рилсе: задача «Поиск фото» ищет фото работы на сайте источника, у студии, на Behance и отраслевых сайтах, проверяет каждое (что на нём, есть ли люди и свой текст) и добавляет к посту. Бесплатно — только ссылки; можно написать, что искать.", "Сценарист рилса знает, что на каждом фото: фото со своим текстом ставит карточкой или не первым."]}, {"v": "2.10.2", "date": "31.10.2026", "items": ["«Скачать видео» работает: на телефоне открывается окно сохранения (можно сохранить в «Фото» или отправить), в браузере — обычная загрузка."]}, {"v": "2.10.1", "date": "31.10.2026", "items": ["Фото с сайтов источников панель сама переносит в своё хранилище (через Make, один раз на фото), чтобы они показывались в рилсе и попадали в видео."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -422,10 +422,10 @@ const rIsExt=u=>/^https:\/\//.test(u||"")&&!/\/_blob\//.test(u||"")&&!/claude\.a
 /* фото поста, которые можно показать: ссылки https и загруженные в панель */
 function reelPhotos(d){ const out=[], seen=new Set(); const add=(url,cap)=>{ if(!url||seen.has(url)||!/^(https:|blob:)/.test(url)) return; seen.add(url); out.push({url,cap:cap||""}); };
   const credit=(String(d.full_text||"").match(/^Фото:\s*(.+)$/m)||[])[1]||"";
-  const pa=d.photo_assets||{}; const add0=add; const addM=(url,cap)=>add0(pa[url]||url,cap); 
+  const pa=d.photo_assets||{}; const add0=add; const addM=(url,cap)=>{ const n=out.length; add0(pa[url]||url,cap); if(out.length>n) out[n].orig=url; }; 
   return reelPhotosFrom(d,addM,credit,out); }
 function reelPhotosFrom(d,add,credit,out){
-  add(d.cover_url, credit); (d.photo_urls||[]).forEach(u=>add(u,credit)); (d.media||[]).filter(m=>m&&!m.gen&&!m.pending).forEach(m=>add(m.url,(m.caption||"").replace(/^Фото:\s*/,"")||credit));
+  add(d.cover_url, credit); (d.photo_urls||[]).forEach(u=>add(u,((d.photo_meta||{})[u]||{}).credit||credit)); (d.media||[]).filter(m=>m&&!m.gen&&!m.pending).forEach(m=>add(m.url,(m.caption||"").replace(/^Фото:\s*/,"")||credit));
   return out; }
 const R_KINDS=[["list","Список"],["skeleton","Скелетон"],["progress","Прогресс"]];
 const rClamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
@@ -550,14 +550,15 @@ function reelFromPost(d){
 async function genReel(d, wish){
   const ph=reelPhotos(d); const lab=String(d.label||d.section||"");
   const kind=(/Находка|Разбор|Ребрендинг/i.test(lab)||(d.kind==="news"&&ph.length))&&ph.length?"photo":/Мысль/i.test(lab)?"thought":"craft";
-  const photos=ph.length?ph.map((p,i)=>"  "+(i+1)+") фото "+(i+1)+(i===0?" — главное фото поста":"")+(p.cap?" (автор: "+p.cap+")":"")).join("\n"):"  нет";
+  const meta=d.photo_meta||{};
+  const photos=ph.length?ph.map((p,i)=>{ const m=meta[p.orig||p.url]||{}; return "  "+(i+1)+") фото "+(i+1)+(i===0?" — главное фото поста":"")+(m.what?": "+m.what:"")+(m.text_on_photo?" [НА ФОТО ЕСТЬ СВОЙ КРУПНЫЙ ТЕКСТ — ставь его карточкой (layout \"card\") или не первым]":"")+(m.orientation?" ["+m.orientation+"]":"")+(p.cap?" (автор: "+p.cap+")":""); }).join("\n"):"  нет";
   const plans={
     photo:"Это пост о реальной работе — рилс строится НА ФОТО ПОСТА. Схема: 1) photo — самое сильное фото на весь экран и крючок, который хочется досмотреть (факт или парадокс из поста); 2–3) photo — другие фото, каждое с одним фактом или деталью из поста (что сделали, для кого, какой приём); 4) text — вердикт редакции в 1–2 строках; 5) end. Если фото меньше трёх — повтори фото с другим кадрированием (fx/fy) или замени сцену на text. Не используй ui.",
     craft:"Это пост о приёме. Схема: 1) title — крючок; 2) ui — экраны показывают ИМЕННО приём этого поста (плашки, заголовки экранов и подписи — из этого поста, не придумывай чужую тему); 3) text — правило или вывод; 4) end. Если у поста есть фото — можешь заменить ui на photo.",
     thought:"Это короткая мысль. Схема: 2–3 сцены text, каждая — одна фраза мысли, последняя с выводом; потом end. Никакого ui."};
   const prompt=TEXT_RULES+"\n\nСделай сценарий вертикального видео (рилс, 10–16 секунд) по ЭТОМУ посту канала «Дизайн-Радар». Видео рисуется кодом из сцен: ты пишешь тексты и выбираешь сцены.\n\nПОСТ:\nЗаголовок: "+d.title+"\nРубрика: "+lab+"\nТекст:\n"+String(d.full_text||"").slice(0,3200)+"\n\nФОТО ПОСТА:\n"+photos+(wish?"\n\nПОЖЕЛАНИЕ РЕДАКТОРА: "+wish:"")+
   "\n\nСНАЧАЛА сформулируй одну мысль рилса одной фразой (поле idea) — каждая сцена работает на неё по порядку: зацепить → показать → объяснить → вердикт → в канал. Все факты, цифры и имена — только из текста поста выше; ничего не бери из других тем и примеров.\nСХЕМА ДЛЯ ЭТОГО ПОСТА: "+plans[kind]+
-  "\n\nТИПЫ СЦЕН:\n- photo: {type:\"photo\", photo: номер фото из списка, title (до 50 знаков, строки через \\n), sub (до 80, необязательно), hl: true если последнюю строку выделить цветом, fx: \"left\"|\"center\"|\"right\", fy: \"top\"|\"center\"|\"bottom\" (кадрирование), zoom: \"in\"|\"out\"}\n- title: {type:\"title\", title (крючок до 45 знаков), sub (до 90, необязательно)}\n- ui: {type:\"ui\", phases:[1–3 × {tag (до 14 знаков), head (до 30), kind: \"list\"|\"skeleton\"|\"progress\", value (для progress, 1–100), note (для progress, до 20), caption (до 28)}]}\n- text: {type:\"text\", title (до 80 знаков, строки через \\n, последняя выделится), bg: \"cream\"|\"ink\"|\"orange\"}\n- end: {type:\"end\", title:\"Дизайн-Радар\", sub (до 50, зови в канал по теме поста)}\nУ каждой сцены dur в секундах: photo 2.5–3.5, title 2.5–3, ui 4–6, text 2.5–3.5, end 2. Голос — живой, коротко, как в канале.\nОтветь только JSON: {\"idea\":\"…\",\"label\":\"рубрика 1–2 слова\",\"scenes\":[…]}";
+  "\n\nТИПЫ СЦЕН:\n- photo: {type:\"photo\", photo: номер фото из списка, layout: \"full\"|\"card\" (card — для горизонтальных фото и фото со своим текстом), title (до 50 знаков, строки через \\n), sub (до 80, необязательно), hl: true если последнюю строку выделить цветом, fx: \"left\"|\"center\"|\"right\", fy: \"top\"|\"center\"|\"bottom\" (кадрирование), zoom: \"in\"|\"out\"}\n- title: {type:\"title\", title (крючок до 45 знаков), sub (до 90, необязательно)}\n- ui: {type:\"ui\", phases:[1–3 × {tag (до 14 знаков), head (до 30), kind: \"list\"|\"skeleton\"|\"progress\", value (для progress, 1–100), note (для progress, до 20), caption (до 28)}]}\n- text: {type:\"text\", title (до 80 знаков, строки через \\n, последняя выделится), bg: \"cream\"|\"ink\"|\"orange\"}\n- end: {type:\"end\", title:\"Дизайн-Радар\", sub (до 50, зови в канал по теме поста)}\nУ каждой сцены dur в секундах: photo 2.5–3.5, title 2.5–3, ui 4–6, text 2.5–3.5, end 2. Голос — живой, коротко, как в канале.\nОтветь только JSON: {\"idea\":\"…\",\"label\":\"рубрика 1–2 слова\",\"scenes\":[…]}";
   const v=await sample.json(prompt,{modelTier:"complex",cache:false});
   if(!v||!Array.isArray(v.scenes)||!v.scenes.length) throw {message:"Claude вернул сценарий не в том виде. Попробуй ещё раз."};
   const cr=(ph[0]&&ph[0].cap)||"";
@@ -604,6 +605,19 @@ function reelEditor(d, o){
       spec.scenes.forEach(x=>{ if(x.type==="photo"&&d.photo_assets[x.src]) x.src=d.photo_assets[x.src]; }); impSt.hidden=true; commit(); draw(); }
     catch(e){ impSt.hidden=false; impSt.textContent=((e&&e.message)||"Фото не перенеслось")+" — загрузи фото вручную кнопкой «Своё фото»."; }
     finally{ importing=false; } };
+  const PHOTO_TRIG="trig_01SsdLvWh9WAW64p8KrsoxKp";
+  const photoBar=h("div",{class:"rphotobar"}); let pollT=null;
+  const drawPhotoBar=()=>{ const r=d.photo_request||{}; const n=reelPhotos(d).length;
+    const wi=h("input",{type:"text",placeholder:"Что найти: «вывески и навигация», «упаковка крупно»… (необязательно)"});
+    const go=h("button",{type:"button",class:"btn sm aibtn",disabled:ro||r.status==="requested",onclick:async()=>{ go.disabled=true;
+      try{ d.photo_request={status:"requested",wish:wi.value.trim(),at:Date.now(),by:S.me||""}; await savePost(d.id,{photo_request:d.photo_request});
+        await mcp.callTool(CCR,"update_trigger",{trigger_id:PHOTO_TRIG,run_once_at:new Date(Date.now()+60e3).toISOString().replace(/\.\d{3}Z$/,"Z"),enabled:true}); drawPhotoBar(); poll(); }
+      catch(e){ const c=e&&e.code; toast((c==="approval_required"||c==="not_granted")?"Разреши панели доступ к Claude Code Remote и нажми ещё раз.":"Не получилось запустить поиск: "+((e&&e.message)||"")); go.disabled=false; } }},r.status==="requested"?"Claude ищет фото…":"✦ Claude найдёт фото");
+    const msg=r.status==="requested"?"Ищу фото работы на сайте источника, у студии и на отраслевых сайтах. Обычно 3–10 минут — можно закрыть пост, фото появятся сами.":r.status==="done"?"Нашёл новых фото: "+(r.found||0)+". "+(r.note||""):r.status==="none"?"Не нашёл: "+(r.note||""):"Фото у поста: "+n+". Claude может поискать ещё — бесплатно, только ссылки.";
+    photoBar.replaceChildren(h("div",{class:"hint",text:msg}), ro?null:h("div",{class:"airow rwish"}, r.status==="requested"?null:wi, go)); };
+  const poll=()=>{ clearInterval(pollT); if((d.photo_request||{}).status!=="requested") return;
+    pollT=setInterval(()=>{ if(!box.isConnected){ clearInterval(pollT); return; } const p=S.posts.find(x=>x.id===d.id); const r=p&&p.photo_request;
+      if(r&&r.status!=="requested"){ clearInterval(pollT); d.photo_request=r; d.photo_urls=p.photo_urls||d.photo_urls; d.photo_meta=p.photo_meta||d.photo_meta; drawPhotoBar(); draw(); toast(r.status==="done"?"Claude нашёл фото: "+(r.found||0):"Claude не нашёл фото"); } },15000); };
   const commit=()=>{ d.reel=spec; changed(); clearTimeout(tT); tT=setTimeout(redrawThumbs,250); };
   const stop=()=>{ cancelAnimationFrame(raf); raf=0; };
   const loop=()=>{ if(!pv||!pv.isConnected){ stop(); return; } const tot=reelDur(spec); const t=playing?((performance.now()-t0)/1000)%tot:pv._t||0; pv._t=t;
@@ -644,7 +658,7 @@ function reelEditor(d, o){
     stop(); thumbs=[];
     if(!spec){ box.replaceChildren(h("div",{class:"sech"},h("h4",{text:"Рилс"}),h("span",{text:"вертикальное видео 1080×1920 по посту"})),
         h("p",{class:"hint",text:(reelPhotos(d).length?"У поста есть фото ("+reelPhotos(d).length+") — Claude построит рилс на них. ":"")+"Короткое видео на 10–15 секунд из нескольких сцен. Каждую сцену можно переписать и перекрасить — превью играет сразу."}),
-        ro?null:h("div",{class:"acts"}, sample?h("button",{type:"button",class:"btn aibtn",onclick:async(e)=>{ const b=e.currentTarget; b.disabled=true; b.textContent="Claude пишет сценарий…"; try{ spec=await genReel(d,""); commit(); draw(); }catch(er){ toast((er&&er.message)||"Не получилось"); b.disabled=false; b.textContent="✦ Сделать рилс из текста"; } }},"✦ Сделать рилс из текста"):null,
+        photoBar, ro?null:h("div",{class:"acts"}, sample?h("button",{type:"button",class:"btn aibtn",onclick:async(e)=>{ const b=e.currentTarget; b.disabled=true; b.textContent="Claude пишет сценарий…"; try{ spec=await genReel(d,""); commit(); draw(); }catch(er){ toast((er&&er.message)||"Не получилось"); b.disabled=false; b.textContent="✦ Сделать рилс из текста"; } }},"✦ Сделать рилс из текста"):null,
           h("button",{type:"button",class:"btn",onclick:()=>{ spec=reelFromPost(d); commit(); draw(); }},reelPhotos(d).length?"Простой рилс из фото":"Простой рилс из заголовка"))); return; }
     pv=h("canvas",{class:"reelpv",width:"360",height:"640"}); pctx=pv.getContext("2d");
     bar=h("i"); const play=h("button",{type:"button",class:"btn sm",onclick:()=>{ playing=!playing; if(playing) t0=performance.now()-(pv._t||0)*1000; play.textContent=playing?"❚❚ Пауза":"▶ Играть"; }},"❚❚ Пауза");
@@ -698,10 +712,10 @@ function reelEditor(d, o){
       const card=h("details",{class:"card1 rcard",open:i===0}, h("summary",{onclick:()=>jump(i)}, cv, h("div",{class:"ctt"}, h("b",{text:reelCaption(sc,i)}), h("span",{class:"hint",text:plain(sc.title||(sc.phases&&sc.phases.map(p=>p.caption).filter(Boolean).join(" → "))||"").slice(0,48)}), w)), body);
       thumbs[i]={cv,w,card}; list.append(card); });
     const add=ro?null:h("div",{class:"acts"}, h("span",{class:"hint",text:"Добавить сцену:"}), ...R_TYPES.map(([t,lab])=>h("button",{type:"button",class:"btn sm",onclick:()=>{ const at=spec.scenes.length && spec.scenes[spec.scenes.length-1].type==="end"?spec.scenes.length-1:spec.scenes.length; spec.scenes.splice(at,0,reelBlank(t)); commit(); draw(); }},"+ "+lab)));
-    box.replaceChildren(head, impSt, top, list, add); setTimeout(ensurePhotos,0);
+    box.replaceChildren(head, impSt, top, photoBar, list, add); setTimeout(ensurePhotos,0);
     showVideo(); carFonts().then(()=>{ redrawThumbs(); t0=performance.now(); raf=requestAnimationFrame(loop); });
   };
-  draw();
+  drawPhotoBar(); draw(); poll();
   return box;
 }
 /* ---------- Telegram-style preview ---------- */

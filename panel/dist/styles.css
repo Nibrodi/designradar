@@ -625,3 +625,4 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
 .ridea{font-size:13.5px;line-height:1.4;padding:8px 10px;border-radius:10px;background:var(--chip)}
 .rwish{display:flex;gap:8px;flex-wrap:wrap}
 .rwish input{flex:1;min-width:180px}
+.rimp{padding:8px 10px;border-radius:10px;background:var(--chip);margin-bottom:10px}

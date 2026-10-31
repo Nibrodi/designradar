@@ -38,7 +38,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.10.0"; const CHANGES=[{"v": "2.10.0", "date": "31.10.2026", "items": ["Сцена «Фото»: фото поста на весь экран или карточкой, плавное приближение, кадрирование, подпись автора; можно загрузить своё фото.", "Сценарий строится по логике поста: сначала одна мысль рилса, потом сцены по схеме рубрики («Находка» — на фото поста, «Крафт» — экран с приёмом именно этого поста, «Мысль» — только текст). Поле пожелания к сценарию."]}, {"v": "2.9.0", "date": "31.10.2026", "items": ["Рилсы: в редакторе поста раздел «Рилс» — вертикальное видео 1080×1920 из сцен (заголовок, интерфейс, тезис, финал). Превью играет сразу.", "Каждую сцену можно переписать, дополнить строками, поменять фон, акцент, размер текста, место и длительность; сцены двигаются, копируются и удаляются.", "«✦ Сделать рилс из текста» — Claude пишет сценарий по посту. «Собрать видео» записывает MP4 прямо в браузере, без операций Make."]}, {"v": "2.8.0", "date": "31.10.2026", "items": ["Фото находок без лишних трат: охотник кладёт в пост только ссылки на фото (cover_url, media), а панель показывает их в превью. В Telegram фото загружаются только когда ты жмёшь «Опубликовать» или «Запланировать».", "Если сайт источника не даёт показать фото в панели, вместо картинки появится ссылка «Фото не показывается здесь — открыть ↗»."]}];
+const APP_VERSION="2.10.1"; const CHANGES=[{"v": "2.10.1", "date": "31.10.2026", "items": ["Фото с сайтов источников панель сама переносит в своё хранилище (через Make, один раз на фото), чтобы они показывались в рилсе и попадали в видео."]}, {"v": "2.10.0", "date": "31.10.2026", "items": ["Сцена «Фото»: фото поста на весь экран или карточкой, плавное приближение, кадрирование, подпись автора; можно загрузить своё фото.", "Сценарий строится по логике поста: сначала одна мысль рилса, потом сцены по схеме рубрики («Находка» — на фото поста, «Крафт» — экран с приёмом именно этого поста, «Мысль» — только текст). Поле пожелания к сценарию."]}, {"v": "2.9.0", "date": "31.10.2026", "items": ["Рилсы: в редакторе поста раздел «Рилс» — вертикальное видео 1080×1920 из сцен (заголовок, интерфейс, тезис, финал). Превью играет сразу.", "Каждую сцену можно переписать, дополнить строками, поменять фон, акцент, размер текста, место и длительность; сцены двигаются, копируются и удаляются.", "«✦ Сделать рилс из текста» — Claude пишет сценарий по посту. «Собрать видео» записывает MP4 прямо в браузере, без операций Make."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -406,9 +406,25 @@ function rImg(url){ if(!url) return null; const u=R_LOCAL.get(url)||url; let e=R
   const go=(cors)=>{ const im=new Image(); if(cors) im.crossOrigin="anonymous"; im.referrerPolicy="no-referrer"; im.decoding="async";
     im.onload=()=>{ e.st="ok"; e.img=im; e.clean=cors||local; rImgTick++; }; im.onerror=()=>{ if(cors) go(false); else { e.st="err"; rImgTick++; } }; im.src=u; };
   go(!local); return e; }
+/* фото с чужих сайтов панель показать не может: забираем их через Make (6848987) и кладём в хранилище панели */
+const SCN_IMG64=6848987;
+async function importPhoto(url){
+  if(!mcp||!assets) throw {message:"Загрузка фото недоступна в этом окне"};
+  const res=await mcp.callTool(MAKE,"scenarios_run",{scenarioId:SCN_IMG64,responsive:true,data:{image_url:url}});
+  const raw=JSON.stringify(res.payload??res.content??""); const m=raw.match(/image_base64\\?"\s*:\s*\\?"([A-Za-z0-9+\/=]{100,})/);
+  if(!m) throw {message:"Make не смог скачать фото: "+raw.slice(0,140)};
+  const bin=atob(m[1]); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+  const type=u8[0]===0x89?"image/png":u8[0]===0x52?"image/webp":"image/jpeg";
+  const blob=new Blob([u8],{type}); const local=URL.createObjectURL(blob);
+  const r=await assets.upload(new File([blob],"photo_"+Date.now()+"."+type.split("/")[1],{type}));
+  R_LOCAL.set(r.url,local); return r.url; }
+const rIsExt=u=>/^https:\/\//.test(u||"")&&!/\/_blob\//.test(u||"")&&!/claude\.ai|claudeusercontent|anthropic/.test(u||"");
 /* фото поста, которые можно показать: ссылки https и загруженные в панель */
 function reelPhotos(d){ const out=[], seen=new Set(); const add=(url,cap)=>{ if(!url||seen.has(url)||!/^(https:|blob:)/.test(url)) return; seen.add(url); out.push({url,cap:cap||""}); };
   const credit=(String(d.full_text||"").match(/^Фото:\s*(.+)$/m)||[])[1]||"";
+  const pa=d.photo_assets||{}; const add0=add; const addM=(url,cap)=>add0(pa[url]||url,cap); 
+  return reelPhotosFrom(d,addM,credit,out); }
+function reelPhotosFrom(d,add,credit,out){
   add(d.cover_url, credit); (d.photo_urls||[]).forEach(u=>add(u,credit)); (d.media||[]).filter(m=>m&&!m.gen&&!m.pending).forEach(m=>add(m.url,(m.caption||"").replace(/^Фото:\s*/,"")||credit));
   return out; }
 const R_KINDS=[["list","Список"],["skeleton","Скелетон"],["progress","Прогресс"]];
@@ -580,6 +596,14 @@ function reelEditor(d, o){
   const box=h("section",{class:"sec reelsec"});
   let spec=d.reel?JSON.parse(JSON.stringify(d.reel)):null;
   let raf=0, playing=true, t0=performance.now(), pv=null, pctx=null, thumbs=[], tT=null;
+  const impSt=h("div",{class:"hint rimp",hidden:true}); let importing=false;
+  const ensurePhotos=async()=>{ if(importing||ro||!spec) return; d.photo_assets=d.photo_assets||{};
+    const ext=[...new Set(spec.scenes.filter(x=>x.type==="photo"&&rIsExt(x.src)).map(x=>x.src))]; if(!ext.length) return;
+    const todo=ext.filter(u=>!d.photo_assets[u]); importing=true;
+    try{ for(let i=0;i<todo.length;i++){ impSt.hidden=false; impSt.textContent="Переношу фото источника в панель "+(i+1)+" из "+todo.length+"… (Make, ~3 операции на фото, один раз)"; d.photo_assets[todo[i]]=await importPhoto(todo[i]); }
+      spec.scenes.forEach(x=>{ if(x.type==="photo"&&d.photo_assets[x.src]) x.src=d.photo_assets[x.src]; }); impSt.hidden=true; commit(); draw(); }
+    catch(e){ impSt.hidden=false; impSt.textContent=((e&&e.message)||"Фото не перенеслось")+" — загрузи фото вручную кнопкой «Своё фото»."; }
+    finally{ importing=false; } };
   const commit=()=>{ d.reel=spec; changed(); clearTimeout(tT); tT=setTimeout(redrawThumbs,250); };
   const stop=()=>{ cancelAnimationFrame(raf); raf=0; };
   const loop=()=>{ if(!pv||!pv.isConnected){ stop(); return; } const tot=reelDur(spec); const t=playing?((performance.now()-t0)/1000)%tot:pv._t||0; pv._t=t;
@@ -602,7 +626,7 @@ function reelEditor(d, o){
   const photoPick=(sc,redraw)=>{ const list=reelPhotos(d); if(sc.src&&!list.some(p=>p.url===sc.src)) list.push({url:sc.src,cap:sc.credit||""});
     const row=h("div",{class:"rpick"});
     list.forEach(p=>{ const im=h("img",{src:R_LOCAL.get(p.url)||p.url,alt:"",referrerpolicy:"no-referrer",loading:"lazy"}); im.addEventListener("error",()=>{ im.replaceWith(h("span",{class:"rpfail",text:"не открылось"})); });
-      row.append(h("button",{type:"button",class:"rph"+(sc.src===p.url?" on":""),disabled:ro,title:p.cap||"",onclick:()=>{ sc.src=p.url; if(!sc.credit&&p.cap) sc.credit=p.cap; commit(); redraw(); }},im)); });
+      row.append(h("button",{type:"button",class:"rph"+(sc.src===p.url?" on":""),disabled:ro,title:p.cap||"",onclick:()=>{ sc.src=p.url; if(!sc.credit&&p.cap) sc.credit=p.cap; commit(); redraw(); ensurePhotos(); }},im)); });
     if(!ro){ const inp=h("input",{type:"file",accept:"image/*",hidden:true}); inp.addEventListener("change",async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; const blobUrl=URL.createObjectURL(f);
         sc.src=blobUrl; commit(); redraw();
         if(assets){ try{ const r=await assets.upload(f); R_LOCAL.set(r.url,blobUrl); sc.src=r.url; commit(); redraw(); }catch(e){ toast("Фото не сохранилось в панели — оно останется только до закрытия вкладки"); } } });
@@ -667,7 +691,7 @@ function reelEditor(d, o){
       const card=h("details",{class:"card1 rcard",open:i===0}, h("summary",{onclick:()=>jump(i)}, cv, h("div",{class:"ctt"}, h("b",{text:reelCaption(sc,i)}), h("span",{class:"hint",text:plain(sc.title||(sc.phases&&sc.phases.map(p=>p.caption).filter(Boolean).join(" → "))||"").slice(0,48)}), w)), body);
       thumbs[i]={cv,w,card}; list.append(card); });
     const add=ro?null:h("div",{class:"acts"}, h("span",{class:"hint",text:"Добавить сцену:"}), ...R_TYPES.map(([t,lab])=>h("button",{type:"button",class:"btn sm",onclick:()=>{ const at=spec.scenes.length && spec.scenes[spec.scenes.length-1].type==="end"?spec.scenes.length-1:spec.scenes.length; spec.scenes.splice(at,0,reelBlank(t)); commit(); draw(); }},"+ "+lab)));
-    box.replaceChildren(head, top, list, add);
+    box.replaceChildren(head, impSt, top, list, add); setTimeout(ensurePhotos,0);
     showVideo(); carFonts().then(()=>{ redrawThumbs(); t0=performance.now(); raf=requestAnimationFrame(loop); });
   };
   draw();
@@ -1633,7 +1657,7 @@ function drawSheet(){
     editing.lastVerText=text; editing.lastVerAt=now;
     verCol().doc().set({title:d.title||"", full_text:text||"", by:S.me||"", source, at:now}).catch(()=>{});
   }
-  function mkPatch(){ return {title:(d.title||"").trim(), cover_title:(d.cover_title||"").trim(), label:d.label, section:d.section, full_text:(d.full_text||"").replace(/\r\n?/g,"\n").trim(), hashtags:d.hashtags, source:(d.source||"").trim(), url:(d.url||"").trim(), cover_render:!!(d.cover_render||isRendered(d)), cover_seed:Number(d.cover_seed)||0, cover_art:d.cover_art||"", cover_art_prev:d.cover_art_prev||"", carousel:d.carousel||null, reel:d.reel||null, ...(d.reel_video_url&&/^https:/.test(d.reel_video_url)?{reel_video_url:d.reel_video_url, reel_video_asset:d.reel_video_asset||"", reel_video_type:d.reel_video_type||"", reel_video_at:d.reel_video_at||0}:{}), cover_off:!!d.cover_off, layout:d.layout||"cover", ...((d.media||[]).some(m=>m.pending)?{}:{media:(d.media||[]).map(m=>({url:m.url, asset_id:m.asset_id||"", caption:m.caption||"", source_url:m.source_url||"", file_id:m.file_id||"", ...(m.gen?{gen:true}:{})}))})}; }
+  function mkPatch(){ return {title:(d.title||"").trim(), cover_title:(d.cover_title||"").trim(), label:d.label, section:d.section, full_text:(d.full_text||"").replace(/\r\n?/g,"\n").trim(), hashtags:d.hashtags, source:(d.source||"").trim(), url:(d.url||"").trim(), cover_render:!!(d.cover_render||isRendered(d)), cover_seed:Number(d.cover_seed)||0, cover_art:d.cover_art||"", cover_art_prev:d.cover_art_prev||"", carousel:d.carousel||null, reel:d.reel||null, ...(d.photo_assets?{photo_assets:d.photo_assets}:{}), ...(d.reel_video_url&&/^https:/.test(d.reel_video_url)?{reel_video_url:d.reel_video_url, reel_video_asset:d.reel_video_asset||"", reel_video_type:d.reel_video_type||"", reel_video_at:d.reel_video_at||0}:{}), cover_off:!!d.cover_off, layout:d.layout||"cover", ...((d.media||[]).some(m=>m.pending)?{}:{media:(d.media||[]).map(m=>({url:m.url, asset_id:m.asset_id||"", caption:m.caption||"", source_url:m.source_url||"", file_id:m.file_id||"", ...(m.gen?{gen:true}:{})}))})}; }
   async function uploadPendingSlides(){
     const pend=(d.media||[]).filter(m=>m.pending); if(!pend.length) return true;
     if(!assets){ toast("Загрузка картинок недоступна в этом окне"); return false; }

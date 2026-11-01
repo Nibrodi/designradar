@@ -22,6 +22,7 @@
 | [slot-16.md](slot-16.md) | Пост 16:00, вакансии дня | trig_016Wo8CYmLJd654z3KdfKzgS | `38 15 * * 1,3,5` |
 | [cheatsheet.md](cheatsheet.md) | Шпаргалка недели (вт 16:00, карусель) | trig_01QoK67mRTY7dREhJ9pUxy2M | `38 15 * * 2` |
 | [slot-18.md](slot-18.md) | Пост 18:00, вечерний формат | trig_01TGpj2GTsAb47oFK3oQLJNU | `38 17 * * *` |
+| [linkedin.md](linkedin.md) | LinkedIn: черновик поста Екатерины (EN + RU, вкладка «LinkedIn») | trig_01HjZw9rW2NKHxNHG2f4FoDS | `13 9 * * 1,3,5` |
 | [weekly.md](weekly.md) | Недельная проверка канала | trig_01CDVedTtJYbA13bwjqLq7ss | `47 11 * * 1` |
 | [insight-reminder.md](insight-reminder.md) | Напоминание о голосе автора | trig_01SWki2RYvJiQVeQ4gVVBgFq | `23 12 * * 2` |
 

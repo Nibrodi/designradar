@@ -12,9 +12,10 @@ const VIEWS = [
   {id:"drafts", name:"Черновики", short:"Черновики"},
   {id:"ideas", name:"Идеи"},
   {id:"published", name:"Опубликовано", short:"Вышло"},
+  {id:"linkedin", name:"LinkedIn", short:"LinkedIn", owner:true},
   {id:"team", name:"Колонки", short:"Команда"}
 ];
-const S = {posts:[], ideas:[], invites:[], settings:{}, editors:{}, me:null, owner:false, canWrite:false, view:"review", ready:false, dbOk:null, confirm:null, busy:{}, errors:{}, names:{}};
+const S = {posts:[], ideas:[], li:[], invites:[], settings:{}, editors:{}, me:null, owner:false, canWrite:false, view:"review", ready:false, dbOk:null, confirm:null, busy:{}, errors:{}, names:{}};
 let db=null, user=null, mcp=null, sample=null, assets=null, downloads=null;
 
 const $ = (s, r=document) => r.querySelector(s);

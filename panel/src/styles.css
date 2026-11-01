@@ -635,3 +635,22 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
 .cidea p{margin:0;font-size:14px;line-height:1.4}
 .cih{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .cik{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--orange)}
+/* LinkedIn */
+.licard .li-lang{display:inline-flex;align-self:flex-start;width:max-content;margin:10px 0 8px;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+.licard .li-lang button{border:0;background:var(--sheet);padding:8px 14px;font:600 13px/1 var(--body);color:var(--muted)}
+.licard .li-lang button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.licard .li-text{width:100%;box-sizing:border-box;min-height:220px;border:1px solid var(--line2);border-radius:12px;background:var(--field);color:var(--ink);padding:12px 14px;font:400 15px/1.5 var(--body);resize:vertical}
+.licard .li-cnt{margin-top:6px;overflow-wrap:anywhere}
+.licard .li-copy{display:flex;flex-direction:row;flex-wrap:wrap;gap:8px;margin-top:10px}
+.licard .li-check{margin:6px 0 0}
+.li-sec{font:600 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+.li-photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.li-ph{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--sheet)}
+.li-ph img,.li-ph0{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.li-ph0{display:grid;place-items:center;background:var(--pvbg);color:var(--muted);font:700 22px/1 var(--body)}
+.li-phc{display:flex;justify-content:space-between;gap:6px;padding:7px 9px;font-size:12.5px;color:var(--muted)}
+.li-phc a{white-space:nowrap;flex:none}
+.li-phc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li-more{margin-top:22px}
+.li-more summary{cursor:pointer;font-weight:600;padding:8px 0}
+.licard .confirm input{width:100%;box-sizing:border-box;min-height:42px;border:1px solid var(--line2);border-radius:10px;padding:8px 12px;background:var(--field);color:var(--ink);margin-bottom:8px}

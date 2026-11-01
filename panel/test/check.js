@@ -53,6 +53,20 @@ const url='file://'+path.resolve(process.argv[2]);
  await p.evaluate(()=>{ [...document.querySelectorAll('.carsec button')].find(b=>b.textContent.includes('Сделать карусель')).click(); }); await W(1500);
  ok((await p.$$('.card1')).length>=5,'carousel generated');
  await p.click('footer .btn.primary'); await W(2000); d=await doc('q1029_18'); ok(!!d.carousel,'new carousel saved');
+ { /* LinkedIn */
+  await p.evaluate(async()=>{ const db=await window.claude.use('db'); await db.collection('linkedin').doc('li_t1').set({title:'Шрифт, который читается на бегу',rubric:'Шрифты',text_en:'English text of the post about a typeface.',text_ru:'Русский текст поста про шрифт.',photos:[{url:'https://example.com/a.jpg',caption:'Фото: студия'}],hashtags:['#typography'],status:'ready',created_at:Date.now(),check:'Проверь год релиза'}); });
+  await p.evaluate(()=>location.hash='linkedin'); await W(500);
+  ok(await p.$('.licard'),'linkedin card renders'); ok(await p.$('#tabs .tab[data-v="linkedin"]'),'linkedin tab for owner');
+  ok((await p.$eval('.li-text',e=>e.value)).startsWith('English'),'linkedin EN shown');
+  await p.click('.li-lang button[data-l="ru"]'); await W(100); ok((await p.$eval('.li-text',e=>e.value)).startsWith('Русский'),'linkedin RU switch');
+  await p.fill('.li-text','Русский текст, поправленный.'); await p.click('text=Сохранить правки'); await W(300);
+  let L=await p.evaluate(()=>JSON.parse(JSON.stringify(window.__mockdb['linkedin'].get('li_t1'))));
+  ok(L.text_ru==='Русский текст, поправленный.'&&L.text_en.startsWith('English')&&L.edited===true,'linkedin edit saved');
+  ok((await p.$$('.li-ph')).length===1,'linkedin photo listed');
+  await p.click('text=Опубликовала в LinkedIn'); await W(200); await p.fill('.licard .confirm input','https://www.linkedin.com/posts/x'); await p.click('.licard .confirm >> text=Готово'); await W(300);
+  L=await p.evaluate(()=>JSON.parse(JSON.stringify(window.__mockdb['linkedin'].get('li_t1'))));
+  ok(L.status==='posted'&&L.post_url==='https://www.linkedin.com/posts/x','linkedin mark posted');
+  ok(!(await p.$('#errbar')),'linkedin no error bar'); }
  await p.evaluate(()=>location.hash='team'); await W(400);
  await p.click('text=+ Пригласить редактора'); await W(200); await p.fill('.invform input >> nth=0','Тест'); await p.click('text=Создать приглашение'); await W(500);
  ok(await p.evaluate(()=>(window.__mockdb['invites']||new Map()).size===1),'invite created');

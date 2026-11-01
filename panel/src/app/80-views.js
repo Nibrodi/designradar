@@ -10,10 +10,11 @@ function renderTabs(){
   const nav=$("#tabs"); const keep=nav.scrollLeft; nav.replaceChildren();
   requestAnimationFrame(()=>{ nav.scrollLeft=keep; const a=nav.querySelector('[aria-current="page"]'); if(a && nav.scrollWidth>nav.clientWidth){ const l=a.offsetLeft-16, r=a.offsetLeft+a.offsetWidth-nav.clientWidth+24; if(nav.scrollLeft>l) nav.scrollLeft=l; else if(nav.scrollLeft<r) nav.scrollLeft=r; } });
   for(const v of VIEWS){
-    const n = v.id==="ideas" ? S.ideas.filter(i=>i.status!=="done").length : v.id==="team" ? null : byView(v.id).length;
+    if(v.owner && !S.owner) continue;
+    const n = v.id==="ideas" ? S.ideas.filter(i=>i.status!=="done").length : v.id==="linkedin" ? liReady().length : v.id==="team" ? null : byView(v.id).length;
     const nm=v.id==="team"&&S.owner?"Редакция":v.name;
     const n2=v.id==="team"&&S.owner?(S.invites.filter(i=>i.status==="sent").length||null):n;
-    const ic=h("span",{class:"ti","aria-hidden":"true"}); ic.innerHTML=TAB_ICO[v.id]||"";
+    const ic=h("span",{class:"ti","aria-hidden":"true"}); ic.innerHTML=v.id==="linkedin"?LI_ICO:(TAB_ICO[v.id]||"");
     nav.append(h("button",{class:"tab","aria-current":S.view===v.id?"page":null,"aria-label":nm,onclick:()=>{location.hash=v.id; window.scrollTo({top:0});},"data-v":v.id}, ic, h("span",{class:"tl"}, h("span",{class:"full",text:nm}), h("span",{class:"short",text:v.short||nm})), n2!=null&&n2>0?h("span",{class:"n",text:n2>99?"99+":n2}):null));
   }
 }
@@ -168,9 +169,12 @@ function render(){
   let tb=document.getElementById("testbar");
   if(S.test && !tb){ tb=h("div",{id:"testbar",class:"testbar"},"Тестовый режим: ты видишь панель глазами нового редактора. Публикация недоступна, посты подписаны «Тестовый редактор». ",h("button",{type:"button",class:"btn sm",style:"margin-left:8px",onclick:()=>setTest(false)},"Выйти")); document.body.prepend(tb); }
   if(!S.test && tb) tb.remove();
+  const ae=document.activeElement, fx=ae&&ae.dataset&&ae.dataset.li?{id:ae.dataset.li,s:ae.selectionStart,e:ae.selectionEnd,t:ae.scrollTop}:null;
   const m=$("#main"); m.replaceChildren();
   if(S.dbOk===false){ m.append(h("div",{class:"empty"},h("b",{text:"Панель работает только в Claude"}),h("span",{text:"Войди в claude.ai и открой эту страницу там: посты и черновики хранятся в базе редакции."}))); return; }
   if(S.blocked){ m.append(h("div",{class:"empty"},h("b",{text:S.blocked==="paused"?"Доступ приостановлен":"Доступ закрыт"}),h("span",{text:S.blocked==="paused"?"Колонка временно на паузе. Посты сохранены — если есть вопросы, напиши главному редактору.":"Доступ к редакции закрыт. Если это ошибка, напиши главному редактору."}))); return; }
+  if(S.view==="linkedin" && !S.owner) S.view="review";
+  if(S.view==="linkedin"){ renderLinkedIn(); if(fx){ const t=document.querySelector('textarea[data-li="'+fx.id+'"]'); if(t){ t.focus(); try{ t.setSelectionRange(fx.s,fx.e); }catch(_){} t.scrollTop=fx.t; } } return; }
   if(S.view==="ideas") renderIdeas(); else if(S.view==="team") (S.owner?renderAdmin():renderTeam()); else renderFeed(S.view);
 }
 

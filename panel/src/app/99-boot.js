@@ -27,6 +27,7 @@ route();
     renderWho();
   }
   postsCol().onSnapshot(snap=>{ S.mainPosts=snap.docs.map(d=>({id:d.id,...d.data(),_base:"posts"})); mergePosts(); S.ready=true; render(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{ S.ready=true; render(); });
+  liWatch();
   ideasCol().onSnapshot(snap=>{ S.ideas=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
   db.collection("roles").onSnapshot(snap=>{ S.roles={}; snap.docs.forEach(d=>S.roles[d.id]=d.data()); S.rolesLoaded=true; mergeEditors(); applyBlock(); render(); }, ()=>{});
   db.collection("editors").onSnapshot(snap=>{ S.edRaw={}; snap.docs.forEach(d=>S.edRaw[d.id]=d.data()); mergeEditors(); watchAuthors(); syncInvites(); S.editorsLoaded=true; matchInvite(); applyBlock(); render(); if(!$("#sheetRoot").firstChild && !S.blocked) checkOnboarding(); });

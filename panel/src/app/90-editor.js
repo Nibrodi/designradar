@@ -269,15 +269,22 @@ function drawSheet(){
   const covBoxWrap=h("div",{class:"covbox"},covBox);
   const cov=sec("Обложка", isRendered(d)?"так её увидят в канале":"", covRow, cvBox, covBoxWrap, covInfo, isRendered(d)?null:h("div",{class:"hint",text:(!d.image_file_id&&mediaOf(d).length)?"Это карусель: отдельной обложки нет, в канале пост откроется карточками. Если нужна обложка над текстом — нажми «Нарисовать обложку редакции».":"У этого поста картинка уже лежит в Telegram, показать её здесь нельзя. Нажми «Нарисовать обложку редакции», чтобы заменить её обложкой канала."}));
   if(!ro && sample){
-    const wishIn=h("input",{type:"text",id:"fWish",placeholder:"Пожелание к сцене, необязательно: например, «покажи очередь из уведомлений»"});
-    const st=h("div",{class:"hint"});
+    const wishIn=h("input",{type:"text",id:"fWish",placeholder:"Пожелание, необязательно: «бургер», «сделай каламбур», «без интерфейса»"});
+    const st=h("div",{class:"hint"}); const ideasBox=h("div",{class:"cideas"});
+    const errText=e=>(e&&e.code==="not_granted")?"Разреши панели обращаться к Claude и нажми ещё раз.":(e&&e.code==="rate_limited")?"Слишком часто. Подожди минуту.":((e&&e.message)||"Не получилось. Попробуй ещё раз.");
+    const drawIdea=async(idea,btn)=>{ ideasBox.querySelectorAll("button").forEach(b=>b.disabled=true); st.textContent="Рисую «"+idea.title+"»… около минуты.";
+      try{ const art=await newScene(d, wishIn.value.trim(), idea); if(d.cover_art) d.cover_art_prev=d.cover_art; d.cover_art=art; d.cover_render=true; if(editing) editing.dirty=true; drawEd(); upd(); st.textContent="Готово. Не нравится — нарисуй другую идею или придумай новые. Сохрани пост, чтобы оставить обложку."; }
+      catch(e){ st.textContent=errText(e); }
+      finally{ ideasBox.querySelectorAll("button").forEach(b=>b.disabled=false); } };
     const go=h("button",{type:"button",class:"btn accent",onclick:async()=>{
-      go.disabled=true; st.textContent="Claude придумывает сцену… это около минуты.";
-      try{ const art=await newScene(d, wishIn.value.trim()); if(d.cover_art) d.cover_art_prev=d.cover_art; d.cover_art=art; d.cover_render=true; editing.dirty=true; drawEd(); upd(); st.textContent="Готово. Не нравится — нажми ещё раз или напиши пожелание. Сохрани пост, чтобы оставить обложку."; }
-      catch(e){ st.textContent=(e&&e.code==="not_granted")?"Разреши панели обращаться к Claude и нажми ещё раз.":(e&&e.code==="rate_limited")?"Слишком часто. Подожди минуту.":((e&&e.message)||"Не получилось. Попробуй ещё раз."); }
-      finally{ go.disabled=false; }
-    }},"Нарисовать");
-    aiC.append(panelHead("Новая сцена от Claude",()=>{ aiC.hidden=true; document.querySelectorAll(".sec .aibtn.on").forEach(b=>b.classList.remove("on")); }), h("label",{for:"fWish",text:"Какую сцену нарисовать"}), h("div",{class:"airow"}, wishIn, go), st);
+      go.disabled=true; ideasBox.replaceChildren(); st.textContent="Claude придумывает три идеи: каламбур, предмет, интерфейс…";
+      try{ const r=await coverIdeas(d, wishIn.value.trim()); st.textContent="Выбери идею — или сразу нарисуй ту, что Claude считает сильнейшей (★).";
+        r.ideas.forEach((it,i)=>{ const b=h("button",{type:"button",class:"btn sm"+(i===r.best?" accent":""),onclick:()=>drawIdea(it,b)},"Нарисовать");
+          ideasBox.append(h("div",{class:"cidea"+(i===r.best?" best":"")}, h("div",{class:"cih"}, h("span",{class:"cik",text:(i===r.best?"★ ":"")+(COVER_KINDS[it.kind]||"")}), h("b",{text:it.title})), h("p",{text:it.see}), it.why?h("p",{class:"hint",text:it.why}):null, b)); }); }
+      catch(e){ st.textContent=errText(e); }
+      finally{ go.disabled=false; go.textContent="Другие идеи"; }
+    }},"Придумать идеи");
+    aiC.append(panelHead("Новая сцена от Claude",()=>{ aiC.hidden=true; document.querySelectorAll(".sec .aibtn.on").forEach(b=>b.classList.remove("on")); }), h("label",{for:"fWish",text:"О чём обложка"}), h("div",{class:"airow"}, wishIn, go), st, ideasBox);
   }
   if(!ro){ const aiCBtn=sample?h("button",{type:"button",class:"btn aibtn",onclick:()=>{ aiC.hidden=!aiC.hidden; aiCBtn.classList.toggle("on",!aiC.hidden); if(!aiC.hidden) aiC.querySelector("input")?.focus(); }},"✦ Новая сцена от Claude"):null;
   cov.append(h("div",{class:"acts"}, aiCBtn,
@@ -300,7 +307,7 @@ function drawSheet(){
     editing.lastVerText=text; editing.lastVerAt=now;
     verCol().doc().set({title:d.title||"", full_text:text||"", by:S.me||"", source, at:now}).catch(()=>{});
   }
-  function mkPatch(){ return {title:(d.title||"").trim(), cover_title:(d.cover_title||"").trim(), label:d.label, section:d.section, full_text:(d.full_text||"").replace(/\r\n?/g,"\n").trim(), hashtags:d.hashtags, source:(d.source||"").trim(), url:(d.url||"").trim(), cover_render:!!(d.cover_render||isRendered(d)), cover_seed:Number(d.cover_seed)||0, cover_art:d.cover_art||"", cover_art_prev:d.cover_art_prev||"", carousel:d.carousel||null, reel:d.reel||null, ...(d.photo_assets?{photo_assets:d.photo_assets}:{}), ...(d.reel_video_url&&/^https:/.test(d.reel_video_url)?{reel_video_url:d.reel_video_url, reel_video_asset:d.reel_video_asset||"", reel_video_type:d.reel_video_type||"", reel_video_at:d.reel_video_at||0}:{}), cover_off:!!d.cover_off, layout:d.layout||"cover", ...((d.media||[]).some(m=>m.pending)?{}:{media:(d.media||[]).map(m=>({url:m.url, asset_id:m.asset_id||"", caption:m.caption||"", source_url:m.source_url||"", file_id:m.file_id||"", ...(m.gen?{gen:true}:{})}))})}; }
+  function mkPatch(){ return {title:(d.title||"").trim(), cover_title:(d.cover_title||"").trim(), label:d.label, section:d.section, full_text:(d.full_text||"").replace(/\r\n?/g,"\n").trim(), hashtags:d.hashtags, source:(d.source||"").trim(), url:(d.url||"").trim(), cover_render:!!(d.cover_render||isRendered(d)), cover_seed:Number(d.cover_seed)||0, cover_art:d.cover_art||"", cover_art_prev:d.cover_art_prev||"", ...(d.cover_concept?{cover_concept:d.cover_concept}:{}), carousel:d.carousel||null, reel:d.reel||null, ...(d.photo_assets?{photo_assets:d.photo_assets}:{}), ...(d.reel_video_url&&/^https:/.test(d.reel_video_url)?{reel_video_url:d.reel_video_url, reel_video_asset:d.reel_video_asset||"", reel_video_type:d.reel_video_type||"", reel_video_at:d.reel_video_at||0}:{}), cover_off:!!d.cover_off, layout:d.layout||"cover", ...((d.media||[]).some(m=>m.pending)?{}:{media:(d.media||[]).map(m=>({url:m.url, asset_id:m.asset_id||"", caption:m.caption||"", source_url:m.source_url||"", file_id:m.file_id||"", ...(m.gen?{gen:true}:{})}))})}; }
   async function uploadPendingSlides(){
     const pend=(d.media||[]).filter(m=>m.pending); if(!pend.length) return true; const ed=editing;
     if(!assets){ toast("Загрузка картинок недоступна в этом окне"); return false; }

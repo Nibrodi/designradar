@@ -133,6 +133,15 @@ const url='file://'+path.resolve(process.argv[2]);
    await p.evaluate(()=>{ const t=document.querySelector('#fText')||document.querySelector('.sheet textarea'); if(t){ t.value+=' '; t.dispatchEvent(new Event('input')); } });
    await p.evaluate(()=>{ const a=document.querySelector('.sheet header .hsave'), b=document.querySelector('.sheet footer .btn.primary'); a&&a.click(); b&&b.click(); document.querySelector('.sheet header .iconbtn')?.click(); }); await W(1500);
    ok(!(await p.$('#errbar')),'double save no error bar'); }
+ { // обложка: идеи трёх типов → рисунок выбранной
+   await open('Пять ошибок'); await W(900);
+   await p.evaluate(()=>{ [...document.querySelectorAll('.sheet button')].find(b=>/Новая сцена от Claude/.test(b.textContent)).click(); }); await W(200);
+   await p.evaluate(()=>{ [...document.querySelectorAll('.sheet button')].find(b=>/Придумать идеи/.test(b.textContent)).click(); }); await W(800);
+   ok(await p.evaluate(()=>document.querySelectorAll('.cidea').length===3),'cover ideas listed');
+   await p.evaluate(()=>document.querySelector('.cidea.best button').click()); await W(1500);
+   ok(await p.evaluate(()=>/Готово/.test(document.querySelector('.cideas').previousElementSibling.textContent)),'cover drawn from idea');
+   ok(!(await p.$('#errbar')),'cover ideas no error bar');
+   await p.evaluate(()=>document.querySelector('.sheet header .iconbtn')?.click()); await W(800); }
  { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте
   const m=await b.newPage({viewport:{width:375,height:780},isMobile:true,hasTouch:true,colorScheme:'dark'}); m.on('pageerror',e=>errs.push('mobile: '+e.message));
   await m.goto(url); await W(1500);

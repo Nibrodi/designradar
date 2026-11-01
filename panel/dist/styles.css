@@ -629,3 +629,9 @@ main.wrap{padding-block:20px 80px;display:flex;flex-direction:column;gap:18px}
 .rphotobar{display:flex;flex-direction:column;gap:8px;margin:12px 0;padding:10px 12px;border:1px dashed var(--line);border-radius:12px}
 .rig textarea{width:100%;font-size:14px;line-height:1.45}
 .rig .hint{display:block;margin:4px 0 6px}
+.cideas{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.cidea{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--field);display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.cidea.best{border-color:var(--orange)}
+.cidea p{margin:0;font-size:14px;line-height:1.4}
+.cih{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.cik{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--orange)}

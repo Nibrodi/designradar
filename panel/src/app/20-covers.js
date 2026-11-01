@@ -76,7 +76,29 @@ const rr = (x0, y0, x1, y1, r) => { const p = []; const c = [[x1 - r, y0 + r, -M
 const card = (x0, y0, x1, y1) => { poly(rr(x0, y0, x1, y1, 18), LINE, 1); poly(rr(x0 + 2, y0 + 2, x1 - 2, y1 - 2, 16), WHITE, 1); };
 const box = (x0, y0, x1, y1, w, col) => { rect(x0, y0, x1, y0 + w, col); rect(x0, y1 - w, x1, y1, col); rect(x0, y0, x0 + w, y1, col); rect(x1 - w, y0, x1, y1, col); };
 const chip = (x, y, s, bg) => { rect(x, y, x + txtW(s, 22, 0.06) + 24, y + 38, bg); txt(s, x + 12, y + 27, 22, BG, 0.06); };
-`;
+
+const ell = (cx, cy, rx, ry, a0 = 0, a1 = Math.PI * 2, n = 48) => { const p = []; for (let i = 0; i <= n; i++) { const t = a0 + (a1 - a0) * i / n; p.push([cx + rx * Math.cos(t), cy + ry * Math.sin(t)]); } return p; };
+const ink = (pts, w = 4, closed = true) => stroke(pts, w, FG, 1, closed);
+const shape = (pts, col, w = 4) => { poly(pts, col, 1); stroke(pts, w, FG, 1, true); };
+const ground = (x0, x1, y) => line(x0, y, x1, y, 3, LINE, 1);
+const shadow = (cx, y, rx) => poly(ell(cx, y, rx, rx * 0.075), FG, 0.08);`;
+const ART_EXAMPLE_PUN = `// Каламбур: иконка «бургер» буквально — три полоски превращаются в бургер
+ground(X0 - 20, 1920, 548);
+shadow(1610, 548, 250);
+const cx = 1610;
+shape(rr(cx - 225, 456, cx + 225, 528, 30), LINE);
+shape(rr(cx - 248, 398, cx + 248, 456, 29), FG);
+for (let i = 0; i < 10; i++) disc(cx - 210 + i * 46 + rf(-8, 8), 414 + rf(0, 26), rf(2, 4), WHITE, 0.22);
+const cheese = [[cx - 236, 388], [cx + 236, 388], [cx + 236, 404], [cx + 160, 404], [cx + 138, 446], [cx + 116, 404], [cx - 50, 404], [cx - 74, 438], [cx - 98, 404], [cx - 236, 404]];
+shape(cheese, ORANGE, 3);
+const dome = ell(cx, 390, 232, 168, Math.PI, Math.PI * 2);
+shape(dome, LINE);
+[[-120, 300], [-50, 262], [30, 250], [110, 282], [-160, 352], [170, 342], [60, 320], [-30, 332]].forEach(([dx, y]) => shape(ell(cx + dx, y, 12, 6, -0.3, Math.PI * 2 - 0.3, 16), WHITE, 2));
+card(1200, 96, 1324, 220);
+[134, 158, 182].forEach(y => rect(1232, y - 5, 1292, y + 5, FG, 1));
+txt("меню", 1232, 262, 22, MUT, 0);
+arc(1420, 250, 80, -Math.PI * 0.95, -Math.PI * 0.2, 4, ORANGE, 1);
+poly([[1484, 200], [1500, 228], [1468, 226]], ORANGE, 1);`;
 const ART_EXAMPLE = `const sw = 210, sh = 380, gap = 30, y0 = 130, xs = [X0 - 10, X0 - 10 + sw + gap, X0 - 10 + 2 * (sw + gap)];
 xs.forEach((x, i) => {
   poly(rr(x, y0, x + sw, y0 + sh, 26), i === 1 ? ORANGE : LINE, 1);
@@ -91,16 +113,32 @@ xs.forEach((x, i) => {
 });
 ["первый запуск", "пустой поиск", "нет доступа"].forEach((s, i) => txt(s, xs[i] + 4, y0 + sh + 44, 20, i === 1 ? ORANGE : MUT, 0));
 `;
-async function newScene(d, wish){
+/* обложка в два шага, как у арт-директора: сначала идеи разных типов, потом рисунок выбранной */
+const COVER_KINDS={pun:"Каламбур",object:"Предмет",interface:"Интерфейс",scene:"Сцена"};
+function recentConcepts(d){ return (S.posts||[]).filter(p=>p.id!==d.id&&p.cover_concept).sort((a,b)=>(b.updated_at||0)-(a.updated_at||0)).slice(0,8).map(p=>"— "+p.cover_concept).join("\n"); }
+async function coverIdeas(d, wish){
   if(!sample) throw {message:"Генерация недоступна в этом окне: открой панель в Claude."};
-  const brief="Ты арт-директор Telegram-канала «Дизайн-Радар» для продуктовых дизайнеров. Придумай сцену для обложки поста и нарисуй её кодом.\n\nПОСТ\nЗаголовок обложки: "+(d.cover_title||d.title)+"\nРубрика: "+(d.label||d.section)+"\nТекст: "+String(d.full_text||"").slice(0,1500)+"\n"+(wish?"\nПОЖЕЛАНИЕ РЕДАКТОРА: "+wish+"\n":"")+
-  "\nСЦЕНА\n— Одна метафора, которая показывает суть поста с первого взгляда: конкретный узнаваемый кусок интерфейса или процесса, а не абстрактный узор.\n— НЕ рисуй сравнение «плохо/хорошо» и плашки ПЛОХО/ХОРОШО, если редактор прямо не попросил.\n— Палитра: FG (чёрный), BG (кремовый), WHITE, LINE, MUT и один акцент ORANGE. Акцент — только на главном.\n— Без логотипов брендов, людей и персонажей.\n— Подписи короткие (1–3 слова), кириллица и латиница, размер 18–26. В шрифте НЕТ символов = ‹ › → … ← ↑ ✓ ×: стрелки и галочки рисуй фигурами (poly, stroke).\n\nХОЛСТ\n2000×640. Слева уже нарисованы рубрика и заголовок — туда не заходи. Рисунок живёт в зоне x от X0-20 до 1920 (X0 = 1180), y от 60 до 590.\n\nAPI (только эти имена): W, H, X0, BG, FG, ORANGE, rnd(), rf(a,b), ri(a,b), pick(arr), disc(cx,cy,r,col,a), ring(cx,cy,r,w,col,a), rect(x0,y0,x1,y1,col,a), line(x1,y1,x2,y2,w,col,a), quad(pts,col,a), poly(pts,col,a), sector(cx,cy,r0,r1,ang0,ang1,col,a), stroke(pts,w,col,a,closed), arc(cx,cy,r,ang0,ang1,w,col,a), band(cx,cy,fnOuter,fnInner|null,col,a), txt(s,x,baseline,size,col,track), txtW(s,size), Math. Цвета — массивы RGB. Уже объявлены (не объявляй заново): WHITE, MUT, LINE, GREEN, RED, DARKG, rr(x0,y0,x1,y1,r) — точки скруглённого прямоугольника для poly, card(x0,y0,x1,y1) — белая карточка, box(x0,y0,x1,y1,w,col) — рамка, chip(x,y,s,bg) — плашка.\n\nПРИМЕР (три экрана пустых состояний):\n"+ART_EXAMPLE+"\n\nОтветь только телом JavaScript-функции, без ``` и пояснений.";
+  const recent=recentConcepts(d);
+  const prompt="Ты арт-директор Telegram-канала «Дизайн-Радар» для продуктовых дизайнеров. Придумай идеи для обложки поста — 2000×640, слева заголовок, справа рисунок в стиле канала (плоская иллюстрация: кремовый фон, чёрный контур, белые и бежевые заливки, один оранжевый акцент).\n\nПОСТ\nЗаголовок обложки: "+plain(d.cover_title||d.title)+"\nРубрика: "+(d.label||d.section||"")+"\nТекст: "+String(d.full_text||"").slice(0,1600)+"\n"+(wish?"\nПОЖЕЛАНИЕ РЕДАКТОРА (главное): "+wish+"\n":"")+
+  "\nКАК ДУМАТЬ\n1. Найди ключевое слово или образ поста и главную мысль.\n2. Дай ТРИ идеи разных типов:\n   pun — визуальный каламбур: термин буквально (бургер-меню → настоящий бургер из трёх «полосок»; хлебные крошки → крошки от батона на пути; пустое состояние → пустая тарелка; узкое место → бутылочное горлышко; тёмная тема → лампа/ночь). Можно соединить предмет и кусочек интерфейса.\n   object — предмет из жизни как метафора смысла (молоток и бетон, ключ и замок, весы, лупа, компас, светофор).\n   interface — конкретный узнаваемый кусок экрана, если суть именно в нём.\n3. Каждая идея читается за секунду и вызывает «ага» — не пересказывает заголовок словами, без людей, логотипов и персонажей, без «плохо/хорошо».\n4. Рисунок будет нарисован кодом из простых фигур — выбирай то, что узнаётся по силуэту.\n"+(recent?"\nНЕ ПОВТОРЯЙ идеи последних обложек:\n"+recent+"\n":"")+
+  "\nОтветь только JSON: {\"ideas\":[{\"kind\":\"pun|object|interface\",\"title\":\"2–4 слова\",\"see\":\"что именно нарисовано: предметы, их расположение, что выделено оранжевым, подпись 1–2 слова если нужна — 1–2 предложения\",\"why\":\"почему это про пост, 1 фраза\"}],\"best\":<индекс сильнейшей; предпочитай pun или object, если они точны>}";
+  const v=await sample.json(prompt,{modelTier:"complex",cache:false});
+  const ideas=(v&&Array.isArray(v.ideas)?v.ideas:[]).filter(x=>x&&x.see).slice(0,3).map(x=>({kind:COVER_KINDS[x.kind]?x.kind:"object",title:String(x.title||"").slice(0,60),see:String(x.see||"").slice(0,400),why:String(x.why||"").slice(0,200)}));
+  if(!ideas.length) throw {message:"Claude не придумал идеи. Попробуй ещё раз."};
+  return {ideas, best:Math.max(0,Math.min(ideas.length-1,Number(v.best)||0))};
+}
+async function newScene(d, wish, idea){
+  if(!sample) throw {message:"Генерация недоступна в этом окне: открой панель в Claude."};
+  if(!idea){ const r=await coverIdeas(d,wish); idea=r.ideas[r.best]; }
+  const brief="Ты иллюстратор Telegram-канала «Дизайн-Радар». Нарисуй кодом обложку по выбранной идее.\n\nПОСТ\nЗаголовок обложки: "+plain(d.cover_title||d.title)+"\nРубрика: "+(d.label||d.section||"")+"\nТекст: "+String(d.full_text||"").slice(0,900)+"\n"+(wish?"\nПОЖЕЛАНИЕ РЕДАКТОРА: "+wish+"\n":"")+
+  "\nИДЕЯ ("+(COVER_KINDS[idea.kind]||"")+"): "+idea.title+"\nЧТО НАРИСОВАТЬ: "+idea.see+"\n"+
+  "\nСТИЛЬ КАНАЛА (обязательно)\n— Плоская иллюстрация: заливки WHITE, LINE (бежевый), BG и FG, чёткий чёрный контур толщиной 3–4 у всех предметов (shape(pts, цвет) рисует заливку с контуром, ink(pts) — только контур).\n— Один акцент ORANGE — только на главной детали (сыр в бургере, ткань в трещине, нажатая кнопка). Не заливай оранжевым всё.\n— Предметы крупные и узнаваемые по силуэту, стоят на «земле»: ground(x0,x1,y) и мягкая тень shadow(cx,y,rx) под ними.\n— Немного живых деталей: фактура точками disc(), штрихи движения line(), трещины stroke(). Без мелкой каши.\n— Подписи — максимум 1–2 коротких (1–2 слова), размер 20–26. В шрифте НЕТ символов = ‹ › → … ← ↑ ✓ ×: стрелки и галочки рисуй фигурами (arc, poly, stroke).\n— Без логотипов брендов, людей и персонажей.\n\nХОЛСТ\n2000×640. Слева уже нарисованы рубрика и заголовок — туда не заходи. Рисунок живёт в зоне x от X0-20 до 1920 (X0 = 1180), y от 60 до 590. Используй зону целиком: главный предмет — минимум 400 px.\n\nAPI (только эти имена): W, H, X0, BG, FG, ORANGE, rnd(), rf(a,b), ri(a,b), pick(arr), disc(cx,cy,r,col,a), ring(cx,cy,r,w,col,a), rect(x0,y0,x1,y1,col,a), line(x1,y1,x2,y2,w,col,a), quad(pts,col,a), poly(pts,col,a), sector(cx,cy,r0,r1,ang0,ang1,col,a), stroke(pts,w,col,a,closed), arc(cx,cy,r,ang0,ang1,w,col,a), band(cx,cy,fnOuter,fnInner|null,col,a), txt(s,x,baseline,size,col,track), txtW(s,size), Math. Цвета — массивы RGB. Уже объявлены (не объявляй заново): WHITE, MUT, LINE, GREEN, RED, DARKG, rr(x0,y0,x1,y1,r) — точки скруглённого прямоугольника, card(x0,y0,x1,y1) — белая карточка, box(x0,y0,x1,y1,w,col) — рамка, chip(x,y,s,bg) — плашка, ell(cx,cy,rx,ry,a0,a1,n) — точки эллипса или дуги, shape(pts,col,w) — заливка с чёрным контуром, ink(pts,w,closed) — контур, ground(x0,x1,y) — линия земли, shadow(cx,y,rx) — тень под предметом.\n\nПРИМЕР 1 — каламбур (иконка «бургер» → настоящий бургер):\n"+ART_EXAMPLE_PUN+"\n\nПРИМЕР 2 — интерфейс (три экрана пустых состояний):\n"+ART_EXAMPLE+"\n\nОтветь только телом JavaScript-функции, без ``` и пояснений.";
   let msgs=[{role:"user",content:brief}], lastErr="";
   for(let i=0;i<2;i++){
     const r=await sample(msgs,{modelTier:"complex",cache:false});
     const code=String(r.text||"").replace(/^\s*```[a-z]*\s*/i,"").replace(/```\s*$/,"").trim();
     const full=ART_KIT+"\n"+code;
-    try{ renderCoverRGB({...coverParams({...d,cover_art:full})}); return full; }
+    try{ renderCoverRGB({...coverParams({...d,cover_art:full})}); d.cover_concept=(idea.title+": "+idea.see).slice(0,200); return full; }
     catch(e){ lastErr=String(e&&e.message||e); msgs=[...msgs,{role:"assistant",content:code},{role:"user",content:"Код упал с ошибкой: "+lastErr+". Исправь и пришли только тело функции."}]; }
   }
   throw {message:"Claude нарисовал сцену с ошибкой ("+lastErr.slice(0,80)+"). Попробуй ещё раз."};

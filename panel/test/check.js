@@ -128,6 +128,11 @@ const url='file://'+path.resolve(process.argv[2]);
    ok(await p.evaluate(()=>document.querySelectorAll('.rcard').length===6),'reel new scenes cards');
    ok(!(await p.$('#errbar')),'reel new scenes no error bar');
    await p.evaluate(()=>document.querySelector('.sheet header .iconbtn')?.click()); await W(300); }
+ { // двойное «Сохранить» и закрытие во время сохранения не дают ошибки
+   await open('Пять ошибок'); await W(900);
+   await p.evaluate(()=>{ const t=document.querySelector('#fText')||document.querySelector('.sheet textarea'); if(t){ t.value+=' '; t.dispatchEvent(new Event('input')); } });
+   await p.evaluate(()=>{ const a=document.querySelector('.sheet header .hsave'), b=document.querySelector('.sheet footer .btn.primary'); a&&a.click(); b&&b.click(); document.querySelector('.sheet header .iconbtn')?.click(); }); await W(1500);
+   ok(!(await p.$('#errbar')),'double save no error bar'); }
  { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте
   const m=await b.newPage({viewport:{width:375,height:780},isMobile:true,hasTouch:true,colorScheme:'dark'}); m.on('pageerror',e=>errs.push('mobile: '+e.message));
   await m.goto(url); await W(1500);

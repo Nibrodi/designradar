@@ -27,7 +27,7 @@ function postCard(a){
   b.append(h("div",{class:"meta"}, h("span",{class:"status "+a.status,text:st}), h("span",{text:authorName(a.author)}), h("span",{text:ago(a.published_at||a.updated_at||a.created_at)})));
   b.append(h("h3",{text:plain(a.title)}));
   b.append(h("p",{class:"excerpt",text:plain(a.full_text).slice(0,280)}));
-  if(med.length){ const st=h("div",{class:"strip",style:"padding:0"}); med.slice(0,10).forEach((m,i)=>st.append(h("img",{src:m.url,alt:m.caption||("Картинка "+(i+1)),loading:"lazy"}))); b.append(h("div",{class:"meta",text:(med.length>1?"Карусель · ":"Картинка · ")+med.length+" шт."}), st); }
+  if(med.length){ const st=h("div",{class:"strip",style:"padding:0"}); const pa=a.photo_assets||{}; let bad=0; med.slice(0,10).forEach((m,i)=>{ const im=h("img",{src:pa[m.url]||m.url,alt:"",loading:"lazy",referrerpolicy:"no-referrer"}); im.addEventListener("error",()=>{ im.remove(); bad++; if(bad>=Math.min(10,med.length)) st.replaceWith(h("div",{class:"hint",text:"Фото с сайта источника здесь не показываются — они загрузятся в Telegram при публикации."})); }); st.append(im); }); b.append(h("div",{class:"meta",text:(med.length>1?"Карусель · ":"Картинка · ")+med.length+" шт."}), st); }
   if(a.notes_open>0) b.querySelector(".meta")?.append(h("span",{class:"chk notes",title:"Открытые заметки к посту"},"💬 "+a.notes_open));
   if(a.check && a.status!=="published") b.querySelector(".meta")?.append(h("span",{class:"chk",title:"Есть что проверить руками — подробности в посте"},h("span",{class:"chk-i","aria-hidden":"true",text:"!"}),"проверить"));
   if(err) b.append(h("div",{class:"notice err",text:err}));

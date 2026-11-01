@@ -302,13 +302,13 @@ function drawSheet(){
   }
   function mkPatch(){ return {title:(d.title||"").trim(), cover_title:(d.cover_title||"").trim(), label:d.label, section:d.section, full_text:(d.full_text||"").replace(/\r\n?/g,"\n").trim(), hashtags:d.hashtags, source:(d.source||"").trim(), url:(d.url||"").trim(), cover_render:!!(d.cover_render||isRendered(d)), cover_seed:Number(d.cover_seed)||0, cover_art:d.cover_art||"", cover_art_prev:d.cover_art_prev||"", carousel:d.carousel||null, reel:d.reel||null, ...(d.photo_assets?{photo_assets:d.photo_assets}:{}), ...(d.reel_video_url&&/^https:/.test(d.reel_video_url)?{reel_video_url:d.reel_video_url, reel_video_asset:d.reel_video_asset||"", reel_video_type:d.reel_video_type||"", reel_video_at:d.reel_video_at||0}:{}), cover_off:!!d.cover_off, layout:d.layout||"cover", ...((d.media||[]).some(m=>m.pending)?{}:{media:(d.media||[]).map(m=>({url:m.url, asset_id:m.asset_id||"", caption:m.caption||"", source_url:m.source_url||"", file_id:m.file_id||"", ...(m.gen?{gen:true}:{})}))})}; }
   async function uploadPendingSlides(){
-    const pend=(d.media||[]).filter(m=>m.pending); if(!pend.length) return true;
+    const pend=(d.media||[]).filter(m=>m.pending); if(!pend.length) return true; const ed=editing;
     if(!assets){ toast("Загрузка картинок недоступна в этом окне"); return false; }
     setSaveState("Загружаю карточки…");
     const blobs=await carToBlobs(carSpec||d.carousel);
     const media=[];
-    for(let i=0;i<blobs.length;i++){ const r=await assets.upload(new File([blobs[i]],"car_"+editing.id+"_"+(i+1)+".png",{type:"image/png"})); media.push({url:r.url, asset_id:r.id, caption:carCaption(d.carousel,i), file_id:"", gen:true}); }
-    d.media=media.concat((d.media||[]).filter(m=>!m.gen&&!m.pending)); editing.carDirty=false; drawMedia(); upd(); return true;
+    for(let i=0;i<blobs.length;i++){ const r=await assets.upload(new File([blobs[i]],"car_"+ed.id+"_"+(i+1)+".png",{type:"image/png"})); media.push({url:r.url, asset_id:r.id, caption:carCaption(d.carousel,i), file_id:"", gen:true}); }
+    d.media=media.concat((d.media||[]).filter(m=>!m.gen&&!m.pending)); ed.carDirty=false; drawMedia(); upd(); return true;
   }
   async function autosave(){
     if(ro||!editing||!editing.dirty) return;
@@ -317,7 +317,9 @@ function drawSheet(){
     if(patch.full_text!==orig.full_text||patch.title!==orig.title){ patch.edited_by=S.me||""; patch.edited_at=Date.now(); if(orig.author==="claude" && orig.orig_text==null){ patch.orig_title=orig.title||""; patch.orig_text=orig.full_text||""; } if(orig.author==="claude" && S.owner) patch.owner_edited=true; }
     if(!editing.versions || !editing.versions.length){ if(!editing.origLogged){ editing.origLogged=true; verCol().doc().set({title:orig.title||"", full_text:orig.full_text||"", by:orig.author||"claude", source:"original", at:(orig.created_at||Date.now()-1)}).catch(()=>{}); } }
     setSaveState("Сохраняю…");
-    try{ editing.saving=true; await savePost(editing.id,patch); editing.dirty=false; editing.changed=true; const ed=editing; setTimeout(()=>{ ed.saving=false; },2000);
+    const ed=editing;
+    try{ ed.saving=true; await savePost(ed.id,patch); ed.dirty=false; ed.changed=true; setTimeout(()=>{ ed.saving=false; },2000);
+      if(editing!==ed) return;
       if(Date.now()-(editing.lastVerAt||0)>4*6e4) logVersion("autosave");
       const t=new Date(); setSaveState("Сохранено в "+pad2(t.getHours())+":"+pad2(t.getMinutes())); }
     catch(e){ setSaveState("Не сохранилось — проверь связь"); }
@@ -359,21 +361,26 @@ function drawSheet(){
   }
   async function save(close=true){
     if(ro) { if(close) closeEditor(); return; }
+    const ed=editing; if(!ed) return;
+    if(ed.saveBusy) return; ed.saveBusy=true; /* двойное нажатие «Сохранить» (шапка + низ) не запускает второе сохранение */
+    try{ await save0(close, ed); } finally{ ed.saveBusy=false; }
+  }
+  async function save0(close, ed){
     if((d.media||[]).some(m=>m.pending)){ try{ if(!(await uploadPendingSlides())) return; }catch(e){ toast("Не удалось загрузить карточки. Попробуй ещё раз."); return; } }
-    const orig=S.posts.find(p=>p.id===editing.id)||{};
+    const orig=S.posts.find(p=>p.id===ed.id)||{};
     const patch=mkPatch();
     const changed=patch.title!==orig.title||patch.full_text!==orig.full_text;
     clearTimeout(sync.as);
-    if(changed||editing.changed){
+    if(changed||ed.changed){
       if(changed) patch.prev={title:orig.title||"", full_text:orig.full_text||""};
       patch.edited_by=S.me||""; patch.edited_at=Date.now();
       if(orig.author==="claude" && orig.orig_text==null){ patch.orig_title=orig.title||""; patch.orig_text=orig.full_text||""; }
       if(orig.author==="claude" && S.owner) patch.owner_edited=true;
     }
-    editing.saving=true; await savePost(editing.id,patch); editing.dirty=false; const ed=editing; setTimeout(()=>{ ed.saving=false; },2000);
-    if(changed) logVersion("manual");
-    if(orig.status==="scheduled" && mcp){ try{ const outbox=await prepareOutbox({...orig,...patch,id:editing.id}); await savePost(editing.id,{outbox}); toast("План обновлён: в канал выйдет новая версия"); }catch(e){ toast("Текст сохранён, но не удалось обновить запланированную версию. Перезапланируй пост."); } }
-    if(close){ closeEditor(); toast("Сохранено"); }
+    ed.saving=true; await savePost(ed.id,patch); ed.dirty=false; setTimeout(()=>{ ed.saving=false; },2000);
+    if(changed && editing===ed) logVersion("manual");
+    if(orig.status==="scheduled" && mcp){ try{ const outbox=await prepareOutbox({...orig,...patch,id:ed.id}); await savePost(ed.id,{outbox}); toast("План обновлён: в канал выйдет новая версия"); }catch(e){ toast("Текст сохранён, но не удалось обновить запланированную версию. Перезапланируй пост."); } }
+    if(close){ if(editing===ed) closeEditor(); toast("Сохранено"); }
   }
   const pvToggle=h("button",{type:"button",class:"btn pvbtn",onclick:()=>{ panes.classList.toggle("showpv"); pvToggle.textContent=panes.classList.contains("showpv")?"Текст":"Превью"; }},"Превью");
   const stName={review:"на согласовании",draft:"черновик",published:"опубликован",scheduled:"в плане",rejected:"отклонён"}[d.status]||"";
@@ -383,9 +390,9 @@ function drawSheet(){
   if(!ro){
     foot.append(h("span",{class:"hint who",text:"Автор: "+authorName(d.author)}), h("span",{class:"sp"}));
     foot.append(h("button",{class:"btn primary",onclick:()=>save(true)},"Сохранить"));
-    if(d.status==="draft") foot.append(h("button",{class:"btn",onclick:async()=>{ await save(false); await savePost(editing.id,{status:"review"}); closeEditor(); toast("Отправлено на согласование"); }},"На согласование"));
-    if(S.owner && d.status==="published") foot.append(h("button",{class:"btn accent",onclick:async()=>{ await save(false); const id=editing.id, dr={...d}; closeEditor(); await updateInChannel(id, dr); }},"Сохранить и обновить в канале"));
-    if(S.owner && d.status==="review") foot.append(h("button",{class:"btn accent",onclick:async()=>{ await save(false); const id=editing.id; closeEditor(); S.confirm=id; location.hash="review"; render(); }},"К публикации"));
+    if(d.status==="draft") foot.append(h("button",{class:"btn",onclick:async()=>{ const id=editing&&editing.id; await save(false); if(!id) return; await savePost(id,{status:"review"}); closeEditor(); toast("Отправлено на согласование"); }},"На согласование"));
+    if(S.owner && d.status==="published") foot.append(h("button",{class:"btn accent",onclick:async()=>{ const id=editing&&editing.id, dr={...d}; await save(false); if(!id) return; if(editing) closeEditor(); await updateInChannel(id, dr); }},"Сохранить и обновить в канале"));
+    if(S.owner && d.status==="review") foot.append(h("button",{class:"btn accent",onclick:async()=>{ const id=editing&&editing.id; await save(false); if(!id) return; if(editing) closeEditor(); S.confirm=id; location.hash="review"; render(); }},"К публикации"));
   }
   if(ro) foot.append(h("span",{class:"hint who",text:"Автор: "+authorName(d.author)}));
   /* На телефоне подвал не прибиваем к низу: в приложении Claude низ экрана бывает скрыт. Кнопки — в шапке и в конце текста. */

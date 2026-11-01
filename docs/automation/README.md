@@ -20,6 +20,7 @@
 | [slot-10.md](slot-10.md) | Пост 10:00, новость | trig_014mHhHxwN1g9wc6ysAMnYwH | `38 9 * * 1-5` |
 | [slot-14.md](slot-14.md) | Пост 14:00, разбор или ремесло | trig_01LGMMerhDryo5f6SHio6xpc | `38 13 * * 1-6` |
 | [slot-16.md](slot-16.md) | Пост 16:00, вакансии дня | trig_016Wo8CYmLJd654z3KdfKzgS | `38 15 * * 1,3,5` |
+| [cheatsheet.md](cheatsheet.md) | Шпаргалка недели (вт 16:00, карусель) | trig_01QoK67mRTY7dREhJ9pUxy2M | `38 15 * * 2` |
 | [slot-18.md](slot-18.md) | Пост 18:00, вечерний формат | trig_01TGpj2GTsAb47oFK3oQLJNU | `38 17 * * *` |
 | [weekly.md](weekly.md) | Недельная проверка канала | trig_01CDVedTtJYbA13bwjqLq7ss | `47 11 * * 1` |
 | [insight-reminder.md](insight-reminder.md) | Напоминание о голосе автора | trig_01SWki2RYvJiQVeQ4gVVBgFq | `23 12 * * 2` |

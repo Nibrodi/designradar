@@ -156,6 +156,21 @@ const url='file://'+path.resolve(process.argv[2]);
    ok(await p.evaluate(()=>/Готово/.test(document.querySelector('.cideas').previousElementSibling.textContent)),'cover drawn from idea');
    ok(!(await p.$('#errbar')),'cover ideas no error bar');
    await p.evaluate(()=>document.querySelector('.sheet header .iconbtn')?.click()); await W(800); }
+ { // тяжёлая картинка (PNG больше 1 МиБ) сжимается перед отправкой в Make, пост планируется
+   await p.evaluate(async()=>{ const c=document.createElement('canvas'); c.width=1600; c.height=900; const x=c.getContext('2d'); const d=x.createImageData(1600,900);
+     for(let i=0;i<d.data.length;i++) d.data[i]=(i%4===3)?255:(Math.random()*256)|0; x.putImageData(d,0,0);
+     const blob=await new Promise(r=>c.toBlob(r,'image/png')); window.__bigSize=blob.size;
+     const db=await window.claude.use('db'); await db.collection('posts').doc('big_media').set({title:'Тяжёлая карусель тест', full_text:'Текст поста с тяжёлой картинкой для проверки планирования.\n\n[фото:1]', status:'review', author:'claude', label:'Находка', section:'Находка', kind:'news', layout:'cover', hashtags:[], photos:[], media:[{url:URL.createObjectURL(blob), asset_id:'x1', caption:'', file_id:''}], cover_off:true, created_at:Date.now(), updated_at:Date.now()}); });
+   ok(await p.evaluate(()=>window.__bigSize>1048576),'test picture is over 1 MiB');
+   await p.evaluate(()=>location.hash='review'); await W(500);
+   const n0=await p.evaluate(()=>(window.__calls||[]).length);
+   await p.evaluate(()=>{ const c=[...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('Тяжёлая карусель')); [...c.querySelectorAll('button')].find(b=>b.textContent==='Запланировать').click(); }); await W(300);
+   await p.evaluate(()=>{ [...document.querySelectorAll('.sched button')].find(b=>b.textContent==='Запланировать').click(); }); await W(4000);
+   const bd=await doc('big_media');
+   ok(bd.status==='scheduled'&&bd.outbox&&bd.outbox.body,'heavy picture post scheduled');
+   ok(bd.media&&bd.media[0].file_id,'heavy picture uploaded');
+   ok(await p.evaluate(n0=>(window.__calls||[]).slice(n0).every(c=>JSON.stringify(c.args||{}).length<=1048576),n0),'every connector input under 1 MiB');
+   ok(!(await p.evaluate(()=>document.body.textContent.includes('too large'))),'no too-large error shown'); }
  { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте
   const m=await b.newPage({viewport:{width:375,height:780},isMobile:true,hasTouch:true,colorScheme:'dark'}); m.on('pageerror',e=>errs.push('mobile: '+e.message));
   await m.goto(url); await W(1500);

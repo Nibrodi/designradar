@@ -39,7 +39,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.17.0"; const CHANGES=[{"v": "2.17.0", "date": "01.11.2026", "items": ["Новая вкладка «LinkedIn» (видна только главному редактору): черновики постов для твоего LinkedIn на английском и русском. Текст можно поправить, скопировать один язык или оба сразу, скачать фото (1 операция Make на фото, один раз) и отметить «Опубликовала» со ссылкой или отклонить с причиной — Claude учтёт её в следующих."]}, {"v": "2.16.3", "date": "01.11.2026", "items": ["Тексты: меньше отсылок. Ссылок 1–2 на пост и только там, где без источника не поверят; остальные абзацы — своя мысль редакции. Правило работает в «Переписать с Claude» и других кнопках панели."]}, {"v": "2.16.2", "date": "01.11.2026", "items": ["Каламбуры на обложках рисуются как одобренная обложка «Незамеченный бургер»: пара иконок одной линией (элемент интерфейса и его предмет-двойник), много воздуха, без экранов, заливок и подписей. Она же — пример для Claude."]}];
+const APP_VERSION="2.17.1"; const CHANGES=[{"v": "2.17.1", "date": "05.11.2026", "items": ["Исправлена ошибка «Не удалось запланировать: tool input is too large» у постов с тяжёлыми картинками. Картинка больше ~0,9 МБ теперь пережимается в JPEG прямо перед отправкой в Telegram (до 2560 px по длинной стороне — Telegram больше и не хранит), поэтому разницы в канале не видно. Так же работают «Опубликовать» и обложки."]}, {"v": "2.17.0", "date": "01.11.2026", "items": ["Новая вкладка «LinkedIn» (видна только главному редактору): черновики постов для твоего LinkedIn на английском и русском. Текст можно поправить, скопировать один язык или оба сразу, скачать фото (1 операция Make на фото, один раз) и отметить «Опубликовала» со ссылкой или отклонить с причиной — Claude учтёт её в следующих."]}, {"v": "2.16.3", "date": "01.11.2026", "items": ["Тексты: меньше отсылок. Ссылок 1–2 на пост и только там, где без источника не поверят; остальные абзацы — своя мысль редакции. Правило работает в «Переписать с Claude» и других кнопках панели."]}];
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -139,10 +139,37 @@ async function uploadByUrl(url, key){
   return m[1];
 }
 const isExternal = u => /^https:\/\//.test(u||"") && !/\/_blob\//.test(u||"");
+/* Вход одного вызова коннектора — не больше 1 МиБ вместе с base64. Большую картинку пережимаем в JPEG:
+   Telegram всё равно хранит фото как JPEG не крупнее 2560 px, так что на канале разницы не видно. */
+const TOOL_B64_MAX = 900*1024;
+const b64Of = blob => new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(",")[1]||""); r.onerror=()=>no(r.error); r.readAsDataURL(blob); });
+async function loadPic(blob){
+  if(window.createImageBitmap){ try{ const b=await createImageBitmap(blob); return {img:b, w:b.width, h:b.height, done:()=>b.close&&b.close()}; }catch(_){} }
+  const u=URL.createObjectURL(blob);
+  const img=await new Promise((ok,no)=>{ const im=new Image(); im.onload=()=>ok(im); im.onerror=()=>{ URL.revokeObjectURL(u); no({code:"tool_error",message:"Не получилось открыть картинку — загрузи её заново (PNG, JPEG или WebP)."}); }; im.src=u; });
+  return {img, w:img.naturalWidth, h:img.naturalHeight, done:()=>URL.revokeObjectURL(u)};
+}
+function shrinkCanvas(src, w0, h0, max=TOOL_B64_MAX){
+  let scale=Math.min(1, 2560/Math.max(w0,h0,1));
+  for(let i=0;i<8;i++){
+    const w=Math.max(1,Math.round(w0*scale)), h=Math.max(1,Math.round(h0*scale));
+    const c=document.createElement("canvas"); c.width=w; c.height=h;
+    const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,w,h); x.drawImage(src,0,0,w,h);
+    for(const q of [0.92,0.85,0.78]){ const s=c.toDataURL("image/jpeg",q).split(",")[1]||""; if(s && s.length<=max) return s; }
+    scale*=0.8;
+  }
+  throw {code:"tool_error",message:"Картинка слишком большая даже после сжатия — замени её файлом поменьше."};
+}
+async function fitB64(blob){
+  const b64=await b64Of(blob);
+  if(b64.length<=TOOL_B64_MAX) return b64;
+  const p=await loadPic(blob);
+  try{ return shrinkCanvas(p.img, p.w, p.h); } finally{ p.done(); }
+}
 async function uploadBlobUrl(url, key){
   if(isExternal(url)) return uploadByUrl(url, key);
   const blob=await (await fetch(url)).blob();
-  const b64=await new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(",")[1]); r.onerror=no; r.readAsDataURL(blob); });
+  const b64=await fitB64(blob);
   const res=await mcp.callTool(MAKE, "scenarios_run", {scenarioId:SCN_PHOTO, responsive:true, data:{image_base64:b64, key:String(key).replace(/[^A-Za-z0-9_-]/g,"_")}});
   const m=JSON.stringify(res.payload??res.content??"").match(/photo_file_id\\?"\s*:\s*\\?"([A-Za-z0-9_-]{10,300})/);
   if(!m) throw {code:"tool_error",message:"Make не вернул фото: "+JSON.stringify(res.payload??res.content??"").slice(0,160)};
@@ -152,7 +179,8 @@ async function uploadCover(a){
   const key=coverKey(a);
   if(a.image_file_id && a.cover_key===key) return a.image_file_id;
   const c=drawCover(a); if(!c) throw {code:"tool_error",message:"Не получилось нарисовать обложку."};
-  const b64=c.toDataURL("image/png").split(",")[1];
+  let b64=c.toDataURL("image/png").split(",")[1];
+  if(b64.length>TOOL_B64_MAX) b64=shrinkCanvas(c, c.width, c.height);
   const cp=coverParams(a); cp.topic_id=String(cp.topic_id).replace(/[^A-Za-z0-9_-]/g,"-").slice(0,38);
   const res=await mcp.callTool(MAKE, TOOL_COVER, {...cp, image_base64:b64});
   const sres=JSON.stringify(res.payload??res.content??"");

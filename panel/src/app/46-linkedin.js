@@ -129,7 +129,7 @@ function liCard(x){
   /* шаг 2: фото */
   const ph=liPhotos(x); const out=h("div",{class:"hint li-out"});
   const have=ph.length && ph.every(p=>(x.photo_assets||{})[p.url]);
-  const s2=ph.length?liStep(2,"Скачай фото",!!done.photos, have?"Фото уже в панели — скачиваются без Make.":"1 операция Make на фото и только в первый раз, потом фото хранится в панели.",
+  const s2=ph.length?liStep(2,"Скачай фото",!!done.photos, have?"Фото уже в панели — скачиваются без Make.":"Сайт источника не отдаёт картинки в панель, поэтому пока видны только подписи. «Скачать» забирает фото через Make — 1 операция на фото, один раз; после этого они видны и в превью.",
     h("div",{class:"li-thumbs"}, ...ph.map((p,i)=>{ const t=liImg(x,p,i,"li-ph"); t.title=p.caption||""; return t; })),
     h("div",{class:"li-row"}, h("button",{type:"button",class:"btn",onclick:e=>liDownload(x,e.currentTarget,out)},"Скачать "+(ph.length>1?ph.length+" фото":"фото")), h("a",{class:"btn ghost",href:(ph[0].source_url||x.source_url||ph[0].url),target:"_blank",rel:"noopener noreferrer"},"Страница с фото ↗")), out)
     :liStep(2,"Фото",true,"К этому посту фото нет — LinkedIn покажет только текст.");

@@ -62,10 +62,10 @@ function drawSheet(){
   const upd=()=>{ const n=textLength(d); cnt.textContent=n+" / "+LIMIT; cnt.classList.toggle("over",n>LIMIT); if(pvTab==="preview") drawPreview(); if(typeof drawLint==="function") drawLint(); };
   const drawPreview=()=>{
     const first=plain(String(d.full_text||"").split(/\n/).find(x=>x.trim()&&!/^\[фото/i.test(x.trim()))||"").replace(/^#+\s*/,"");
-    notifEl.replaceChildren(h("div",{class:"nicon","aria-hidden":"true"}), h("div",{class:"ntx"}, h("b",{text:"Дизайн-Радар"}), h("span",{text:plain(d.title)+(first?" "+first:"")})));
+    notifEl.replaceChildren(h("div",{class:"nicon","aria-hidden":"true"},logoEl()), h("div",{class:"ntx"}, h("b",{text:"Дизайн-Радар"}), h("span",{text:plain(d.title)+(first?" "+first:"")})));
     rtEl.textContent=readTime((d.title||"")+" "+(d.full_text||""));
     const tgCls=pvOpt.tg==="auto"?"":" tg-"+pvOpt.tg;
-    pvBody.replaceChildren(h("div",{class:"tgframe "+pvOpt.device+tgCls}, h("div",{class:"tghead"}, h("div",{class:"tgava","aria-hidden":"true"}), h("div",{}, h("b",{text:"Дизайн-Радар"}), h("span",{text:"канал"}))), tgPreview(d)));
+    pvBody.replaceChildren(h("div",{class:"tgframe "+pvOpt.device+tgCls}, h("div",{class:"tghead"}, h("div",{class:"tgava","aria-hidden":"true"},logoEl()), h("div",{}, h("b",{text:"Дизайн-Радар"}), h("span",{text:"канал"}))), tgPreview(d)));
   };
   const panelsBy={};
   const drawPvTabs=()=>{
@@ -255,7 +255,7 @@ function drawSheet(){
   let reelSec=null; if(!SAFE_MODE){ try{ reelSec=reelEditor(d,{ro, changed:()=>{ editing.dirty=true; setSaveState("Рилс изменён"); clearTimeout(sync.as); sync.as=setTimeout(autosave,2500); }}); }catch(e){ console.error(e); showErr("Рилс не загрузился", e); } }
   const covInfo=h("div",{class:"covinfo"});
 
-  const covBox=h("div"); const drawEd=()=>{ covBox.replaceChildren(coverMock(d));
+  const covBox=h("div"); const drawEd=()=>{ covBox.replaceChildren(coverMock(d,{full:true}));
     const c=drawCover(d); if(!isRendered(d)||!c){ covInfo.replaceChildren(); return; }
     const sz=Number(c.dataset.size)||0, ln=(c.dataset.text||"").split("\n").filter(Boolean), manual=/\n/.test(String(d.cover_title||"").trim());
     covInfo.replaceChildren(...[
@@ -392,12 +392,15 @@ function drawSheet(){
   const pvToggle=h("button",{type:"button",class:"btn pvbtn",onclick:()=>{ panes.classList.toggle("showpv"); pvToggle.textContent=panes.classList.contains("showpv")?"Текст":"Превью"; }},"Превью");
   const stName={review:"на согласовании",draft:"черновик",published:"опубликован",scheduled:"в плане",rejected:"отклонён"}[d.status]||"";
   const head=h("header",{}, h("button",{class:"iconbtn",onclick:()=>{ if((editing.dirty||editing.changed) && !ro){ save(true); } else closeEditor(); },"aria-label":"Назад"},"←"),
-    h("div",{class:"t"}, h("b",{text:plain(d.title)||(ro?"Пост":"Новый пост")}), h("span",{text:(ro?"просмотр":"редактирование")+(stName?" · "+stName:"")})), ro?null:saveState, themeBtn(), pvToggle, ro?null:h("button",{type:"button",class:"btn primary hsave",onclick:()=>save(true)},"Сохранить"));
+    h("div",{class:"t"}, h("b",{text:plain(d.title)||(ro?"Пост":"Новый пост")}), h("span",{text:(ro?"просмотр":"редактирование")+(stName?" · "+stName:"")})), ro?null:saveState, pvToggle, ro?null:h("button",{type:"button",class:"btn primary hsave",onclick:()=>save(true)},"Сохранить"));
   const foot=h("footer",{});
   if(!ro){
     foot.append(h("span",{class:"hint who",text:"Автор: "+authorName(d.author)}), h("span",{class:"sp"}));
-    foot.append(h("button",{class:"btn primary",onclick:()=>save(true)},"Сохранить"));
-    if(d.status==="draft") foot.append(h("button",{class:"btn",onclick:async()=>{ const id=editing&&editing.id; await save(false); if(!id) return; await savePost(id,{status:"review"}); closeEditor(); toast("Отправлено на согласование"); }},"На согласование"));
+    /* одно главное действие внизу: если пост можно двигать дальше (на согласование, к публикации, в канал) —
+       оно оранжевое, а «Сохранить» обычная кнопка; если двигать некуда — «Сохранить» главная */
+    const fwd=d.status==="draft" || (S.owner && (d.status==="published"||d.status==="review"));
+    foot.append(h("button",{class:"btn fsave"+(fwd?"":" primary"),onclick:()=>save(true)},"Сохранить"));
+    if(d.status==="draft") foot.append(h("button",{class:"btn accent",onclick:async()=>{ const id=editing&&editing.id; await save(false); if(!id) return; await savePost(id,{status:"review"}); closeEditor(); toast("Отправлено на согласование"); }},"На согласование"));
     if(S.owner && d.status==="published") foot.append(h("button",{class:"btn accent",onclick:async()=>{ const id=editing&&editing.id, dr={...d}; await save(false); if(!id) return; if(editing) closeEditor(); await updateInChannel(id, dr); }},"Сохранить и обновить в канале"));
     if(S.owner && d.status==="review") foot.append(h("button",{class:"btn accent",onclick:async()=>{ const id=editing&&editing.id; await save(false); if(!id) return; if(editing) closeEditor(); S.confirm=id; location.hash="review"; render(); }},"К публикации"));
   }

@@ -11,10 +11,6 @@ function showChanges(){
   ov.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); }); box.querySelector("button")?.focus();
 }
 function drawVersionChip(){
-  const sub=document.querySelector(".brand .sub"); if(!sub) return;
-  let b=document.getElementById("verChip");
-  if(!b){ b=h("button",{type:"button",id:"verChip",class:"verchip",title:"Что нового",onclick:showChanges}); sub.after(b); }
-  const fresh=seenVersion()!==APP_VERSION;
-  b.replaceChildren(...[h("span",{text:"v"+APP_VERSION}), fresh?h("i",{class:"vdot","aria-label":"новое"}):null].filter(Boolean));
+  /* номер версии и точка «новое» — на аватаре в шапке, окно открывается из меню профиля */
+  document.getElementById("verChip")?.remove();
 }
-setTimeout(drawVersionChip,0);

@@ -22,7 +22,7 @@ const url='file://'+path.resolve(process.argv[2]);
  await open('Пять ошибок'); await W(1000);
  await p.evaluate(()=>{ document.querySelectorAll('.card1')[1].open=true; }); await W(200);
  const ins=await p.$$('.card1 >> nth=1 >> input'); await ins[0].fill('Подпись видна, когда поле заполнено?'); await W(1200);
- await p.click('footer .btn.primary'); await W(1500);
+ await p.click('footer .btn.fsave'); await W(1500);
  let d=await doc('cl_20261029_21_formcheck'); ok(d.carousel.points[0].head==='Подпись видна, когда поле заполнено?','carousel text saved'); ok((d.media||[]).filter(m=>m.gen).length===7,'carousel slides uploaded');
  await open('Пять ошибок'); await W(900); await p.click('.layseg button:nth-child(3)'); await W(3000);
  d=await doc('cl_20261029_21_formcheck'); ok(d.layout==='both','layout switch saved');
@@ -52,25 +52,39 @@ const url='file://'+path.resolve(process.argv[2]);
  await p.click('.layseg button:nth-child(2)'); await W(300);
  await p.evaluate(()=>{ [...document.querySelectorAll('.carsec button')].find(b=>b.textContent.includes('Сделать карусель')).click(); }); await W(1500);
  ok((await p.$$('.card1')).length>=5,'carousel generated');
- await p.click('footer .btn.primary'); await W(2000); d=await doc('q1029_18'); ok(!!d.carousel,'new carousel saved');
- { /* LinkedIn */
-  await p.evaluate(async()=>{ const db=await window.claude.use('db'); await db.collection('linkedin').doc('li_t1').set({title:'Шрифт, который читается на бегу',rubric:'Шрифты',text_en:'English text of the post about a typeface.',text_ru:'Русский текст поста про шрифт.',photos:[{url:'https://example.com/a.jpg',caption:'Фото: студия'}],hashtags:['#typography'],status:'ready',created_at:Date.now(),check:'Проверь год релиза'}); });
+ await p.click('footer .btn.fsave'); await W(2000); d=await doc('q1029_18'); ok(!!d.carousel,'new carousel saved');
+ { /* LinkedIn: очередь, превью, шаги */
+  await p.evaluate(async()=>{ const db=await window.claude.use('db'); const now=Date.now();
+    await db.collection('linkedin').doc('li_t1').set({title:'Шрифт, который читается на бегу',rubric:'Шрифты',text_en:'English text of the post about a typeface.\nSecond line.\nThird line.\nFourth line that should be hidden behind see more.',text_ru:'Русский текст поста про шрифт.',photos:[{url:'https://example.com/a.jpg',caption:'Фото: студия'}],hashtags:['#typography'],status:'ready',created_at:now-6*86400000,check:'Проверь год релиза',source_url:'https://example.com/story',source_name:'Example Studio — статья'});
+    await db.collection('linkedin').doc('li_t2').set({title:'Второй черновик в очереди',rubric:'Интерфейс',text_en:'Second draft.',text_ru:'Второй.',photos:[],status:'ready',created_at:now-86400000}); });
   await p.evaluate(()=>location.hash='linkedin'); await W(500);
   ok(await p.$('.licard'),'linkedin card renders'); ok(await p.$('#tabs .tab[data-v="linkedin"]'),'linkedin tab for owner');
+  ok(await p.evaluate(()=>/Шрифт/.test(document.querySelector('.li-studio h3').textContent)),'linkedin oldest draft is current');
+  ok((await p.$$('.li-q .li-qrow')).length===1,'linkedin queue shows the rest');
+  ok(await p.evaluate(()=>/на паузе/.test(document.querySelector('.li-pulse').textContent)),'linkedin pulse explains pause at 2 ready');
+  ok(await p.evaluate(()=>/тема остывает/.test(document.querySelector('.li-age').textContent)),'linkedin stale draft flagged');
+  ok(await p.evaluate(()=>{ const t=document.querySelector('.li-pvt'); return t && t.scrollHeight>t.clientHeight+2; }),'linkedin preview folds after 3 lines');
+  ok(await p.evaluate(()=>/Source: Example Studio — https:\/\/example.com\/story/.test(document.querySelector('.li-cm').textContent)),'linkedin first comment built');
   ok((await p.$eval('.li-text',e=>e.value)).startsWith('English'),'linkedin EN shown');
-  await p.click('.li-lang button[data-l="ru"]'); await W(100); ok((await p.$eval('.li-text',e=>e.value)).startsWith('Русский'),'linkedin RU switch');
-  await p.fill('.li-text','Русский текст, поправленный.'); await p.click('text=Сохранить правки'); await W(300);
+  await p.click('.li-lang button[data-l="ru"]'); await W(150); ok((await p.$eval('.li-text',e=>e.value)).startsWith('Русский'),'linkedin RU switch');
+  ok(await p.evaluate(()=>/Источник: Example Studio/.test(document.querySelector('.li-cm').textContent)),'linkedin RU comment');
+  await p.click('.li-step >> text=Править текст'); await W(150);
+  await p.fill('.li-text','Русский текст, поправленный.'); ok(await p.evaluate(()=>document.querySelector('.li-pvt').textContent==='Русский текст, поправленный.'),'linkedin preview follows edit');
+  await p.click('text=Сохранить правки'); await W(300);
   let L=await p.evaluate(()=>JSON.parse(JSON.stringify(window.__mockdb['linkedin'].get('li_t1'))));
   ok(L.text_ru==='Русский текст, поправленный.'&&L.text_en.startsWith('English')&&L.edited===true,'linkedin edit saved');
-  ok((await p.$$('.li-ph')).length===1,'linkedin photo listed');
-  await p.click('text=Опубликовала в LinkedIn'); await W(200); await p.fill('.licard .confirm input','https://www.linkedin.com/posts/x'); await p.click('.licard .confirm >> text=Готово'); await W(300);
+  ok((await p.$$('.li-thumbs .li-ph')).length===1,'linkedin photo listed');
+  await p.click('text=Скопировать комментарий'); await W(300); ok(await p.evaluate(()=>[...document.querySelectorAll('.li-step')][3].classList.contains('done')),'linkedin step marked done');
+  await p.click('text=Опубликовала в LinkedIn'); await W(200); await p.fill('.licard .confirm input','https://www.linkedin.com/posts/x'); await p.click('.licard .confirm >> text=Готово'); await W(400);
   L=await p.evaluate(()=>JSON.parse(JSON.stringify(window.__mockdb['linkedin'].get('li_t1'))));
-  ok(L.status==='posted'&&L.post_url==='https://www.linkedin.com/posts/x','linkedin mark posted');
+  ok(L.status==='posted'&&L.post_url==='https://www.linkedin.com/posts/x'&&L.posted_lang==='ru','linkedin mark posted');
+  ok(await p.evaluate(()=>/Второй черновик/.test(document.querySelector('.li-studio h3').textContent)),'linkedin next draft becomes current');
+  ok(await p.evaluate(()=>/1/.test(document.querySelectorAll('.li-kpi b')[1].textContent)),'linkedin weekly count');
   ok(!(await p.$('#errbar')),'linkedin no error bar'); }
  await p.evaluate(()=>location.hash='team'); await W(400);
  await p.click('text=+ Пригласить редактора'); await W(200); await p.fill('.invform input >> nth=0','Тест'); await p.click('text=Создать приглашение'); await W(500);
  ok(await p.evaluate(()=>(window.__mockdb['invites']||new Map()).size===1),'invite created');
- await p.click('text=Тестовый вход'); await W(800); ok(await p.$('.ob'),'onboarding opens in test mode');
+ await p.click('#mbar .mbtn.me'); await W(200); await p.click('#mmenu >> text=Тестовый вход'); await W(800); ok(await p.$('.ob'),'onboarding opens in test mode');
  await p.click('footer >> text=Выйти из теста'); await W(500); ok(!(await p.$('.ob')),'exit test mode');
  {
   const md=k=>p.evaluate(([c,i])=>{ const m=window.__mockdb[c]; const v=m&&m.get(i); return v?JSON.parse(JSON.stringify(v)):null; },k);
@@ -145,7 +159,7 @@ const url='file://'+path.resolve(process.argv[2]);
  { // двойное «Сохранить» и закрытие во время сохранения не дают ошибки
    await open('Пять ошибок'); await W(900);
    await p.evaluate(()=>{ const t=document.querySelector('#fText')||document.querySelector('.sheet textarea'); if(t){ t.value+=' '; t.dispatchEvent(new Event('input')); } });
-   await p.evaluate(()=>{ const a=document.querySelector('.sheet header .hsave'), b=document.querySelector('.sheet footer .btn.primary'); a&&a.click(); b&&b.click(); document.querySelector('.sheet header .iconbtn')?.click(); }); await W(1500);
+   await p.evaluate(()=>{ const a=document.querySelector('.sheet header .hsave'), b=document.querySelector('.sheet footer .btn.fsave'); a&&a.click(); b&&b.click(); document.querySelector('.sheet header .iconbtn')?.click(); }); await W(1500);
    ok(!(await p.$('#errbar')),'double save no error bar'); }
  { // обложка: идеи трёх типов → рисунок выбранной
    await open('Пять ошибок'); await W(900);
@@ -174,7 +188,7 @@ const url='file://'+path.resolve(process.argv[2]);
  { // телефон: нет горизонтальной прокрутки, нижняя навигация, нужные кнопки на месте
   const m=await b.newPage({viewport:{width:375,height:780},isMobile:true,hasTouch:true,colorScheme:'dark'}); m.on('pageerror',e=>errs.push('mobile: '+e.message));
   await m.goto(url); await W(1500);
-  for(const t of ['review','plan','drafts','ideas','published','team']){ await m.evaluate(t=>location.hash=t,t); await W(350);
+  for(const t of ['review','plan','drafts','ideas','published','linkedin','team']){ await m.evaluate(t=>location.hash=t,t); await W(350);
     ok(await m.evaluate(()=>document.documentElement.scrollWidth<=375),'mobile '+t+' no horizontal scroll'); }
   ok(await m.evaluate(()=>{ const r=document.getElementById('tabs').getBoundingClientRect(); return r.bottom>=650 && r.bottom<=780 && r.height<100; }),'mobile nav at bottom');
   await m.evaluate(()=>window.scrollTo(0,900)); await W(200);
@@ -187,7 +201,7 @@ const url='file://'+path.resolve(process.argv[2]);
   ok(await m.evaluate(()=>[...document.querySelectorAll('.leadacts .btn.primary')].some(b=>b.offsetParent&&b.textContent.includes('Пригласить'))),'mobile invite button visible');
   ok(await m.evaluate(()=>{ const t=document.querySelector('.brand h1'); return t.scrollWidth<=t.clientWidth+1; }),'mobile title not cut');
   await m.evaluate(()=>location.hash='review'); await W(350); ok(await m.evaluate(()=>{ const b=document.querySelector('#mbar .mbtn.new'); return b && b.getBoundingClientRect().top<60; }),'mobile new post button in header');
-  ok(await m.evaluate(()=>{ const s=document.querySelector('.leadacts select'); return s.getBoundingClientRect().width>=document.querySelector('main').clientWidth-34; }),'author filter full width');
+  ok(await m.evaluate(()=>{ const s=document.querySelector('.leadacts select'); const n=new Set([...window.__mockdb['posts'].values()].map(p=>p.author||'claude')).size; return n>1 ? !!s && s.getBoundingClientRect().width>=document.querySelector('main').clientWidth-34 : !s; }),'author filter: full width, or hidden when one author');
   ok(await m.evaluate(()=>[...document.querySelectorAll('input,textarea,select')].every(e=>parseFloat(getComputedStyle(e).fontSize)>=16)),'mobile inputs 16px');
   await m.evaluate(()=>window.scrollTo(0,0)); await m.click('#mbar .mbtn.me'); await W(200);
   await m.evaluate(()=>[...document.querySelectorAll('#mmenu button')].find(b=>b.textContent.includes('Настроить вид')).click()); await W(200);
@@ -207,7 +221,7 @@ const url='file://'+path.resolve(process.argv[2]);
   await m.evaluate(()=>{ location.hash='review'; window.scrollTo(0,0); }); await W(400);
   await m.evaluate(()=>{ const c=[...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('Токен')); c.querySelector('h3').click(); }); await W(1200);
   ok(await m.evaluate(()=>{ const b=document.querySelector('.sheet header .hsave'); return b && b.getBoundingClientRect().top<80 && b.offsetParent; }),'mobile editor save in header');
-  ok(await m.evaluate(()=>!!document.querySelector('.ed footer.inline .btn.primary')),'mobile editor actions at end of text');
+  ok(await m.evaluate(()=>!!document.querySelector('.ed footer.inline .btn.fsave')),'mobile editor actions at end of text');
   ok(await m.evaluate(()=>![...document.querySelectorAll('.sheet > footer')].length),'no fixed footer on mobile');
   await m.evaluate(()=>document.querySelector('.sheet header .iconbtn').click()); await W(500);
   await m.close(); }

@@ -2,25 +2,47 @@
 const isRendered = a => !a.cover_off && a.cover_render!==false && (a.cover_render===true || (!a.image_file_id && !a.archived && a.kind!=="news" && !mediaOf(a).length));
 const coverParams = a => { const p={topic_id:a.cover_seed?a.id+"~"+a.cover_seed:a.id, title:(a.cover_title||a.title||"Дизайн-Радар").trim(), label:a.label||a.section||"Дизайн-Радар"}; if(a.cover_art) p.art=a.cover_art; return p; };
 const coverKey = a => JSON.stringify(coverParams(a));
-const coverCache = new Map();
+/* Обложка рисуется в 2000×640 (как в канале) — это 5 МБ памяти на холст. В 2.17 каждая карточка
+   держала свою копию полного холста, а кэш хранил ещё 40: на iPhone это сотни мегабайт и пустые обложки.
+   С 2.18: полный холст живёт только для публикации и редактора (последние 3), карточки и превью
+   показывают уменьшенную картинку 1000 px из кэша (blob-ссылка, ~50 КБ). */
+const coverCache = new Map();   /* полный холст: ключ → canvas, последние 3 */
+const coverThumbs = new Map();  /* уменьшенная копия: ключ → blob-ссылка, последние 120 */
+const THUMB_W = 1000;
 function drawCover(a){
   const key=coverKey(a);
-  if(coverCache.has(key)) return coverCache.get(key);
+  if(coverCache.has(key)){ const c=coverCache.get(key); coverCache.delete(key); coverCache.set(key,c); return c; }
   let r; try{ r=renderCoverRGB(coverParams(a)); }catch(e){ if(a.cover_art){ try{ r=renderCoverRGB({...coverParams(a),art:undefined}); }catch(_){ return null; } } else return null; }
   const c=document.createElement("canvas"); c.width=r.W; c.height=r.H;
   const ctx=c.getContext("2d"); const img=ctx.createImageData(r.W,r.H); const d=img.data, src=r.rgb;
   for(let i=0,j=0;i<src.length;i+=3,j+=4){ d[j]=src[i]; d[j+1]=src[i+1]; d[j+2]=src[i+2]; d[j+3]=255; }
   ctx.putImageData(img,0,0); c.dataset.size=r.size; c.dataset.lines=r.lines; c.dataset.text=(r.text_lines||[]).join("\n");
-  if(coverCache.size>40) coverCache.delete(coverCache.keys().next().value);
-  coverCache.set(key,c); return c;
+  coverCache.set(key,c);
+  while(coverCache.size>3){ const k=coverCache.keys().next().value; const old=coverCache.get(k); coverCache.delete(k); if(old){ old.width=0; old.height=0; } }
+  return c;
 }
-function mountCanvas(box, a){
-  const go=()=>{ const c=drawCover(a); if(!c) return; const v=document.createElement("canvas"); v.width=c.width; v.height=c.height; v.getContext("2d").drawImage(c,0,0); v.setAttribute("aria-hidden","true"); box.replaceChildren(v); };
-  if(coverCache.has(coverKey(a))) go(); else (window.requestIdleCallback||setTimeout)(go);
+function thumbCanvas(full){
+  const t=document.createElement("canvas"); t.width=THUMB_W; t.height=Math.round(THUMB_W*full.height/full.width);
+  const x=t.getContext("2d"); x.imageSmoothingEnabled=true; x.imageSmoothingQuality="high"; x.drawImage(full,0,0,t.width,t.height);
+  t.setAttribute("aria-hidden","true"); return t;
 }
-function coverMock(a){
+function rememberThumb(key, t){
+  if(!t.toBlob) return;
+  t.toBlob(b=>{ if(!b) return; coverThumbs.set(key,URL.createObjectURL(b));
+    while(coverThumbs.size>120){ const k=coverThumbs.keys().next().value; const u=coverThumbs.get(k); coverThumbs.delete(k); try{ URL.revokeObjectURL(u); }catch(_){} } },"image/png");
+}
+function mountCanvas(box, a, full){
+  const key=coverKey(a);
+  if(!full && coverThumbs.has(key)){ const im=h("img",{src:coverThumbs.get(key),alt:"","aria-hidden":"true",decoding:"async"}); box.replaceChildren(im); return; }
+  const go=deferred=>{ if(deferred && !full && !box.isConnected) return; /* карточку уже перерисовали — у новой свой запуск */
+    const c=drawCover(a); if(!c) return;
+    if(full){ const v=document.createElement("canvas"); v.width=c.width; v.height=c.height; v.getContext("2d").drawImage(c,0,0); v.setAttribute("aria-hidden","true"); box.replaceChildren(v); return; }
+    const t=thumbCanvas(c); box.replaceChildren(t); rememberThumb(key,t); };
+  if(full || coverCache.has(key)) go(false); else (window.requestIdleCallback||setTimeout)(()=>go(true));
+}
+function coverMock(a, opt){
   const c=h("div",{class:"cover","aria-label":"Обложка: "+(a.cover_title||a.title||"")});
-  if(isRendered(a)){ mountCanvas(c,a); return c; }
+  if(isRendered(a)){ mountCanvas(c,a,!!(opt&&opt.full)); return c; }
   if(!a.cover_off && a.cover_url && /^https:\/\//.test(a.cover_url)){
     /* Фото находки по ссылке: показываем из источника, в Telegram оно загрузится только при публикации */
     c.classList.add("photocover");

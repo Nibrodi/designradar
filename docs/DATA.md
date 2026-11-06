@@ -59,7 +59,7 @@ id: `cl_YYYYMMDD_HH_слово` (Claude), `n…` новости, `r…` разб
 `text`, `angle`, `rubric`, `status` (`new`, `requested` — отдали Claude, `taken`, `done`), `post_id`, `rewrite_of` и `avoid` (тема из отклонённого поста), `dir` (направление из «+»).
 
 ### `linkedin/<id>` — черновики LinkedIn
-id `li_YYYYMMDD`. `title`, `rubric`, `text_en`, `text_ru`, `orig_en`/`orig_ru` (черновик Claude), `edited`, `hashtags[]`, `photos[]` (`url`, `caption`, `source_url`), `photo_assets` (ссылка → файл в хранилище панели после «Скачать фото»), `source_url`, `source_name`, `status` (`ready`, `posted`, `rejected`), `posted_at`, `post_url`, `rejected_at`, `reject_reason`, `check`. Вкладка видна только владелице; правило доступа — корневое (читать view, писать owner).
+id `li_YYYYMMDD`. `title`, `rubric`, `text_en`, `text_ru`, `orig_en`/`orig_ru` (черновик Claude), `edited`, `hashtags[]`, `photos[]` (`url`, `caption`, `source_url`), `photo_assets` (ссылка → файл в хранилище панели после «Скачать фото»), `source_url`, `source_name`, `status` (`ready`, `posted`, `rejected`), `posted_at`, `post_url`, `posted_lang` (`en` или `ru` — какая версия вышла, с 2.18), `rejected_at`, `reject_reason`, `check`. Вкладка видна только владелице; правило доступа — корневое (читать view, писать owner).
 
 ### `editors/<uid>` — анкеты
 Подпись, грейд, сферы, колонка, каналы, `invite_id`. Права здесь **не хранятся**.

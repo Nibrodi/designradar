@@ -39,7 +39,32 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.17.1"; const CHANGES=[{"v": "2.17.1", "date": "05.11.2026", "items": ["Исправлена ошибка «Не удалось запланировать: tool input is too large» у постов с тяжёлыми картинками. Картинка больше ~0,9 МБ теперь пережимается в JPEG прямо перед отправкой в Telegram (до 2560 px по длинной стороне — Telegram больше и не хранит), поэтому разницы в канале не видно. Так же работают «Опубликовать» и обложки."]}, {"v": "2.17.0", "date": "01.11.2026", "items": ["Новая вкладка «LinkedIn» (видна только главному редактору): черновики постов для твоего LinkedIn на английском и русском. Текст можно поправить, скопировать один язык или оба сразу, скачать фото (1 операция Make на фото, один раз) и отметить «Опубликовала» со ссылкой или отклонить с причиной — Claude учтёт её в следующих."]}, {"v": "2.16.3", "date": "01.11.2026", "items": ["Тексты: меньше отсылок. Ссылок 1–2 на пост и только там, где без источника не поверят; остальные абзацы — своя мысль редакции. Правило работает в «Переписать с Claude» и других кнопках панели."]}];
+const APP_VERSION="2.18.0"; const CHANGES=[{"v": "2.18.0", "date": "06.11.2026", "items": ["Логотип «ДР» в шапке, на экране загрузки, в пустых разделах и как аватар канала в превью Telegram. Луч радара в букве «Р» иногда проходит по кругу; нажми на логотип — он сделает быстрый оборот. Если в системе включено «Уменьшить движение», логотип стоит на месте.", "Шапка спокойнее: «Тестовый вход», тема и «Что нового» переехали в меню под аватаром справа — так же, как на телефоне. Точка на аватаре — есть новая версия.", "Кнопки по одной схеме: в карточке одно оранжевое главное действие и одно обычное, остальное — текстом; «Отклонить» и «Снять с плана» стоят справа отдельно, чтобы не нажать случайно. В редакторе оранжевая — кнопка «К публикации» или «На согласование», а «Сохранить» — обычная.", "Карточки ниже на треть: статус показывается только там, где он что-то говорит (время выхода, «проверь канал»), у каруселей нет второй ленты картинок, фильтр «Все авторы» появляется, только когда авторов больше одного.", "LinkedIn переделан: один черновик крупно, слева — превью как в ленте LinkedIn с обрывом «…ещё», справа — пять шагов: скопировать текст, скачать фото, открыть LinkedIn, скопировать первый комментарий со ссылкой, отметить. Сверху — сколько готово, сколько вышло за неделю из двух и когда придёт следующий черновик; остальные черновики — короткой очередью, вышедшие и отклонённые — в истории. Правила ведения LinkedIn — в блоке «Как ведём LinkedIn».", "Панель легче: обложки в карточках хранятся уменьшенными картинками, а не полноразмерными холстами (на iPhone это десятки мегабайт памяти), а пачка обновлений базы перерисовывает экран один раз, а не по разу на каждое."]}, {"v": "2.17.1", "date": "05.11.2026", "items": ["Исправлена ошибка «Не удалось запланировать: tool input is too large» у постов с тяжёлыми картинками. Картинка больше ~0,9 МБ теперь пережимается в JPEG прямо перед отправкой в Telegram (до 2560 px по длинной стороне — Telegram больше и не хранит), поэтому разницы в канале не видно. Так же работают «Опубликовать» и обложки."]}, {"v": "2.17.0", "date": "01.11.2026", "items": ["Новая вкладка «LinkedIn» (видна только главному редактору): черновики постов для твоего LinkedIn на английском и русском. Текст можно поправить, скопировать один язык или оба сразу, скачать фото (1 операция Make на фото, один раз) и отметить «Опубликовала» со ссылкой или отклонить с причиной — Claude учтёт её в следующих."]}];
+/* ---------- логотип «ДР»: чаша «Р» — радар, белый сектор — луч ----------
+   Один рисунок на всю панель: шапка, загрузка, пустые состояния, аватар канала в превью Telegram.
+   Луч вращается вокруг белой точки; рамка-полукольцо (clipPath #drRing в body.html) прячет его слева,
+   поэтому на логотипе он виден только внутри «Р» — как засечка на экране радара. */
+const DR_LOGO_INNER='<rect class="lg-bg" width="206.58" height="206.58"/>'+
+  '<g class="lg-mk"><rect x="85.87" y="53.79" width="19.66" height="95.31"/><rect x="110.23" y="53.79" width="19.66" height="95.31"/>'+
+  '<rect x="35.56" y="122.91" width="19.66" height="26.19"/><rect x="45.82" y="122.91" width="49.88" height="14.49"/>'+
+  '<polygon points="88.53 53.79 67.58 53.79 42.06 127.56 63.02 127.56 88.53 53.79"/>'+
+  '<path d="M129.9,137.4c23.09,0,41.81-18.72,41.81-41.81s-18.72-41.81-41.81-41.81v16.27c14.1,0,25.53,11.43,25.53,25.53s-11.43,25.53-25.53,25.53v16.27Z"/></g>'+
+  '<g clip-path="url(#drRing)"><polygon class="lg-beam" points="129.9 95.59 162.75 62.24 176.5 90.68 129.9 95.59"/></g>'+
+  '<g clip-path="url(#drBowl)"><circle class="lg-ping" cx="129.9" cy="95.59" r="7.26"/></g><circle class="lg-dot" cx="129.9" cy="95.59" r="7.26"/>';
+/* mode: "" — статичный, "live" — редкий проход луча (шапка), "load" — сборка букв и непрерывный луч (загрузка) */
+const logoSvg=(mode="", extra="")=>'<svg class="drlogo '+mode+' '+extra+'" viewBox="0 0 206.58 206.58" aria-hidden="true" focusable="false">'+DR_LOGO_INNER+'</svg>';
+const logoEl=(mode="", extra="")=>{ const s=h("span",{class:"lgwrap"}); s.innerHTML=logoSvg(mode,extra); return s.firstChild; };
+function mountBrandLogo(){
+  const a=document.getElementById("brandLogo"); if(!a || a.firstChild) return;
+  a.innerHTML=logoSvg("live");
+  /* клик по логотипу: луч делает быстрый круг, панель возвращается к согласованию */
+  a.addEventListener("click",()=>{ const s=a.firstChild; s.classList.remove("ping"); void s.getBoundingClientRect(); s.classList.add("ping"); window.scrollTo({top:0}); });
+  a.firstChild.addEventListener("animationend",e=>{ if(e.animationName==="drSpinOnce") a.firstChild.classList.remove("ping"); });
+}
+function loaderEl(text){
+  return h("div",{class:"loader",role:"status","aria-live":"polite"}, logoEl("load"), h("b",{text:text||"Загружаю редакцию…"}));
+}
+mountBrandLogo();
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
   .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
@@ -94,25 +119,47 @@ function textLength(a){ return [a.title,a.full_text,tagsOf(a),a.kind!=="original
 const isRendered = a => !a.cover_off && a.cover_render!==false && (a.cover_render===true || (!a.image_file_id && !a.archived && a.kind!=="news" && !mediaOf(a).length));
 const coverParams = a => { const p={topic_id:a.cover_seed?a.id+"~"+a.cover_seed:a.id, title:(a.cover_title||a.title||"Дизайн-Радар").trim(), label:a.label||a.section||"Дизайн-Радар"}; if(a.cover_art) p.art=a.cover_art; return p; };
 const coverKey = a => JSON.stringify(coverParams(a));
-const coverCache = new Map();
+/* Обложка рисуется в 2000×640 (как в канале) — это 5 МБ памяти на холст. В 2.17 каждая карточка
+   держала свою копию полного холста, а кэш хранил ещё 40: на iPhone это сотни мегабайт и пустые обложки.
+   С 2.18: полный холст живёт только для публикации и редактора (последние 3), карточки и превью
+   показывают уменьшенную картинку 1000 px из кэша (blob-ссылка, ~50 КБ). */
+const coverCache = new Map();   /* полный холст: ключ → canvas, последние 3 */
+const coverThumbs = new Map();  /* уменьшенная копия: ключ → blob-ссылка, последние 120 */
+const THUMB_W = 1000;
 function drawCover(a){
   const key=coverKey(a);
-  if(coverCache.has(key)) return coverCache.get(key);
+  if(coverCache.has(key)){ const c=coverCache.get(key); coverCache.delete(key); coverCache.set(key,c); return c; }
   let r; try{ r=renderCoverRGB(coverParams(a)); }catch(e){ if(a.cover_art){ try{ r=renderCoverRGB({...coverParams(a),art:undefined}); }catch(_){ return null; } } else return null; }
   const c=document.createElement("canvas"); c.width=r.W; c.height=r.H;
   const ctx=c.getContext("2d"); const img=ctx.createImageData(r.W,r.H); const d=img.data, src=r.rgb;
   for(let i=0,j=0;i<src.length;i+=3,j+=4){ d[j]=src[i]; d[j+1]=src[i+1]; d[j+2]=src[i+2]; d[j+3]=255; }
   ctx.putImageData(img,0,0); c.dataset.size=r.size; c.dataset.lines=r.lines; c.dataset.text=(r.text_lines||[]).join("\n");
-  if(coverCache.size>40) coverCache.delete(coverCache.keys().next().value);
-  coverCache.set(key,c); return c;
+  coverCache.set(key,c);
+  while(coverCache.size>3){ const k=coverCache.keys().next().value; const old=coverCache.get(k); coverCache.delete(k); if(old){ old.width=0; old.height=0; } }
+  return c;
 }
-function mountCanvas(box, a){
-  const go=()=>{ const c=drawCover(a); if(!c) return; const v=document.createElement("canvas"); v.width=c.width; v.height=c.height; v.getContext("2d").drawImage(c,0,0); v.setAttribute("aria-hidden","true"); box.replaceChildren(v); };
-  if(coverCache.has(coverKey(a))) go(); else (window.requestIdleCallback||setTimeout)(go);
+function thumbCanvas(full){
+  const t=document.createElement("canvas"); t.width=THUMB_W; t.height=Math.round(THUMB_W*full.height/full.width);
+  const x=t.getContext("2d"); x.imageSmoothingEnabled=true; x.imageSmoothingQuality="high"; x.drawImage(full,0,0,t.width,t.height);
+  t.setAttribute("aria-hidden","true"); return t;
 }
-function coverMock(a){
+function rememberThumb(key, t){
+  if(!t.toBlob) return;
+  t.toBlob(b=>{ if(!b) return; coverThumbs.set(key,URL.createObjectURL(b));
+    while(coverThumbs.size>120){ const k=coverThumbs.keys().next().value; const u=coverThumbs.get(k); coverThumbs.delete(k); try{ URL.revokeObjectURL(u); }catch(_){} } },"image/png");
+}
+function mountCanvas(box, a, full){
+  const key=coverKey(a);
+  if(!full && coverThumbs.has(key)){ const im=h("img",{src:coverThumbs.get(key),alt:"","aria-hidden":"true",decoding:"async"}); box.replaceChildren(im); return; }
+  const go=deferred=>{ if(deferred && !full && !box.isConnected) return; /* карточку уже перерисовали — у новой свой запуск */
+    const c=drawCover(a); if(!c) return;
+    if(full){ const v=document.createElement("canvas"); v.width=c.width; v.height=c.height; v.getContext("2d").drawImage(c,0,0); v.setAttribute("aria-hidden","true"); box.replaceChildren(v); return; }
+    const t=thumbCanvas(c); box.replaceChildren(t); rememberThumb(key,t); };
+  if(full || coverCache.has(key)) go(false); else (window.requestIdleCallback||setTimeout)(()=>go(true));
+}
+function coverMock(a, opt){
   const c=h("div",{class:"cover","aria-label":"Обложка: "+(a.cover_title||a.title||"")});
-  if(isRendered(a)){ mountCanvas(c,a); return c; }
+  if(isRendered(a)){ mountCanvas(c,a,!!(opt&&opt.full)); return c; }
   if(!a.cover_off && a.cover_url && /^https:\/\//.test(a.cover_url)){
     /* Фото находки по ссылке: показываем из источника, в Telegram оно загрузится только при публикации */
     c.classList.add("photocover");
@@ -881,16 +928,48 @@ function reelEditor(d, o){
   drawPhotoBar(); draw(); poll();
   return box;
 }
-/* ---------- LinkedIn: черновики постов на двух языках, Екатерина публикует сама ---------- */
+/* ---------- LinkedIn: личные посты Екатерины ----------
+   Claude готовит черновик (пн, ср, пт утром), Екатерина публикует сама.
+   С 2.18 вкладка устроена как очередь, а не как стена карточек:
+   — сверху пульс: сколько готово, сколько вышло за неделю против цели, когда придёт следующий черновик;
+   — один «текущий» черновик крупно: слева превью как в ленте LinkedIn (с обрывом «…ещё»), справа пять шагов публикации;
+   — остальные готовые — короткими строками «Дальше в очереди»; вышедшие и отклонённые — в истории.
+   Почему так: два черновика пролежали по 4 дня неопубликованными. Узкое место — не текст, а сам выход:
+   скопировать, скачать фото, открыть LinkedIn, не забыть ссылку в первый комментарий. Шаги это и закрывают. */
 const liCol=()=>db.collection("linkedin");
-const LI_UI={};   /* id → {lang, dirty, en, ru, mode} — локальное состояние карточек */
+const LI_UI={};   /* id → {lang, dirty, en, ru, mode, edit} — локальное состояние */
+const LI_GOAL=2;  /* постов в неделю: стабильный ритм важнее объёма */
+const LI_SHARE="https://www.linkedin.com/feed/?shareActive=true";
 const LI_ICO='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8 10.5v6M8 7.5v.01M12 16.5v-6M12 13c0-1.5 1-2.5 2.3-2.5S16.5 11.3 16.5 13v3.5"/></svg>';
-function liWatch(){ try{ liCol().onSnapshot(sn=>{ S.li=sn.docs.map(d=>({id:d.id,...d.data()})); if(S.owner) render(); },()=>{}); }catch(_){} }
+function liWatch(){ try{ liCol().onSnapshot(sn=>{ S.li=sn.docs.map(d=>({id:d.id,...d.data()})); if(S.owner) renderSoon(); },()=>{}); }catch(_){} }
 const liReady=()=>(S.li||[]).filter(x=>x.status==="ready");
 function liSave(id,patch){ return liCol().doc(id).update({...patch, updated_at:Date.now()}).catch(e=>{ toast("Не сохранилось: "+((e&&e.message)||"ошибка базы")); throw e; }); }
+/* какие шаги уже сделаны — только в этом браузере, базе это не нужно */
+const liDone=(id)=>{ try{ return (JSON.parse(localStorage.getItem("dr_li_done")||"{}"))[id]||{}; }catch(_){ return {}; } };
+function liMark(id,step){ try{ const all=JSON.parse(localStorage.getItem("dr_li_done")||"{}"); all[id]={...(all[id]||{}),[step]:Date.now()}; const keys=Object.keys(all); if(keys.length>40) delete all[keys[0]]; localStorage.setItem("dr_li_done",JSON.stringify(all)); }catch(_){} }
+const liPhotos=x=>(x.photos||[]).filter(p=>p&&/^https:\/\//.test(p.url||""));
+const liDays=ms=>ms?Math.floor((Date.now()-ms)/86400000):0;
+/* Следующий черновик: задача запускается в 9:13 по Москве в пн, ср и пт, черновик готов к ~9:30 */
+function liNextDraft(){
+  const MSK=3*3600000; const now=Date.now();
+  for(let i=0;i<8;i++){ const d=new Date(now+MSK+i*86400000); const dow=d.getUTCDay();
+    if(![1,3,5].includes(dow)) continue;
+    const t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),9,30)-MSK;
+    if(t>now) return t; }
+  return 0;
+}
+const liWhen=ms=>{ const d=new Date(ms); const today=new Date(); const tm=new Date(Date.now()+86400000);
+  const same=(a,b)=>a.toDateString()===b.toDateString();
+  const day=same(d,today)?"сегодня":same(d,tm)?"завтра":d.toLocaleDateString("ru-RU",{weekday:"short",day:"numeric",month:"short"});
+  return day+" к "+d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}); };
+function liComment(x,lang){
+  if(!x.source_url) return "";
+  const nm=(x.source_name||"").split(" — ")[0].trim();
+  return (lang==="ru"?"Источник: ":"Source: ")+(nm?nm+" — ":"")+x.source_url;
+}
 
 async function liDownload(x,btn,out){
-  const ph=(x.photos||[]).filter(p=>p&&/^https:\/\//.test(p.url||""));
+  const ph=liPhotos(x);
   if(!ph.length) return;
   if(!downloads){ out.textContent="Скачивание недоступно в этом окне — открой фото по ссылкам и сохрани их оттуда."; return; }
   btn.disabled=true; const pa={...(x.photo_assets||{})}; let n=0;
@@ -902,87 +981,180 @@ async function liDownload(x,btn,out){
       const ext=(blob.type.split("/")[1]||"jpg").replace("jpeg","jpg");
       await downloads.save({filename:"linkedin_"+String(x.id).replace(/[^A-Za-z0-9_-]/g,"_")+"_"+(i+1)+"."+ext, data:blob}); n++;
     }
-    out.textContent=n===1?"Фото сохранено.":"Сохранено фото: "+n+".";
+    out.textContent=n===1?"Фото сохранено.":"Сохранено фото: "+n+"."; liMark(x.id,"photos");
   }catch(e){ out.textContent=(e&&e.code==="not_granted")?"Разреши панели сохранять файлы и запускать Make, потом нажми ещё раз.":"Не получилось: "+((e&&e.message)||"ошибка")+". Открой фото по ссылке и сохрани вручную."; }
-  finally{ btn.disabled=false; if(Object.keys(pa).length!==Object.keys(x.photo_assets||{}).length) liSave(x.id,{photo_assets:pa}).catch(()=>{}); }
+  finally{ btn.disabled=false; if(Object.keys(pa).length!==Object.keys(x.photo_assets||{}).length) liSave(x.id,{photo_assets:pa}).catch(()=>{}); else renderSoon(); }
 }
 
+/* картинка: из хранилища панели, если уже скачана, иначе по ссылке источника; не открылась — плашка с номером */
+function liImg(x,p,i,cls){
+  const pa=x.photo_assets||{}; const a=pa[p.url]; const src=a?(R_LOCAL.get(a)||a):p.url;
+  const box=h("div",{class:cls});
+  const im=h("img",{src,alt:p.caption||("Фото "+(i+1)),loading:"lazy",referrerpolicy:"no-referrer",decoding:"async"});
+  im.addEventListener("error",()=>{ im.replaceWith(h("div",{class:"li-ph0"}, h("b",{text:String(i+1)}), h("span",{text:p.caption||"фото не показывается здесь"}))); });
+  box.append(im); return box;
+}
+
+/* превью как в ленте LinkedIn: шапка автора, текст с обрывом на третьей строке, сетка фото, первый комментарий */
+function liPreview(x,ui){
+  const nm=S.myName||"Екатерина";
+  const text=(ui.lang==="en"?ui.en:ui.ru)||"";
+  const pv=h("div",{class:"li-pv "+(ui.dev||"phone"),"aria-label":"Превью поста в LinkedIn"});
+  const ava=()=>h("div",{class:"li-ava","aria-hidden":"true",text:nm.trim()[0]||"Е"});
+  pv.append(h("div",{class:"li-pvh"}, ava(), h("div",{}, h("b",{text:nm}), h("span",{text:"Product Designer"}), h("small",{text:(ui.lang==="en"?"now":"сейчас")+" · 🌐"}))));
+  const tx=h("div",{class:"li-pvt"+(ui.open?" open":""),text});
+  const more=h("button",{type:"button",class:"li-more-btn",onclick:()=>{ ui.open=!ui.open; renderSoon(); }},ui.open?(ui.lang==="en"?"…show less":"…свернуть"):(ui.lang==="en"?"…see more":"…ещё"));
+  pv.append(tx, more);
+  const ph=liPhotos(x).slice(0,4);
+  if(ph.length){ const g=h("div",{class:"li-pvimg n"+ph.length}); ph.forEach((p,i)=>g.append(liImg(x,p,i,"li-pvi"))); pv.append(g); }
+  pv.append(h("div",{class:"li-pvbar","aria-hidden":"true"}, ...(ui.lang==="en"?["Like","Comment","Repost","Send"]:["Нравится","Комментарий","Репост","Отправить"]).map(t=>h("span",{text:t}))));
+  const cm=liComment(x,ui.lang);
+  if(cm) pv.append(h("div",{class:"li-pvc"}, ava(), h("div",{}, h("b",{text:nm}), h("span",{text:cm}))));
+  /* после отрисовки проверяем, обрезан ли текст: если влезает целиком, «…ещё» не нужна */
+  requestAnimationFrame(()=>{ if(!ui.open && tx.scrollHeight<=tx.clientHeight+2) more.hidden=true; });
+  return pv;
+}
+
+function liStep(n,title,done,desc,...body){
+  return h("li",{class:"li-step"+(done?" done":"")}, h("span",{class:"li-n","aria-hidden":"true",text:done?"✓":String(n)}),
+    h("div",{class:"li-sb"}, h("b",{text:title}, done?h("span",{class:"vh",text:" — сделано"}):null), desc?h("p",{class:"hint",text:desc}):null, ...body));
+}
+
+/* текущий черновик: превью + пять шагов */
 function liCard(x){
-  const ui=LI_UI[x.id]||(LI_UI[x.id]={lang:"en",dirty:false,mode:null});
+  const ui=LI_UI[x.id]||(LI_UI[x.id]={lang:"en",dirty:false,mode:null,edit:false,dev:"phone"});
   if(!ui.dirty){ ui.en=x.text_en||""; ui.ru=x.text_ru||""; }
-  const card=h("article",{class:"card licard"}); const b=h("div",{class:"body"});
-  const st={ready:"готов к публикации",posted:"опубликован",rejected:"отклонён"}[x.status]||x.status;
-  const meta=h("div",{class:"meta"}, h("span",{class:"status "+(x.status==="posted"?"published":x.status==="rejected"?"rejected":"review"),text:st}), x.rubric?h("span",{class:"label",text:x.rubric}):null, h("span",{text:ago(x.posted_at||x.created_at)}));
-  if(x.check && x.status==="ready") meta.append(h("span",{class:"chk",title:x.check},h("span",{class:"chk-i","aria-hidden":"true",text:"!"}),"проверить"));
+  const done=liDone(x.id); const ro=!S.owner;
+  const card=h("article",{class:"card licard li-studio"}); const b=h("div",{class:"body"});
+  const age=liDays(x.created_at);
+  const meta=h("div",{class:"meta"}, x.rubric?h("span",{class:"label",text:x.rubric}):null,
+    h("span",{class:age>=5?"li-age old":"li-age",text:age<1?"готов сегодня":"лежит "+age+" дн."+(age>=5?" — тема остывает":"")}),
+    x.edited?h("span",{text:"есть твои правки"}):null);
   b.append(meta, h("h3",{text:plain(x.title||"Без названия")}));
-  if(x.check && x.status==="ready") b.append(h("div",{class:"hint li-check",text:"Проверить: "+x.check}));
+  if(x.check) b.append(h("details",{class:"li-checkbox"}, h("summary",{}, h("span",{class:"chk-i","aria-hidden":"true",text:"!"}), "Проверь перед публикацией"), h("p",{text:x.check})));
 
-  /* язык и текст */
-  const seg=h("div",{class:"seg li-lang",role:"group","aria-label":"Язык"});
-  const ta=h("textarea",{class:"li-text","data-li":x.id,rows:"12","aria-label":"Текст поста",readonly:S.owner?null:true});
+  /* язык и вид превью */
+  const seg=h("div",{class:"seg li-lang",role:"group","aria-label":"Язык поста"});
+  [["en","English"],["ru","Русский"]].forEach(([l,n])=>seg.append(h("button",{type:"button","data-l":l,"aria-pressed":String(ui.lang===l),onclick:()=>{ ui.lang=l; ta.value=ui.lang==="en"?ui.en:ui.ru; cntUpd(); renderSoon(); }},n)));
+  const dev=h("div",{class:"seg li-dev",role:"group","aria-label":"Где смотреть превью"});
+  [["phone","Телефон"],["desk","Компьютер"]].forEach(([k,n])=>dev.append(h("button",{type:"button","aria-pressed":String(ui.dev===k),onclick:()=>{ ui.dev=k; renderSoon(); }},n)));
+  const left=h("div",{class:"li-left"}, h("div",{class:"li-pvopts"}, seg, dev), liPreview(x,ui),
+    h("p",{class:"hint",text:"Пост с фото LinkedIn обрывает на третьей строке — до «…ещё» должен поместиться крючок. Пустая строка тоже считается строкой."}));
+
+  /* шаг 1: текст */
+  const ta=h("textarea",{class:"li-text","data-li":x.id,rows:"14","aria-label":"Текст поста",readonly:ro?true:null});
+  ta.value=ui.lang==="en"?ui.en:ui.ru;
   const cnt=h("div",{class:"hint li-cnt"});
-  const save=h("button",{type:"button",class:"btn sm primary",style:ui.dirty?null:"display:none",onclick:async()=>{ await liSave(x.id,{text_en:ui.en,text_ru:ui.ru,edited:true}); ui.dirty=false; save.style.display="none"; toast("Сохранено"); }},"Сохранить правки");
-  const fill=()=>{ ta.value=ui.lang==="en"?ui.en:ui.ru; const t=ta.value; const first=t.split("\n").slice(0,3).join(" ").slice(0,210);
-    cnt.textContent=t.length+" / 3000 знаков"+(t.length>3000?" — LinkedIn не примет, сократи":"")+" · до «…ещё» видно: «"+first+(t.length>210?"…":"")+"»";
-    [...seg.children].forEach(c=>c.setAttribute("aria-pressed",String(c.dataset.l===ui.lang))); };
-  [["en","English"],["ru","Русский"]].forEach(([l,n])=>seg.append(h("button",{type:"button","data-l":l,onclick:()=>{ ui.lang=l; fill(); }},n)));
-  ta.addEventListener("input",()=>{ if(ui.lang==="en") ui.en=ta.value; else ui.ru=ta.value; ui.dirty=true; save.style.display=""; fill(); });
-  fill();
-  const both=()=>ui.en.trim()+"\n\n—\n\n"+ui.ru.trim();
-  b.append(seg, ta, cnt, h("div",{class:"acts li-copy"},
-    h("button",{type:"button",class:"btn sm",onclick:()=>copyText(ui.lang==="en"?ui.en:ui.ru)},"Скопировать этот"),
-    h("button",{type:"button",class:"btn sm",onclick:()=>copyText(both())},"Скопировать EN + RU"), save));
-  if((x.hashtags||[]).length) b.append(h("div",{class:"hint",text:(x.hashtags||[]).join(" ")}));
+  const cntUpd=()=>{ const t=ta.value; cnt.textContent=t.length+" / 3000 знаков"+(t.length>3000?" — LinkedIn не примет, сократи":t.length>1800?" — длинновато: лучше 900–1600":""); cnt.classList.toggle("bad",t.length>3000); };
+  cntUpd();
+  const saveEd=h("button",{type:"button",class:"btn sm primary",disabled:!ui.dirty,onclick:async()=>{ await liSave(x.id,{text_en:ui.en,text_ru:ui.ru,edited:true}); ui.dirty=false; ui.edit=false; toast("Сохранено"); renderSoon(); }},"Сохранить правки");
+  ta.addEventListener("input",()=>{ if(ui.lang==="en") ui.en=ta.value; else ui.ru=ta.value; ui.dirty=true; saveEd.disabled=false; cntUpd();
+    const t=card.querySelector(".li-pvt"); if(t) t.textContent=ta.value; });
+  const editBox=h("div",{class:"li-edit",hidden:!ui.edit}, ta, cnt, h("div",{class:"li-row"}, saveEd,
+    h("button",{type:"button",class:"btn sm ghost",onclick:()=>{ ui.dirty=false; ui.edit=false; renderSoon(); }},ui.dirty?"Отменить правки":"Свернуть")));
+  const copyBtn=h("button",{type:"button",class:"btn"+(done.text?"":" accent"),onclick:async()=>{ await copyText(ui.lang==="en"?ui.en:ui.ru); liMark(x.id,"text"); renderSoon(); }},done.text?"Скопировать ещё раз":"Скопировать текст");
+  const s1=liStep(1,"Скопируй текст",!!done.text, ui.lang==="en"?"Английский — основной: по нему тебя находят рекрутеры. Не публикуй два языка в одном посте.":"Русская версия — чтобы проверить смысл или для отдельного поста.",
+    h("div",{class:"li-row"}, copyBtn, ro?null:h("button",{type:"button",class:"btn ghost",onclick:()=>{ ui.edit=!ui.edit; renderSoon(); }},ui.edit?"Свернуть":"Править текст")), editBox);
 
-  /* фото */
-  const ph=(x.photos||[]).filter(p=>p&&/^https:\/\//.test(p.url||""));
-  if(ph.length){
-    const pa=x.photo_assets||{}; const out=h("div",{class:"hint"});
-    const list=h("div",{class:"li-photos"}); ph.forEach((p,i)=>{ const a=pa[p.url];
-      list.append(h("div",{class:"li-ph"}, a?h("img",{src:R_LOCAL.get(a)||a,alt:p.caption||"",loading:"lazy"}):h("div",{class:"li-ph0",text:String(i+1)}),
-        h("div",{class:"li-phc"}, h("span",{text:p.caption||("Фото "+(i+1))}), h("a",{href:p.url,target:"_blank",rel:"noopener noreferrer",class:"srclink"},"открыть ↗")))); });
-    const dl=h("button",{type:"button",class:"btn sm",onclick:e=>liDownload(x,e.currentTarget,out)},"Скачать фото"+(ph.length>1?" ("+ph.length+")":""));
-    b.append(h("div",{class:"li-sec",text:"Фото"}), list, h("div",{class:"acts"}, dl), out,
-      h("div",{class:"hint",text:"Скачивание забирает фото через Make: 1 операция на фото, один раз — потом оно хранится в панели."}));
-  }
-  if(x.source_url&&/^https:\/\//.test(x.source_url)) b.append(h("div",{class:"hint"},"Источник: ",h("a",{href:x.source_url,target:"_blank",rel:"noopener noreferrer",class:"srclink"},x.source_name||"страница ↗")));
+  /* шаг 2: фото */
+  const ph=liPhotos(x); const out=h("div",{class:"hint li-out"});
+  const have=ph.length && ph.every(p=>(x.photo_assets||{})[p.url]);
+  const s2=ph.length?liStep(2,"Скачай фото",!!done.photos, have?"Фото уже в панели — скачиваются без Make.":"1 операция Make на фото и только в первый раз, потом фото хранится в панели.",
+    h("div",{class:"li-thumbs"}, ...ph.map((p,i)=>{ const t=liImg(x,p,i,"li-ph"); t.title=p.caption||""; return t; })),
+    h("div",{class:"li-row"}, h("button",{type:"button",class:"btn",onclick:e=>liDownload(x,e.currentTarget,out)},"Скачать "+(ph.length>1?ph.length+" фото":"фото")), h("a",{class:"btn ghost",href:(ph[0].source_url||x.source_url||ph[0].url),target:"_blank",rel:"noopener noreferrer"},"Страница с фото ↗")), out)
+    :liStep(2,"Фото",true,"К этому посту фото нет — LinkedIn покажет только текст.");
 
-  /* действия */
-  if(S.owner){
-    const acts=h("div",{class:"cacts"}); const main=h("div",{class:"amain"}), sub=h("div",{class:"asub"});
-    if(ui.mode==="posted"){
-      const inp=h("input",{type:"url",placeholder:"Ссылка на пост в LinkedIn (необязательно)","aria-label":"Ссылка на пост"});
-      acts.append(h("div",{class:"confirm"}, inp, h("div",{class:"amain"},
-        h("button",{class:"btn accent",onclick:async()=>{ const u=inp.value.trim(); await liSave(x.id,{status:"posted",posted_at:Date.now(),...(/^https:\/\//.test(u)?{post_url:u}:{}),...(ui.dirty?{text_en:ui.en,text_ru:ui.ru,edited:true}:{})}); ui.mode=null; ui.dirty=false; toast("Отмечено как опубликованное"); }},"Готово"),
-        h("button",{class:"btn",onclick:()=>{ ui.mode=null; render(); }},"Отмена"))));
-    } else if(ui.mode==="reject"){
-      const inp=h("input",{type:"text",placeholder:"Почему не подходит — Claude учтёт в следующих","aria-label":"Причина"});
-      acts.append(h("div",{class:"confirm"}, inp, h("div",{class:"amain"},
-        h("button",{class:"btn danger",onclick:async()=>{ await liSave(x.id,{status:"rejected",rejected_at:Date.now(),reject_reason:inp.value.trim()}); ui.mode=null; toast("Отклонён"); }},"Отклонить"),
-        h("button",{class:"btn",onclick:()=>{ ui.mode=null; render(); }},"Отмена"))));
-    } else if(x.status==="ready"){
-      main.append(h("button",{class:"btn accent",onclick:()=>{ ui.mode="posted"; render(); }},"Опубликовала в LinkedIn"));
-      sub.append(h("button",{type:"button",class:"btn danger",onclick:()=>{ ui.mode="reject"; render(); }},"Отклонить"));
-    } else {
-      if(x.post_url) main.append(h("a",{class:"btn",href:x.post_url,target:"_blank",rel:"noopener noreferrer"},"Открыть в LinkedIn ↗"));
-      if(x.reject_reason) b.append(h("div",{class:"hint",text:"Причина: "+x.reject_reason}));
-      sub.append(h("button",{type:"button",class:"btn",onclick:()=>liSave(x.id,{status:"ready"})},"Вернуть в готовые"));
-    }
-    if(main.childNodes.length||sub.childNodes.length) acts.append(main,sub);
-    b.append(acts);
+  /* шаг 3: LinkedIn */
+  const s3=liStep(3,"Опубликуй в LinkedIn",!!done.open,"Вставь текст, добавь фото. Лучше ср–пт с 16 до 19 по Москве — вечер рабочего дня в Европе и на Кавказе.",
+    h("div",{class:"li-row"}, h("a",{class:"btn",href:LI_SHARE,target:"_blank",rel:"noopener noreferrer",onclick:()=>{ liMark(x.id,"open"); setTimeout(renderSoon,300); }},"Открыть LinkedIn ↗")));
+
+  /* шаг 4: первый комментарий */
+  const cm=liComment(x,ui.lang);
+  const s4=cm?liStep(4,"Первый комментарий со ссылкой",!!done.comment,"Сразу после публикации: ссылка в тексте поста режет охват, в комментарии — нет.",
+    h("div",{class:"li-cm",text:cm}),
+    h("div",{class:"li-row"}, h("button",{type:"button",class:"btn",onclick:async()=>{ await copyText(cm); liMark(x.id,"comment"); renderSoon(); }},"Скопировать комментарий")))
+    :liStep(4,"Первый комментарий",true,"У этого поста нет ссылки на источник.");
+
+  /* шаг 5: отметить */
+  let fin;
+  if(ui.mode==="posted"){
+    const inp=h("input",{type:"url",placeholder:"Ссылка на пост в LinkedIn (необязательно)","aria-label":"Ссылка на пост"});
+    fin=h("div",{class:"confirm"}, inp, h("div",{class:"amain"},
+      h("button",{class:"btn accent",onclick:async()=>{ const u=inp.value.trim(); await liSave(x.id,{status:"posted",posted_at:Date.now(),posted_lang:ui.lang,...(/^https:\/\//.test(u)?{post_url:u}:{}),...(ui.dirty?{text_en:ui.en,text_ru:ui.ru,edited:true}:{})}); ui.mode=null; ui.dirty=false; S.liCur=null; toast("Отмечено. Теперь ответь на первые комментарии в течение часа"); }},"Готово"),
+      h("button",{class:"btn",onclick:()=>{ ui.mode=null; renderSoon(); }},"Отмена")));
+  } else if(ui.mode==="reject"){
+    const inp=h("input",{type:"text",placeholder:"Почему не подходит — Claude учтёт в следующих","aria-label":"Причина"});
+    fin=h("div",{class:"confirm"}, inp, h("div",{class:"amain"},
+      h("button",{class:"btn danger-fill",onclick:async()=>{ await liSave(x.id,{status:"rejected",rejected_at:Date.now(),reject_reason:inp.value.trim()}); ui.mode=null; S.liCur=null; toast("Отклонён. Новый черновик придёт по расписанию"); }},"Отклонить"),
+      h("button",{class:"btn",onclick:()=>{ ui.mode=null; renderSoon(); }},"Отмена")));
+  } else {
+    fin=h("div",{class:"cacts"}, h("div",{class:"amain one"}, h("button",{class:"btn accent",onclick:()=>{ ui.mode="posted"; renderSoon(); }},"Опубликовала в LinkedIn")),
+      h("div",{class:"asub one"}, h("button",{type:"button",class:"btn danger end",onclick:()=>{ ui.mode="reject"; renderSoon(); }},"Отклонить черновик")));
   }
+  const s5=liStep(5,"Отметь здесь",false,"Ссылка на пост поможет Claude видеть, что выходит. Потом ответь на комментарии в первый час — это главный сигнал для ленты.", fin);
+
+  const steps=h("ol",{class:"li-steps","aria-label":"Шаги публикации"}, s1, s2, s3, s4, ro?null:s5);
+  b.append(h("div",{class:"li-grid"}, left, h("div",{class:"li-right"}, steps)));
   card.append(b); return card;
+}
+
+function liRow(x, kind){
+  const when=kind==="posted"?x.posted_at:kind==="rejected"?x.rejected_at:x.created_at;
+  const row=h("div",{class:"li-qrow"},
+    h("div",{class:"li-qm"}, h("b",{text:plain(x.title||"Без названия")}),
+      h("span",{class:"hint"}, [x.rubric, kind==="ready"?(liDays(x.created_at)<1?"готов сегодня":"лежит "+liDays(x.created_at)+" дн."):ago(when), kind==="rejected"&&x.reject_reason?("причина: "+x.reject_reason):null].filter(Boolean).join(" · "))));
+  const acts=h("div",{class:"li-qa"});
+  if(kind==="ready") acts.append(h("button",{type:"button",class:"btn sm",onclick:()=>{ S.liCur=x.id; renderSoon(); window.scrollTo({top:0,behavior:"smooth"}); }},"Взять сейчас"));
+  if(kind==="posted" && x.post_url) acts.append(h("a",{class:"btn sm",href:x.post_url,target:"_blank",rel:"noopener noreferrer"},"Открыть ↗"));
+  if(kind!=="ready" && S.owner) acts.append(h("button",{type:"button",class:"btn sm ghost",onclick:()=>liSave(x.id,{status:"ready"})},"Вернуть в готовые"));
+  row.append(acts); return row;
+}
+
+function liGuide(){
+  const d=h("details",{class:"li-guide"});
+  try{ d.open=localStorage.getItem("dr_li_guide")==="1"; }catch(_){}
+  d.addEventListener("toggle",()=>{ try{ localStorage.setItem("dr_li_guide",d.open?"1":"0"); }catch(_){} });
+  const rules=[
+    ["Сначала профиль","Заголовок на английском: роль и две области — например, финтех и дизайн-системы. В «Избранное» — кейс с Behance. «Открыта к работе» — в режиме «только рекрутерам»."],
+    ["Ритм "+LI_GOAL+" поста в неделю","Ровный ритм работает лучше, чем пять постов за неделю и месяц тишины. Время — ср–пт, 16–19 по Москве."],
+    ["Крючок до «…ещё»","Первые три строки решают, откроют ли пост. Превью слева обрывает текст там же, где LinkedIn."],
+    ["Ссылка — в первом комментарии","Сразу после публикации. Текст комментария готов в шаге 4."],
+    ["Первый час — на комментарии","Отвечай всем, кто написал. За неделю оставь 5–10 содержательных комментариев у дизайнеров и нанимающих лидов из компаний, куда хочешь: это приводит людей в профиль быстрее своих постов."],
+    ["Раз в две недели — своя работа","Чужие разборы показывают вкус, а рекрутер ищет твой опыт: кейс CRM редакции, тренинги для коллег, дизайн-система. Такой пост можно попросить у Claude в чате."]
+  ];
+  d.append(h("summary",{}, h("b",{text:"Как ведём LinkedIn"}), h("span",{class:"hint",text:rules.length+" правил"})),
+    h("ol",{class:"li-rules"}, ...rules.map(([t,p])=>h("li",{}, h("b",{text:t}), h("span",{text:p})))));
+  return d;
 }
 
 function renderLinkedIn(){
   const m=$("#main");
-  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:"LinkedIn"}), h("p",{text:"Черновики постов для твоего LinkedIn: разборы, шрифты, брендинг, интерфейсы, паттерны и исследования. Claude готовит их в понедельник, среду и пятницу к 9:30 на английском и русском. Скопируй текст, скачай фото и опубликуй сама, потом отметь здесь."}))));
-  const all=(S.li||[]).slice().sort((a,b)=>(b.created_at||0)-(a.created_at||0));
-  const ready=all.filter(x=>x.status==="ready"), done=all.filter(x=>x.status==="posted"), rej=all.filter(x=>x.status==="rejected");
-  if(!ready.length) m.append(h("div",{class:"empty"},h("b",{text:"Готовых черновиков нет"}),h("span",{text:"Следующие появятся в ближайший понедельник, среду или пятницу утром."})));
-  else { const f=h("div",{class:"feed"}); ready.forEach(x=>f.append(liCard(x))); m.append(f); }
-  const group=(name,arr)=>{ if(!arr.length) return; const f=h("div",{class:"feed"}); arr.slice(0,30).forEach(x=>f.append(liCard(x))); m.append(h("details",{class:"li-more"},h("summary",{text:name+" · "+arr.length}),f)); };
-  group("Опубликованы",done); group("Отклонены",rej);
+  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:"LinkedIn"}), h("p",{text:"Твои посты для LinkedIn. Claude готовит черновик в понедельник, среду и пятницу утром — ты публикуешь сама за пять шагов."}))));
+  const all=(S.li||[]).slice();
+  const ready=all.filter(x=>x.status==="ready").sort((a,b)=>(a.created_at||0)-(b.created_at||0));
+  const done=all.filter(x=>x.status==="posted").sort((a,b)=>(b.posted_at||0)-(a.posted_at||0));
+  const rej=all.filter(x=>x.status==="rejected").sort((a,b)=>(b.rejected_at||0)-(a.rejected_at||0));
+  const week=done.filter(x=>x.posted_at && Date.now()-x.posted_at<7*86400000).length;
+  const next=liNextDraft();
+  /* пульс */
+  const dots=h("span",{class:"li-dots","aria-hidden":"true"}); for(let i=0;i<LI_GOAL;i++) dots.append(h("i",{class:i<week?"on":""}));
+  const pulse=h("div",{class:"li-pulse"},
+    h("div",{class:"li-kpi"}, h("small",{text:"Готово к выходу"}), h("b",{text:String(ready.length)})),
+    h("div",{class:"li-kpi"}, h("small",{text:"Вышло за 7 дней"}), h("b",{}, String(week), h("span",{class:"of",text:" из "+LI_GOAL}), dots)),
+    h("div",{class:"li-kpi"}, h("small",{text:"Последний пост"}), h("b",{text:done[0]?(done[0].posted_at?ago(done[0].posted_at):"давно"):"ещё не было"})),
+    h("div",{class:"li-kpi"+(ready.length>=2?" warn":"")}, h("small",{text:"Следующий черновик"}), h("b",{text:ready.length>=2?"на паузе":(next?liWhen(next):"—")}),
+      ready.length>=2?h("span",{class:"hint",text:"Пока лежат 2 готовых, новые не приходят — опубликуй или отклони один."}):null));
+  m.append(pulse, liGuide());
+  if(!ready.length){
+    m.append(h("div",{class:"empty"}, logoEl("mono live"), h("b",{text:"Готовых черновиков нет"}), h("span",{text:next?"Следующий придёт "+liWhen(next)+".":"Следующий придёт в ближайший понедельник, среду или пятницу."})));
+  } else {
+    const cur=ready.find(x=>x.id===S.liCur)||ready[0];
+    m.append(h("h3",{class:"dayh",text:"Сейчас публикуем"}), liCard(cur));
+    const rest=ready.filter(x=>x!==cur);
+    if(rest.length) m.append(h("h3",{class:"dayh",text:"Дальше в очереди · "+rest.length}), h("div",{class:"li-q"}, ...rest.map(x=>liRow(x,"ready"))));
+  }
+  const group=(name,arr,kind)=>{ if(!arr.length) return; m.append(h("details",{class:"li-hist"}, h("summary",{text:name+" · "+arr.length}), h("div",{class:"li-q"}, ...arr.slice(0,40).map(x=>liRow(x,kind))))); };
+  group("Опубликовано",done,"posted"); group("Отклонено",rej,"rejected");
 }
 /* ---------- Telegram-style preview ---------- */
 function tgPreview(a){
@@ -1018,7 +1190,7 @@ const authorSubs={};
 function watchAuthors(){
   const ids=new Set(Object.keys(S.edRaw||{})); if(S.realMe) ids.add(S.realMe); if(S.realOwner) ids.add(TEST_ID);
   for(const uid of ids){ if(authorSubs[uid]) continue;
-    authorSubs[uid]=authorCol(uid).onSnapshot(snap=>{ S.authorPosts=S.authorPosts||{}; S.authorPosts[uid]=snap.docs.map(d=>({id:d.id,...d.data(),_base:"byauthor/"+uid+"/posts"})); mergePosts(); render(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{}); }
+    authorSubs[uid]=authorCol(uid).onSnapshot(snap=>{ S.authorPosts=S.authorPosts||{}; S.authorPosts[uid]=snap.docs.map(d=>({id:d.id,...d.data(),_base:"byauthor/"+uid+"/posts"})); mergePosts(); renderSoon(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{}); }
 }
 function mergeEditors(){ S.editors={}; const ids=new Set([...Object.keys(S.edRaw||{}),...Object.keys(S.roles||{})]); for(const id of ids){ const r=(S.roles||{})[id]||{}; S.editors[id]={...((S.edRaw||{})[id]||{}), status:r.status||"", can_publish:!!r.can_publish}; } }
 const setRole=(id,patch)=>db.doc("roles/"+id).set({...((S.roles||{})[id]||{}), ...patch, updated_at:Date.now(), by:S.realMe||""});
@@ -1268,14 +1440,19 @@ function renderTabs(){
 function postCard(a){
   const busy=!!S.busy[a.id], err=S.errors[a.id];
   const card=h("article",{class:"card"});
-  card.append(coverMock(a,true));
+  const cov=coverMock(a,true); card.append(cov);
   const b=h("div",{class:"body"});
   const med=mediaOf(a);
-  const st={scheduled:"выйдет "+whenText(a.scheduled_at),review:"на согласовании",draft:"черновик",published:"опубликован",rejected:"отклонён",queued:"выходит в канал…",publishing:"публикуется…",publish_unknown:"проверь канал"}[a.status]||a.status;
-  b.append(h("div",{class:"meta"}, h("span",{class:"status "+a.status,text:st}), h("span",{text:authorName(a.author)}), h("span",{text:ago(a.published_at||a.updated_at||a.created_at)})));
+  const st={review:"на согласовании",draft:"черновик",published:"опубликован",rejected:"отклонён",queued:"выходит в канал…",publishing:"публикуется…",publish_unknown:"проверь канал"}[a.status]||a.status;
+  /* статус показываем, только если он отличается от раздела: в «На согласовании» и так всё на согласовании */
+  const natural={review:"review",drafts:"draft",published:"published",plan:"scheduled"}[S.view];
+  const stEl=a.status==="scheduled"?h("span",{class:"when",text:"выйдет "+whenText(a.scheduled_at)}):(a.status!==natural?h("span",{class:"status "+a.status,text:st}):null);
+  const multi=new Set(S.posts.map(p=>p.author||"claude")).size>1;
+  b.append(h("div",{class:"meta"}, stEl, h("span",{class:"lbl2",text:a.label||a.section||""}), multi?h("span",{text:authorName(a.author)}):null, h("span",{text:ago(a.published_at||a.updated_at||a.created_at)})));
   b.append(h("h3",{text:plain(a.title)}));
   b.append(h("p",{class:"excerpt",text:plain(a.full_text).slice(0,280)}));
-  if(med.length){ const st=h("div",{class:"strip",style:"padding:0"}); const pa=a.photo_assets||{}; let bad=0; med.slice(0,10).forEach((m,i)=>{ const im=h("img",{src:pa[m.url]||m.url,alt:"",loading:"lazy",referrerpolicy:"no-referrer"}); im.addEventListener("error",()=>{ im.remove(); bad++; if(bad>=Math.min(10,med.length)) st.replaceWith(h("div",{class:"hint",text:"Фото с сайта источника здесь не показываются — они загрузятся в Telegram при публикации."})); }); st.append(im); }); b.append(h("div",{class:"meta",text:(med.length>1?"Карусель · ":"Картинка · ")+med.length+" шт."}), st); }
+  if(med.length && cov.classList.contains("mcover")){ b.querySelector(".meta").append(h("span",{text:(med.length>1?"карусель · ":"картинка · ")+med.length})); }
+  else if(med.length){ const st=h("div",{class:"strip",style:"padding:0"}); const pa=a.photo_assets||{}; let bad=0; med.slice(0,10).forEach((m,i)=>{ const im=h("img",{src:pa[m.url]||m.url,alt:"",loading:"lazy",referrerpolicy:"no-referrer"}); im.addEventListener("error",()=>{ im.remove(); bad++; if(bad>=Math.min(10,med.length)) st.replaceWith(h("div",{class:"hint",text:"Фото с сайта источника здесь не показываются — они загрузятся в Telegram при публикации."})); }); st.append(im); }); b.append(h("div",{class:"meta",text:(med.length>1?"Карусель · ":"Картинка · ")+med.length+" шт."}), st); }
   if(a.notes_open>0) b.querySelector(".meta")?.append(h("span",{class:"chk notes",title:"Открытые заметки к посту"},"💬 "+a.notes_open));
   if(a.check && a.status!=="published") b.querySelector(".meta")?.append(h("span",{class:"chk",title:"Есть что проверить руками — подробности в посте"},h("span",{class:"chk-i","aria-hidden":"true",text:"!"}),"проверить"));
   if(err) b.append(h("div",{class:"notice err",text:err}));
@@ -1290,7 +1467,7 @@ function postCard(a){
     main.append(h("button",{class:"btn accent",onclick:()=>savePost(a.id,{status:"published",published_at:Date.now()})},"Пост вышел"),
                 h("button",{class:"btn",onclick:()=>{S.errors[a.id]="";savePost(a.id,{status:"review"});}},"Не вышел"));
   } else if(a.status==="published"){
-    if(a.published_url) main.append(h("a",{class:"btn",href:a.published_url,target:"_blank",rel:"noopener"},"Открыть в канале ↗"));
+    if(a.published_url) main.append(h("a",{class:"btn",href:a.published_url,target:"_blank",rel:"noopener"},"В канале ↗"));
     main.append(h("button",{class:"btn",onclick:()=>openEditor(a.id)},S.owner?"Исправить":"Посмотреть"));
   } else if(S.sched===a.id){
     acts.append(schedPicker(a));
@@ -1300,7 +1477,7 @@ function postCard(a){
     else if(canPub(a)) main.append(h("button",{class:"btn accent",disabled:busy,onclick:()=>{S.sched=a.id;render();}},"Перенести"));
     if(a.needs_prepare && S.owner) b.append(h("div",{class:"notice"},"Пост редактора: при открытии панели обложка и картинки уже готовятся к выходу."));
     sub.append(link("Редактировать",()=>openEditor(a.id)));
-    if(S.owner||canPub(a)) sub.append(link("Снять с плана",()=>savePost(a.id,{status:"review"}).then(()=>{toast("Снято с плана, пост на согласовании");armDispatcher();}),"danger"));
+    if(S.owner||canPub(a)) sub.append(link("Снять с плана",()=>savePost(a.id,{status:"review"}).then(()=>{toast("Снято с плана, пост на согласовании");armDispatcher();}),"danger end"));
   } else if(S.confirm===a.id){
     acts.append(h("div",{class:"confirm"}, h("p",{},S.owner?"Пост сразу появится в ":"Пост выйдет в течение часа в ", h("b",{text:CHANNEL}), ". Опубликовать?"),
       h("div",{class:"amain"}, h("button",{class:"btn accent",disabled:busy,onclick:()=>S.owner?publish(a):scheduleAt(a,Date.now())},"Да, опубликовать"), h("button",{class:"btn",onclick:()=>{S.confirm=null;render();}},"Отмена"))));
@@ -1314,7 +1491,7 @@ function postCard(a){
     }
     if(!S.owner && canPub(a) && a.status==="draft") sub.append(link("На согласование",()=>savePost(a.id,{status:"review"}).then(()=>toast("Отправлено на согласование"))));
     if(a.status==="review" && mayEdit(a)) sub.append(link("В черновики",()=>savePost(a.id,{status:"draft"}).then(()=>toast("Перенесено в черновики"))));
-    if(S.owner && a.status!=="published") sub.append(link("Отклонить",()=>openReject(a),"danger"));
+    if(S.owner && a.status!=="published") sub.append(link("Отклонить",()=>openReject(a),"danger end"));
   }
   if(main.childNodes.length===1) main.classList.add("one");
   if(sub.childNodes.length===1) sub.classList.add("one");
@@ -1336,14 +1513,14 @@ function emptyState(v){
     drafts:["Черновиков нет","Начни новый пост или возьми идею из раздела «Идеи»."],
     published:["Здесь будут вышедшие посты","После публикации пост переезжает сюда со ссылкой на канал."]
   }[v];
-  return h("div",{class:"empty"}, h("b",{text:t[0]}), h("span",{text:t[1]}), S.canWrite?h("button",{class:"btn primary",onclick:newPost},"Новый пост"):null);
+  return h("div",{class:"empty"}, logoEl("mono live"), h("b",{text:t[0]}), h("span",{text:t[1]}), S.canWrite&&v!=="plan"?h("button",{class:"btn primary",onclick:()=>openNewPost()},"+ Новый пост"):null);
 }
 function renderFeed(v){
   const titles={plan:["План публикаций","Запланированные посты по времени выхода. Они выйдут сами, даже если панель закрыта."],review:["На согласовании","Посты, которые ждут твоего решения. Публикуй сразу или запланируй время выхода."],drafts:["Черновики","Посты в работе. Когда текст готов, отправь его на согласование."],published:["Опубликовано","Последние посты, которые вышли в канале."]}[v];
   const m=$("#main");
-  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:titles[0]}), h("p",{text:titles[1]})), h("div",{class:"leadacts"}, authorSelect(), S.canWrite?h("button",{class:"btn primary newpost",onclick:()=>openNewPost()},"+ Новый пост"):null)));
+  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:titles[0]}), h("p",{text:titles[1]})), h("div",{class:"leadacts"}, showAuthorFilter()?authorSelect():null, S.canWrite?h("button",{class:"btn primary newpost",onclick:()=>openNewPost()},"+ Новый пост"):null)));
   const list=byView(v);
-  if(!S.ready){ m.append(h("div",{class:"empty"},h("b",{text:"Загружаю посты…"}))); return; }
+  if(!S.ready){ m.append(loaderEl("Загружаю посты…")); return; }
   if(!list.length){ m.append(emptyState(v)); return; }
   if(v==="plan"){ let day=""; let f=null; list.forEach(a=>{ const d=dayText(a.scheduled_at); if(d!==day){ day=d; m.append(h("h3",{class:"dayh",text:d})); f=h("div",{class:"feed"}); m.append(f); } f.append(postCard(a)); }); return; }
   const f=h("div",{class:"feed"}); list.slice(0,v==="published"?40:200).forEach(a=>f.append(postCard(a))); m.append(f);
@@ -1373,7 +1550,7 @@ function renderIdeas(){
     m.append(h("div",{class:"ideabox"}, h("div",{class:"r"}, inp, h("button",{class:"btn primary",onclick:add},"Сохранить идею"), genBtn), out));
   }
   const list=S.ideas.filter(i=>i.status!=="done").sort((a,b)=>(b.created_at||0)-(a.created_at||0));
-  if(!list.length){ m.append(h("div",{class:"empty"},h("b",{text:"Идей пока нет"}),h("span",{text:"Запиши тему одной строкой или попроси Claude предложить пять."}))); return; }
+  if(!list.length){ m.append(h("div",{class:"empty"},logoEl("mono live"),h("b",{text:"Идей пока нет"}),h("span",{text:"Запиши тему одной строкой или попроси Claude предложить пять."}))); return; }
   const f=h("div",{class:"feed"});
   for(const it of list){
     const st={new:null,requested:"отдано редакции",taken:"в работе"}[it.status];
@@ -1383,7 +1560,7 @@ function renderIdeas(){
       S.canWrite?h("div",{class:"acts"},
         it.status!=="requested"?h("button",{class:"btn sm primary",onclick:()=>ideasCol().doc(it.id).update({status:"requested",requested_by:S.me||"",requested_at:Date.now()}).then(()=>toast("Редакция напишет пост и пришлёт на согласование"))},"Отдать редакции"):null,
         h("button",{class:"btn sm",onclick:()=>newPost({title:it.text, idea:it.id})},"Написать самому"),
-        h("button",{class:"btn sm ghost danger",onclick:()=>ideasCol().doc(it.id).delete()},"Удалить")):null));
+        h("button",{class:"btn sm ghost danger end",onclick:()=>ideasCol().doc(it.id).delete()},"Удалить")):null));
   }
   m.append(f);
 }
@@ -1410,7 +1587,13 @@ function renderTeam(){
   }
   m.append(g);
 }
+/* Подписки на базу (посты, идеи, роли, анкеты, настройки, приглашения, папки авторов) срабатывают пачкой:
+   при загрузке это 8–12 событий подряд. renderSoon склеивает их в одну перерисовку за кадр. */
+let renderQ=0;
+function renderSoon(){ if(renderQ) return; renderQ=(window.requestAnimationFrame||setTimeout)(()=>{ renderQ=0; render(); }); }
+function showAuthorFilter(){ if(S.author && S.author!=="all") return true; return new Set(S.posts.map(p=>p.author||"claude")).size>1; }
 function render(){
+  if(renderQ){ (window.cancelAnimationFrame||clearTimeout)(renderQ); renderQ=0; }
   renderTabs();
   drawMobileBar();
   let tb=document.getElementById("testbar");
@@ -1559,11 +1742,9 @@ function authorSelect(){
 }
 try{ S.author=localStorage.getItem("dr_author")||"all"; }catch(_){ S.author="all"; }
 function renderWho(){
-  const w=$("#who"); if(!w) return;
-  const role=S.test?"Тест":S.owner?"Главный редактор":"Редактор";
-  const nm=S.test?"Тестовый редактор":(S.myName||"");
-  w.replaceChildren(h("span",{text:role}), h("b",{text:nm}));
-  if(S.realOwner) w.append(h("button",{type:"button",class:"btn sm"+(S.test?"":" testin"),onclick:()=>setTest(!S.test),"aria-label":S.test?"Выйти из теста":"Тестовый вход"},h("span",{class:"full",text:S.test?"Выйти из теста":"Тестовый вход"}),h("span",{class:"short",text:S.test?"Выйти":"Тест"})));
+  /* роль, имя и «Тестовый вход» с 2.18 живут в меню профиля справа в шапке */
+  const w=$("#who"); if(w) w.replaceChildren();
+  drawMobileBar();
 }
 function setTest(on){
   S.test=on; try{ on?localStorage.setItem("dr_test","1"):localStorage.removeItem("dr_test"); }catch(_){}
@@ -1710,10 +1891,10 @@ function drawSheet(){
   const upd=()=>{ const n=textLength(d); cnt.textContent=n+" / "+LIMIT; cnt.classList.toggle("over",n>LIMIT); if(pvTab==="preview") drawPreview(); if(typeof drawLint==="function") drawLint(); };
   const drawPreview=()=>{
     const first=plain(String(d.full_text||"").split(/\n/).find(x=>x.trim()&&!/^\[фото/i.test(x.trim()))||"").replace(/^#+\s*/,"");
-    notifEl.replaceChildren(h("div",{class:"nicon","aria-hidden":"true"}), h("div",{class:"ntx"}, h("b",{text:"Дизайн-Радар"}), h("span",{text:plain(d.title)+(first?" "+first:"")})));
+    notifEl.replaceChildren(h("div",{class:"nicon","aria-hidden":"true"},logoEl()), h("div",{class:"ntx"}, h("b",{text:"Дизайн-Радар"}), h("span",{text:plain(d.title)+(first?" "+first:"")})));
     rtEl.textContent=readTime((d.title||"")+" "+(d.full_text||""));
     const tgCls=pvOpt.tg==="auto"?"":" tg-"+pvOpt.tg;
-    pvBody.replaceChildren(h("div",{class:"tgframe "+pvOpt.device+tgCls}, h("div",{class:"tghead"}, h("div",{class:"tgava","aria-hidden":"true"}), h("div",{}, h("b",{text:"Дизайн-Радар"}), h("span",{text:"канал"}))), tgPreview(d)));
+    pvBody.replaceChildren(h("div",{class:"tgframe "+pvOpt.device+tgCls}, h("div",{class:"tghead"}, h("div",{class:"tgava","aria-hidden":"true"},logoEl()), h("div",{}, h("b",{text:"Дизайн-Радар"}), h("span",{text:"канал"}))), tgPreview(d)));
   };
   const panelsBy={};
   const drawPvTabs=()=>{
@@ -1903,7 +2084,7 @@ function drawSheet(){
   let reelSec=null; if(!SAFE_MODE){ try{ reelSec=reelEditor(d,{ro, changed:()=>{ editing.dirty=true; setSaveState("Рилс изменён"); clearTimeout(sync.as); sync.as=setTimeout(autosave,2500); }}); }catch(e){ console.error(e); showErr("Рилс не загрузился", e); } }
   const covInfo=h("div",{class:"covinfo"});
 
-  const covBox=h("div"); const drawEd=()=>{ covBox.replaceChildren(coverMock(d));
+  const covBox=h("div"); const drawEd=()=>{ covBox.replaceChildren(coverMock(d,{full:true}));
     const c=drawCover(d); if(!isRendered(d)||!c){ covInfo.replaceChildren(); return; }
     const sz=Number(c.dataset.size)||0, ln=(c.dataset.text||"").split("\n").filter(Boolean), manual=/\n/.test(String(d.cover_title||"").trim());
     covInfo.replaceChildren(...[
@@ -2040,12 +2221,15 @@ function drawSheet(){
   const pvToggle=h("button",{type:"button",class:"btn pvbtn",onclick:()=>{ panes.classList.toggle("showpv"); pvToggle.textContent=panes.classList.contains("showpv")?"Текст":"Превью"; }},"Превью");
   const stName={review:"на согласовании",draft:"черновик",published:"опубликован",scheduled:"в плане",rejected:"отклонён"}[d.status]||"";
   const head=h("header",{}, h("button",{class:"iconbtn",onclick:()=>{ if((editing.dirty||editing.changed) && !ro){ save(true); } else closeEditor(); },"aria-label":"Назад"},"←"),
-    h("div",{class:"t"}, h("b",{text:plain(d.title)||(ro?"Пост":"Новый пост")}), h("span",{text:(ro?"просмотр":"редактирование")+(stName?" · "+stName:"")})), ro?null:saveState, themeBtn(), pvToggle, ro?null:h("button",{type:"button",class:"btn primary hsave",onclick:()=>save(true)},"Сохранить"));
+    h("div",{class:"t"}, h("b",{text:plain(d.title)||(ro?"Пост":"Новый пост")}), h("span",{text:(ro?"просмотр":"редактирование")+(stName?" · "+stName:"")})), ro?null:saveState, pvToggle, ro?null:h("button",{type:"button",class:"btn primary hsave",onclick:()=>save(true)},"Сохранить"));
   const foot=h("footer",{});
   if(!ro){
     foot.append(h("span",{class:"hint who",text:"Автор: "+authorName(d.author)}), h("span",{class:"sp"}));
-    foot.append(h("button",{class:"btn primary",onclick:()=>save(true)},"Сохранить"));
-    if(d.status==="draft") foot.append(h("button",{class:"btn",onclick:async()=>{ const id=editing&&editing.id; await save(false); if(!id) return; await savePost(id,{status:"review"}); closeEditor(); toast("Отправлено на согласование"); }},"На согласование"));
+    /* одно главное действие внизу: если пост можно двигать дальше (на согласование, к публикации, в канал) —
+       оно оранжевое, а «Сохранить» обычная кнопка; если двигать некуда — «Сохранить» главная */
+    const fwd=d.status==="draft" || (S.owner && (d.status==="published"||d.status==="review"));
+    foot.append(h("button",{class:"btn fsave"+(fwd?"":" primary"),onclick:()=>save(true)},"Сохранить"));
+    if(d.status==="draft") foot.append(h("button",{class:"btn accent",onclick:async()=>{ const id=editing&&editing.id; await save(false); if(!id) return; await savePost(id,{status:"review"}); closeEditor(); toast("Отправлено на согласование"); }},"На согласование"));
     if(S.owner && d.status==="published") foot.append(h("button",{class:"btn accent",onclick:async()=>{ const id=editing&&editing.id, dr={...d}; await save(false); if(!id) return; if(editing) closeEditor(); await updateInChannel(id, dr); }},"Сохранить и обновить в канале"));
     if(S.owner && d.status==="review") foot.append(h("button",{class:"btn accent",onclick:async()=>{ const id=editing&&editing.id; await save(false); if(!id) return; if(editing) closeEditor(); S.confirm=id; location.hash="review"; render(); }},"К публикации"));
   }
@@ -2072,41 +2256,47 @@ function showChanges(){
   ov.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); }); box.querySelector("button")?.focus();
 }
 function drawVersionChip(){
-  const sub=document.querySelector(".brand .sub"); if(!sub) return;
-  let b=document.getElementById("verChip");
-  if(!b){ b=h("button",{type:"button",id:"verChip",class:"verchip",title:"Что нового",onclick:showChanges}); sub.after(b); }
-  const fresh=seenVersion()!==APP_VERSION;
-  b.replaceChildren(...[h("span",{text:"v"+APP_VERSION}), fresh?h("i",{class:"vdot","aria-label":"новое"}):null].filter(Boolean));
+  /* номер версии и точка «новое» — на аватаре в шапке, окно открывается из меню профиля */
+  document.getElementById("verChip")?.remove();
 }
-setTimeout(drawVersionChip,0);
-/* ---------- мобильная шапка: «новый пост» и меню профиля ---------- */
+/* ---------- шапка: «новый пост» (телефон) и меню профиля (везде) ----------
+   С 2.18 меню одно на телефоне и компьютере: тема, «Что нового», тестовый вход, анкета, вид.
+   Раньше на компьютере эти кнопки жили отдельно в шапке и спорили с вкладками за внимание. */
 function drawMobileBar(){
   const brand=document.querySelector(".brand"); if(!brand) return;
   let bar=document.getElementById("mbar");
   if(!bar){ bar=h("div",{id:"mbar",class:"mbar"}); brand.append(bar); }
   const kids=[];
-  if(S.canWrite && !S.blocked){ const nb=h("button",{type:"button",class:"mbtn new","aria-label":"Новый пост",onclick:()=>openNewPost()}); nb.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'; kids.push(nb); }
   const nm=S.test?"Тестовый редактор":(S.myName||"");
-  const me=h("button",{type:"button",class:"mbtn me","aria-label":"Меню: "+(nm||"профиль"),onclick:openMeMenu}, (nm.trim()[0]||"Я").toUpperCase());
-  if(typeof APP_VERSION!=="undefined" && seenVersion()!==APP_VERSION) me.append(h("i",{class:"vdot","aria-hidden":"true"}));
+  const role=S.test?"Тестовый режим":S.owner?"Главный редактор":S.me?"Редактор":"";
+  if(nm||role) kids.push(h("div",{class:"mrole"}, nm?h("b",{text:nm}):null, role?h("span",{text:role}):null));
+  if(S.canWrite && !S.blocked){ const nb=h("button",{type:"button",class:"mbtn new","aria-label":"Новый пост",title:"Новый пост",onclick:()=>openNewPost()}); nb.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'; kids.push(nb); }
+  const fresh=typeof APP_VERSION!=="undefined" && seenVersion()!==APP_VERSION;
+  const me=h("button",{type:"button",class:"mbtn me","aria-label":"Меню: "+(nm||"профиль")+(fresh?", есть новая версия":""),"aria-haspopup":"menu",title:"Меню",onclick:openMeMenu}, (nm.trim()[0]||"Я").toUpperCase());
+  if(fresh) me.append(h("i",{class:"vdot","aria-hidden":"true"}));
   kids.push(me); bar.replaceChildren(...kids);
 }
 function openMeMenu(){
   let m=document.getElementById("mmenu"); if(m) m.remove();
-  const close=()=>m.remove();
+  const opener=document.querySelector("#mbar .mbtn.me");
+  const close=()=>{ m.remove(); opener?.focus(); };
   const role=S.test?"Тестовый режим":S.owner?"Главный редактор":"Редактор";
-  const item=(label,right,fn)=>h("button",{type:"button",onclick:()=>{ close(); fn(); }}, h("span",{text:label}), right?h("small",{text:right}):null);
+  const item=(label,right,fn,dot)=>h("button",{type:"button",role:"menuitem",onclick:()=>{ m.remove(); fn(); }}, h("span",{}, label, dot?h("i",{class:"vdot","aria-hidden":"true"}):null), right?h("small",{text:right}):null);
   const themeName={auto:"как в системе",light:"светлая",dark:"тёмная"}[getTheme()]||"";
+  const fresh=seenVersion()!==APP_VERSION;
   const items=[
-    item("Что нового","v"+APP_VERSION,showChanges),
+    item("Что нового","v"+APP_VERSION,showChanges,fresh),
     item("Тема",themeName,()=>{ const i=THEMES.findIndex(x=>x[0]===getTheme()); const nx=THEMES[(i+1)%THEMES.length]; try{ localStorage.setItem("dr_theme",nx[0]); }catch(_){} applyTheme(nx[0]); toast(nx[2]); })
   ];
   if(S.realOwner) items.push(item("Настроить вид","",openDesign));
   if(S.realOwner) items.push(item(S.test?"Выйти из теста":"Тестовый вход","",()=>setTest(!S.test)));
   if(!S.owner && S.me) items.push(item("Моя анкета","",()=>openOnboarding(true)));
   m=h("div",{id:"mmenu",class:"mmenu"}, h("div",{class:"scrim",onclick:close}),
-    h("div",{class:"pop",role:"menu"}, h("div",{class:"who2"}, h("b",{text:S.test?"Тестовый редактор":(S.myName||"Без имени")}), h("span",{text:role})), ...items));
-  m.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); });
+    h("div",{class:"pop",role:"menu","aria-label":"Меню профиля"}, h("div",{class:"who2"}, h("b",{text:S.test?"Тестовый редактор":(S.myName||"Без имени")}), h("span",{text:role})), ...items));
+  m.addEventListener("keydown",e=>{
+    if(e.key==="Escape") close();
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); const bs=[...m.querySelectorAll(".pop button")]; const i=bs.indexOf(document.activeElement); bs[(i+(e.key==="ArrowDown"?1:-1)+bs.length)%bs.length]?.focus(); }
+  });
   document.body.append(m); m.querySelector(".pop button")?.focus();
 }
 /* ---------- «+»: выбор направления и темы для нового поста ---------- */
@@ -2258,7 +2448,7 @@ async function resolveNames(){
   if(!user) return;
   const ids=[...new Set([...S.posts.map(p=>p.author),...S.ideas.map(i=>i.author),...Object.keys(S.editors)].filter(x=>x&&x!=="claude"))];
   if(!ids.length) return;
-  try{ const ps=await user.profiles(ids); for(const id of ids) S.names[id]=(ps[id]&&ps[id].name)||"Редактор"; render(); }catch{}
+  try{ const ps=await user.profiles(ids); for(const id of ids) S.names[id]=(ps[id]&&ps[id].name)||"Редактор"; renderSoon(); }catch{}
 }
 route();
 (async()=>{
@@ -2277,13 +2467,13 @@ route();
     if(t && S.realOwner){ S.test=true; S.owner=false; S.me=TEST_ID; }
     renderWho();
   }
-  postsCol().onSnapshot(snap=>{ S.mainPosts=snap.docs.map(d=>({id:d.id,...d.data(),_base:"posts"})); mergePosts(); S.ready=true; render(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{ S.ready=true; render(); });
+  postsCol().onSnapshot(snap=>{ S.mainPosts=snap.docs.map(d=>({id:d.id,...d.data(),_base:"posts"})); mergePosts(); S.ready=true; renderSoon(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{ S.ready=true; renderSoon(); });
   liWatch();
-  ideasCol().onSnapshot(snap=>{ S.ideas=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
-  db.collection("roles").onSnapshot(snap=>{ S.roles={}; snap.docs.forEach(d=>S.roles[d.id]=d.data()); S.rolesLoaded=true; mergeEditors(); applyBlock(); render(); }, ()=>{});
-  db.collection("editors").onSnapshot(snap=>{ S.edRaw={}; snap.docs.forEach(d=>S.edRaw[d.id]=d.data()); mergeEditors(); watchAuthors(); syncInvites(); S.editorsLoaded=true; matchInvite(); applyBlock(); render(); if(!$("#sheetRoot").firstChild && !S.blocked) checkOnboarding(); });
-  db.collection("settings").onSnapshot(snap=>{ const d=snap.docs.find(x=>x.id==="main"); S.settings=d?d.data():{}; if(!document.getElementById("dsov")) applyDesign(S.settings.design||{}); if(S.owner) render(); }, ()=>{});
-  db.collection("invites").onSnapshot(snap=>{ S.invites=snap.docs.map(d=>({id:d.id,...d.data()})); if(S.owner) render(); matchInvite(); syncInvites(); }, ()=>{});
+  ideasCol().onSnapshot(snap=>{ S.ideas=snap.docs.map(d=>({id:d.id,...d.data()})); renderSoon(); });
+  db.collection("roles").onSnapshot(snap=>{ S.roles={}; snap.docs.forEach(d=>S.roles[d.id]=d.data()); S.rolesLoaded=true; mergeEditors(); applyBlock(); renderSoon(); }, ()=>{});
+  db.collection("editors").onSnapshot(snap=>{ S.edRaw={}; snap.docs.forEach(d=>S.edRaw[d.id]=d.data()); mergeEditors(); watchAuthors(); syncInvites(); S.editorsLoaded=true; matchInvite(); applyBlock(); renderSoon(); if(!$("#sheetRoot").firstChild && !S.blocked) checkOnboarding(); });
+  db.collection("settings").onSnapshot(snap=>{ const d=snap.docs.find(x=>x.id==="main"); S.settings=d?d.data():{}; if(!document.getElementById("dsov")) applyDesign(S.settings.design||{}); if(S.owner) renderSoon(); }, ()=>{});
+  db.collection("invites").onSnapshot(snap=>{ S.invites=snap.docs.map(d=>({id:d.id,...d.data()})); if(S.owner) renderSoon(); matchInvite(); syncInvites(); }, ()=>{});
   watchAuthors();
   if(S.realMe && S.canWrite){ try{ const r=db.doc("editors/"+S.realMe); const g=await r.get(); if(!g.exists) await r.set({column:"", joined_at:Date.now()}); }catch{} }
 })();

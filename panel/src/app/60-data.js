@@ -20,7 +20,7 @@ const authorSubs={};
 function watchAuthors(){
   const ids=new Set(Object.keys(S.edRaw||{})); if(S.realMe) ids.add(S.realMe); if(S.realOwner) ids.add(TEST_ID);
   for(const uid of ids){ if(authorSubs[uid]) continue;
-    authorSubs[uid]=authorCol(uid).onSnapshot(snap=>{ S.authorPosts=S.authorPosts||{}; S.authorPosts[uid]=snap.docs.map(d=>({id:d.id,...d.data(),_base:"byauthor/"+uid+"/posts"})); mergePosts(); render(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{}); }
+    authorSubs[uid]=authorCol(uid).onSnapshot(snap=>{ S.authorPosts=S.authorPosts||{}; S.authorPosts[uid]=snap.docs.map(d=>({id:d.id,...d.data(),_base:"byauthor/"+uid+"/posts"})); mergePosts(); renderSoon(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{}); }
 }
 function mergeEditors(){ S.editors={}; const ids=new Set([...Object.keys(S.edRaw||{}),...Object.keys(S.roles||{})]); for(const id of ids){ const r=(S.roles||{})[id]||{}; S.editors[id]={...((S.edRaw||{})[id]||{}), status:r.status||"", can_publish:!!r.can_publish}; } }
 const setRole=(id,patch)=>db.doc("roles/"+id).set({...((S.roles||{})[id]||{}), ...patch, updated_at:Date.now(), by:S.realMe||""});

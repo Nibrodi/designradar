@@ -289,15 +289,17 @@ function drawSheet(){
     const wishIn=h("input",{type:"text",id:"fWish",placeholder:"Пожелание, необязательно: «бургер», «сделай каламбур», «без интерфейса»"});
     const st=h("div",{class:"hint"}); const ideasBox=h("div",{class:"cideas"});
     const errText=e=>(e&&e.code==="not_granted")?"Разреши панели обращаться к Claude и нажми ещё раз.":(e&&e.code==="rate_limited")?"Слишком часто. Подожди минуту.":((e&&e.message)||"Не получилось. Попробуй ещё раз.");
-    const drawIdea=async(idea,btn)=>{ ideasBox.querySelectorAll("button").forEach(b=>b.disabled=true); st.textContent="Рисую «"+idea.title+"»… около минуты.";
-      try{ const art=await newScene(d, wishIn.value.trim(), idea); if(d.cover_art) d.cover_art_prev=d.cover_art; d.cover_art=art; d.cover_render=true; if(editing) editing.dirty=true; drawEd(); upd(); st.textContent="Готово. Не нравится — нарисуй другую идею или придумай новые. Сохрани пост, чтобы оставить обложку."; }
+    let lastCore="";
+    const drawIdea=async(idea,btn)=>{ ideasBox.querySelectorAll("button").forEach(b=>b.disabled=true); st.textContent="Рисую «"+idea.title+"»… это займёт одну-две минуты: Claude рисует, потом смотрит на картинку и правит.";
+      try{ const art=await newScene(d, wishIn.value.trim(), {...idea, core:lastCore}, t=>{ st.textContent=t+" Одна-две минуты."; }); if(d.cover_art) d.cover_art_prev=d.cover_art; d.cover_art=art; d.cover_render=true; if(editing) editing.dirty=true; drawEd(); upd(); st.textContent="Готово."+(newScene.note?" Claude посмотрел на картинку и поправил: "+newScene.note+".":"")+" Не нравится — нарисуй другую идею или придумай новые. Сохрани пост, чтобы оставить обложку."; }
       catch(e){ st.textContent=errText(e); }
       finally{ ideasBox.querySelectorAll("button").forEach(b=>b.disabled=false); } };
     const go=h("button",{type:"button",class:"btn accent",onclick:async()=>{
-      go.disabled=true; ideasBox.replaceChildren(); st.textContent="Claude придумывает три идеи: каламбур, предмет, интерфейс…";
-      try{ const r=await coverIdeas(d, wishIn.value.trim()); st.textContent="Выбери идею — или сразу нарисуй ту, что Claude считает сильнейшей (★).";
+      go.disabled=true; ideasBox.replaceChildren(); st.textContent="Claude читает пост и придумывает три идеи от его конкретики…";
+      try{ const r=await coverIdeas(d, wishIn.value.trim()); lastCore=r.core||""; st.textContent="Выбери идею — или сразу нарисуй ту, что Claude считает сильнейшей (★).";
+        if(r.core) ideasBox.append(h("p",{class:"hint cicore"}, h("b",{text:"Главная мысль: "}), r.core));
         r.ideas.forEach((it,i)=>{ const b=h("button",{type:"button",class:"btn sm"+(i===r.best?" accent":""),onclick:()=>drawIdea(it,b)},"Нарисовать");
-          ideasBox.append(h("div",{class:"cidea"+(i===r.best?" best":"")}, h("div",{class:"cih"}, h("span",{class:"cik",text:(i===r.best?"★ ":"")+(COVER_KINDS[it.kind]||"")}), h("b",{text:it.title})), h("p",{text:it.see}), it.why?h("p",{class:"hint",text:it.why}):null, b)); }); }
+          ideasBox.append(h("div",{class:"cidea"+(i===r.best?" best":"")}, h("div",{class:"cih"}, h("span",{class:"cik",text:(i===r.best?"★ ":"")+(COVER_KINDS[it.kind]||"")}), h("b",{text:it.title})), h("p",{text:it.see}), (it.labels||[]).length?h("p",{class:"hint",text:"Подписи: "+it.labels.join(" · ")}):null, it.why?h("p",{class:"hint",text:it.why}):null, b)); }); }
       catch(e){ st.textContent=errText(e); }
       finally{ go.disabled=false; go.textContent="Другие идеи"; }
     }},"Придумать идеи");

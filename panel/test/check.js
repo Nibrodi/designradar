@@ -166,8 +166,10 @@ const url='file://'+path.resolve(process.argv[2]);
    await p.evaluate(()=>{ [...document.querySelectorAll('.sheet button')].find(b=>/Новая сцена от Claude/.test(b.textContent)).click(); }); await W(200);
    await p.evaluate(()=>{ [...document.querySelectorAll('.sheet button')].find(b=>/Придумать идеи/.test(b.textContent)).click(); }); await W(800);
    ok(await p.evaluate(()=>document.querySelectorAll('.cidea').length===3),'cover ideas listed');
-   await p.evaluate(()=>document.querySelector('.cidea.best button').click()); await W(1500);
+   await p.evaluate(()=>document.querySelector('.cidea.best button').click()); await W(2500);
    ok(await p.evaluate(()=>/Готово/.test(document.querySelector('.cideas').previousElementSibling.textContent)),'cover drawn from idea');
+   ok(await p.evaluate(()=>window.__reviewed===1&&window.__redrawn===1),'art director reviews the image and the cover is redrawn');
+   ok(await p.evaluate(()=>/Claude посмотрел на картинку и поправил: подписи мелкие/.test(document.querySelector('.cideas').previousElementSibling.textContent)),'review note shown');
    ok(!(await p.$('#errbar')),'cover ideas no error bar');
    await p.evaluate(()=>document.querySelector('.sheet header .iconbtn')?.click()); await W(800); }
  { // тяжёлая картинка (PNG больше 1 МиБ) сжимается перед отправкой в Make, пост планируется

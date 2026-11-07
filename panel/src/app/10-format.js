@@ -1,6 +1,6 @@
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
-  .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
+  .replace(/\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()"'<>]|\([^\s()"'<>]*\))+)\)/g,'<a href="$2">$1</a>')
   .replace(/\*\*([^*\n]+)\*\*/g,"<b>$1</b>")
   .replace(/(^|[^_\w])__([^_\n]+)__(?![_\w])/g,"$1<i>$2</i>");
 const photoList = a => (Array.isArray(a.photos)?a.photos:[]).slice(0,9).map(p=>String(typeof p==="string"?p:(p&&(p.file_id||p.id))||"").trim()).map(f=>/^[A-Za-z0-9_-]{10,300}$/.test(f)?f:"");

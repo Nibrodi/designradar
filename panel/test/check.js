@@ -249,6 +249,40 @@ const url='file://'+path.resolve(process.argv[2]);
   ok(await q.evaluate(()=>![...document.querySelectorAll('.sec .hint')].some(h=>h.offsetParent&&h.textContent.startsWith('Это карусель'))),'no stale carousel hint');
   ok(await q.evaluate(()=>[...document.querySelectorAll('.sec .acts .btn')].some(x=>x.textContent==='Простой рисунок вместо этого')),'cover button label matches drawn cover');
   await q.close(); }
+ { // 2.20: ссылки со скобками в адресе, вкладка «Игры», опрос уходит после поста
+  const q=await b.newPage({viewport:{width:1300,height:900}}); q.on('pageerror',e=>errs.push('games: '+e.message+' @ '+(e.stack||'').split('\n')[1]));
+  await q.goto(url); await W(1500);
+  await q.evaluate(async()=>{ const db=await window.claude.use('db'); const now=Date.now();
+    await db.collection('posts').doc('t_wiki_link').set({title:'Helvetica: фильм про шрифт',cover_title:'Helvetica',label:'Фильм',section:'Фильм',kind:'original',status:'review',author:'claude',full_text:'Системным шрифтом iPhone была Helvetica Neue, пока Apple не заменила её на San Francisco ([iOS 9](https://en.wikipedia.org/wiki/San_Francisco_(sans-serif_typeface))). Фильм ([Wikipedia](https://en.wikipedia.org/wiki/Helvetica_(film))) идёт 80 минут.',hashtags:['#фильм'],created_at:now,updated_at:now});
+    await db.collection('posts').doc('t_game').set({title:'Как называется меню из трёх точек?',cover_title:'Митболы',label:'Игра',section:'Игра',kind:'original',status:'review',author:'claude',layout:'none',cover_off:true,cover_render:false,full_text:'Три точки в ряд в углу карточки. Как называется это меню? Угадай в опросе ниже.',hashtags:['#игра'],poll:{type:'quiz',question:'Как называется меню ⋯?',options:['Кебаб','Митболы','Бенто','Дёнер'],correct:1,explanation:'Три точки в ряд — митболы.'},threads:{text:'Три точки в ряд. Как называется это меню?',poll_options:['Кебаб','Митболы'],reply:'Ответ: митболы.'},created_at:now,updated_at:now}); });
+  await q.evaluate(()=>{ location.hash='review'; }); await W(500);
+  ok(await q.evaluate(()=>![...document.querySelectorAll('.card.open h3')].some(h=>h.textContent.includes('меню из трёх точек'))),'game not in review feed');
+  await q.evaluate(()=>{ [...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('Helvetica: фильм')).querySelector('h3').click(); }); await W(1200);
+  ok(await q.evaluate(()=>{ const as=[...document.querySelectorAll('.tg a')]; const t=document.querySelector('.tg .tx').textContent; return as.some(a=>a.getAttribute('href')==='https://en.wikipedia.org/wiki/Helvetica_(film)') && as.some(a=>a.getAttribute('href')==='https://en.wikipedia.org/wiki/San_Francisco_(sans-serif_typeface)') && !t.includes('))'); }),'links with parentheses keep url, no stray bracket');
+  await q.evaluate(()=>document.querySelector('.sheet header .iconbtn').click()); await W(500);
+  await q.evaluate(()=>{ location.hash='games'; }); await W(600);
+  ok(await q.evaluate(()=>!!document.querySelector('#tabs .tab[data-v="games"]')),'games tab exists');
+  ok(await q.evaluate(()=>{ const c=[...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('меню из трёх точек')); return c && c.querySelector('.pollv li.ok') && c.querySelector('.pollv li.ok').textContent.includes('Митболы') && c.querySelector('details.thr'); }),'game card shows quiz with correct answer and Threads block');
+  await q.evaluate(()=>{ [...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('меню из трёх точек')).querySelector('h3').click(); }); await W(1200);
+  ok(await q.evaluate(()=>{ const s=document.querySelector('.pollsec'); return s && s.querySelectorAll('.popt input').length===4 && document.querySelector('.tg .tgpoll'); }),'editor shows poll editor and poll in preview');
+  await q.evaluate(()=>{ const i=document.querySelectorAll('.pollsec .popt input')[3]; i.value='Шаурма'; i.dispatchEvent(new Event('input')); }); await W(200);
+  await q.evaluate(()=>document.querySelector('.sheet header .hsave').click()); await W(1500);
+  ok(await q.evaluate(()=>window.__mockdb['posts'].get('t_game').poll.options[3]==='Шаурма'),'poll edit saved');
+  await q.evaluate(()=>{ window.__calls=[]; const c=[...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('меню из трёх точек')); [...c.querySelectorAll('button')].find(b=>b.textContent==='Опубликовать').click(); }); await W(300);
+  await q.evaluate(()=>[...document.querySelectorAll('.confirm button')].find(b=>b.textContent.includes('Да, опубликовать')).click()); await W(2500);
+  const calls=await q.evaluate(()=>(window.__calls||[]).filter(c=>c.tool==='s6801242_dr_util_telegram_api').map(c=>c.args));
+  ok(calls.length===2 && calls[0].method==='sendRichMessage' && calls[1].method==='sendPoll','post then poll sent');
+  const pb=calls[1]?JSON.parse(calls[1].body):{};
+  ok(pb.type==='quiz' && pb.correct_option_id===1 && pb.options.length===4 && pb.options[1].text==='Митболы' && pb.is_anonymous===true && pb.explanation,'quiz poll body');
+  const gd=await q.evaluate(()=>window.__mockdb['posts'].get('t_game'));
+  ok(gd.status==='published' && gd.poll_message_id===99,'game published with poll id');
+  // план: опрос кладётся в outbox
+  await q.evaluate(async()=>{ const db=await window.claude.use('db'); const now=Date.now(); await db.collection('posts').doc('t_game2').set({title:'Сколько человек выбирали знак рубля?',cover_title:'Рубль',label:'Игра',section:'Игра',kind:'original',status:'review',author:'claude',layout:'none',cover_off:true,cover_render:false,full_text:'В 2013 году Банк России выбирал знак рубля голосованием. Сколько человек проголосовали?',hashtags:['#игра'],poll:{type:'regular',question:'Сколько?',options:['28 тысяч','280 тысяч']},created_at:now,updated_at:now}); }); await W(600);
+  await q.evaluate(()=>{ const c=[...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('знак рубля')); [...c.querySelectorAll('button')].find(b=>b.textContent==='Запланировать').click(); }); await W(300);
+  await q.evaluate(()=>{ const c=document.querySelector('.sched'); const inp=c.querySelector('input[type=datetime-local]'); const d=new Date(Date.now()+3*864e5); d.setHours(11,0,0,0); const p=n=>String(n).padStart(2,'0'); inp.value=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T11:00'; inp.dispatchEvent(new Event('input')); [...c.querySelectorAll('.btn.accent')][0].click(); }); await W(1500);
+  const g2=await q.evaluate(()=>window.__mockdb['posts'].get('t_game2'));
+  ok(g2.status==='scheduled' && g2.outbox && JSON.parse(g2.outbox.poll||'{}').options.length===2,'scheduled game carries poll in outbox');
+  await q.close(); }
  await b.close();
  if(errs.length||fails.length){ console.error('ОШИБКИ:\n'+errs.join('\n')+'\nНЕ ПРОШЛО:\n'+fails.join('\n')); process.exit(1); }
  console.log('Все проверки прошли');

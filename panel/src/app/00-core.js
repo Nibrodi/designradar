@@ -12,6 +12,7 @@ const VIEWS = [
   {id:"drafts", name:"Черновики", short:"Черновики"},
   {id:"ideas", name:"Идеи"},
   {id:"published", name:"Опубликовано", short:"Вышло"},
+  {id:"games", name:"Игры", short:"Игры"}, /* с 2.20: игры и опросы отдельно от статей */
   {id:"linkedin", name:"LinkedIn", short:"LinkedIn", owner:true},
   {id:"team", name:"Колонки", short:"Команда", menu:true} /* с 2.19 — в меню профиля, не во вкладках */
 ];
@@ -32,7 +33,7 @@ const h = (tag, attrs={}, ...kids) => {
   return el;
 };
 const esc = v => String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-const plain = v => String(v||"").replace(/\*\*|__/g,"").replace(/\[([^\]\n]+)\]\([^)\s]+\)/g,"$1").trim();
+const plain = v => String(v||"").replace(/\*\*|__/g,"").replace(/\[([^\]\n]+)\]\((?:[^()\s]|\([^()\s]*\))+\)/g,"$1").trim();
 const ago = ms => { if(!ms) return ""; const d=(Date.now()-ms)/60000; if(d<1) return "только что"; if(d<60) return Math.round(d)+" мин назад"; if(d<1440) return Math.round(d/60)+" ч назад"; return new Date(ms).toLocaleDateString("ru-RU",{day:"numeric",month:"short"}); };
 const toast = msg => { const r=$("#toastRoot"); r.replaceChildren(h("div",{class:"toast",text:msg})); clearTimeout(toast.t); toast.t=setTimeout(()=>r.replaceChildren(),3200); };
 const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[id]&&S.editors[id].sign) || (id===TEST_ID?"Тестовый редактор":"") || S.names[id] || "Редактор");

@@ -33,8 +33,12 @@ async function adoptPost(a){
   S.baseOverride=S.baseOverride||{}; S.baseOverride[a.id]="posts";
   return {...a, _base:"posts"};
 }
+/* Игра — пост рубрики «Игра»: живёт во вкладке «Игры», а не среди статей. Опрос (poll) может быть у любого поста. */
+const isGame = a => /^игра$/i.test(String(a.label||a.section||"").trim());
+const GAME_READY=["review","draft","queued","publishing","publish_unknown"];
 function byView(v){
-  const p=S.posts.filter(authorOk);
+  if(v==="games") return S.posts.filter(authorOk).filter(x=>isGame(x)&&GAME_READY.includes(x.status)).sort((a,b)=>(b.updated_at||0)-(a.updated_at||0));
+  const p=S.posts.filter(authorOk).filter(x=>!isGame(x));
   if(v==="review") return p.filter(x=>["review","queued","publishing","publish_unknown"].includes(x.status)).sort((a,b)=>(b.updated_at||0)-(a.updated_at||0));
   if(v==="plan") return p.filter(x=>x.status==="scheduled").sort((a,b)=>(a.scheduled_at||0)-(b.scheduled_at||0));
   if(v==="drafts") return p.filter(x=>x.status==="draft").sort((a,b)=>(b.updated_at||0)-(a.updated_at||0));

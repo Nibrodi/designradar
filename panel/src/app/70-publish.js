@@ -11,6 +11,7 @@ function prePublishProblems(a){
   if(n>have) p.push("в тексте [фото:"+n+"], а картинок "+have);
   const fmt=lintText(String(a.full_text||""),have).filter(x=>x.kind==="fmt");
   if(fmt.length) p.push(fmt[0].msg.toLowerCase());
+  p.push(...pollProblems(a.poll));
   return p;
 }
 function findMessageId(x, depth=0){
@@ -22,6 +23,39 @@ function findMessageId(x, depth=0){
   return 0;
 }
 const PUB_TRIGGER = "trig_015jMNCGYWvjDN6b5s8MGi3R";
+/* Опрос к посту (с 2.20): poll {type:"quiz"|"regular", question, options[], correct, explanation}.
+   Уходит отдельным сообщением сразу после поста (sendPoll); в канале опросы всегда анонимные. */
+const pollOpts = p => (p&&Array.isArray(p.options)?p.options:[]).map(o=>String(o||"").trim()).filter(Boolean);
+function pollProblems(p){
+  const out=[]; if(!p) return out; const opts=pollOpts(p), q=String(p.question||"").trim();
+  if(!q) out.push("у опроса нет вопроса"); else if(q.length>300) out.push("вопрос опроса длиннее 300 знаков");
+  if(opts.length<2) out.push("в опросе меньше двух вариантов"); if(opts.length>10) out.push("в опросе больше 10 вариантов");
+  if(opts.some(o=>o.length>100)) out.push("вариант ответа длиннее 100 знаков");
+  if(p.type==="quiz"){ if(!(Number.isInteger(p.correct)&&p.correct>=0&&p.correct<opts.length&&String((p.options||[])[p.correct]||"").trim())) out.push("в викторине не отмечен верный ответ");
+    if(String(p.explanation||"").trim().length>200) out.push("пояснение к викторине длиннее 200 знаков"); }
+  return out;
+}
+function pollBody(a){
+  const p=a.poll, raw=(p.options||[]).map(o=>String(o||"").trim()), opts=raw.filter(Boolean);
+  const b={chat_id:chanOf(a), question:String(p.question||"").trim(), options:opts.map(text=>({text})), is_anonymous:true};
+  if(p.type==="quiz"){ b.type="quiz"; b.correct_option_id=raw.slice(0,p.correct).filter(Boolean).length; const ex=String(p.explanation||"").trim(); if(ex) b.explanation=ex; }
+  return b;
+}
+async function sendPoll(a){
+  const res=await mcp.callTool(MAKE, TOOL_TG, {method:"sendPoll", body:JSON.stringify(pollBody(a))});
+  const raw=JSON.stringify(res.payload??res.content??""); const mid=findMessageId(res.payload??res.content);
+  if(!mid) throw {message:"Telegram не вернул номер опроса: "+raw.slice(0,160)};
+  await savePost(a.id,{poll_message_id:mid, poll_sent_at:Date.now(), poll_error:""});
+  return mid;
+}
+async function sendPollNow(a){
+  if(!mcp){ toast("Отправка недоступна в этом окне: открой панель в Claude."); return; }
+  const pr=pollProblems(a.poll); if(pr.length){ S.errors[a.id]="Опрос не отправлен: "+pr.join(", ")+". Открой пост и поправь."; render(); return; }
+  S.busy[a.id]=true; S.errors[a.id]=""; render();
+  try{ await sendPoll(a); toast("Опрос отправлен в канал"); }
+  catch(e){ const m=String((e&&e.message)||"попробуй ещё раз").slice(0,160); await savePost(a.id,{poll_error:m}).catch(()=>{}); S.errors[a.id]="Опрос не ушёл: "+m; }
+  finally{ S.busy[a.id]=false; render(); }
+}
 const CCR = "Claude Code Remote";
 async function canvasAsset(a){
   const c=drawCover(a); if(!c) throw {code:"cover"};
@@ -117,7 +151,8 @@ async function armDispatcher(extra){
 }
 async function prepareOutbox(a){
   const body={chat_id:chanOf(a), rich_message:await buildRich(a)};
-  return {body:JSON.stringify(body), prepared_at:Date.now()};
+  /* опрос задача отложенной публикации отправит сразу после поста */
+  return {body:JSON.stringify(body), ...(a.poll?{poll:JSON.stringify(pollBody(a))}:{}), prepared_at:Date.now()};
 }
 const myEd=()=>S.me&&S.editors[S.me]||{};
 const canPub=a=>S.owner || (!!myEd().can_publish && !S.paused && (a.author||"")===S.me);
@@ -188,6 +223,8 @@ async function publish(a){
     if(a.owner_edited && a.orig_text!=null) patch.edit_logged=false;
     await savePost(a.id,patch);
     toast("Опубликовано в канал");
+    if(a.poll){ try{ await sendPoll(a); toast("Пост и опрос — в канале"); }
+      catch(pe){ const m=String((pe&&pe.message)||"ошибка").slice(0,160); await savePost(a.id,{poll_error:m}).catch(()=>{}); S.errors[a.id]="Пост вышел, а опрос не ушёл ("+m+"). Нажми «Отправить опрос»."; } }
   }catch(e){
     const code=e&&e.code; let msg;
     if(sent){ await savePost(a.id,{status:"publish_unknown"}).catch(()=>{}); S.errors[a.id]="Пост мог уйти в канал — проверь его, прежде чем жать ещё раз."; return; }

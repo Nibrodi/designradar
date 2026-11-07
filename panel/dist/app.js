@@ -12,6 +12,7 @@ const VIEWS = [
   {id:"drafts", name:"Черновики", short:"Черновики"},
   {id:"ideas", name:"Идеи"},
   {id:"published", name:"Опубликовано", short:"Вышло"},
+  {id:"games", name:"Игры", short:"Игры"}, /* с 2.20: игры и опросы отдельно от статей */
   {id:"linkedin", name:"LinkedIn", short:"LinkedIn", owner:true},
   {id:"team", name:"Колонки", short:"Команда", menu:true} /* с 2.19 — в меню профиля, не во вкладках */
 ];
@@ -32,14 +33,14 @@ const h = (tag, attrs={}, ...kids) => {
   return el;
 };
 const esc = v => String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-const plain = v => String(v||"").replace(/\*\*|__/g,"").replace(/\[([^\]\n]+)\]\([^)\s]+\)/g,"$1").trim();
+const plain = v => String(v||"").replace(/\*\*|__/g,"").replace(/\[([^\]\n]+)\]\((?:[^()\s]|\([^()\s]*\))+\)/g,"$1").trim();
 const ago = ms => { if(!ms) return ""; const d=(Date.now()-ms)/60000; if(d<1) return "только что"; if(d<60) return Math.round(d)+" мин назад"; if(d<1440) return Math.round(d/60)+" ч назад"; return new Date(ms).toLocaleDateString("ru-RU",{day:"numeric",month:"short"}); };
 const toast = msg => { const r=$("#toastRoot"); r.replaceChildren(h("div",{class:"toast",text:msg})); clearTimeout(toast.t); toast.t=setTimeout(()=>r.replaceChildren(),3200); };
 const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[id]&&S.editors[id].sign) || (id===TEST_ID?"Тестовый редактор":"") || S.names[id] || "Редактор");
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.19.1"; const CHANGES=[{"v": "2.19.1", "date": "07.11.2026", "items": ["Нижняя панель на телефоне прижата к самому низу экрана, как в приложениях iPhone: под ней больше не просвечивают карточки. Если подписи задевают полоску iPhone, отступ под кнопками меняется в «Настроить вид» → «Нижняя панель».", "«Команда» переехала из нижней панели в меню под аватаром: раздел нужен редко, а остальным вкладкам стало просторнее. Если есть неотвеченные приглашения, их число видно в этом пункте меню."]}, {"v": "2.19.0", "date": "07.11.2026", "items": ["«✦ Новая сцена от Claude» переделана. Идеи теперь строятся от конкретики поста — настоящего экрана, статуса, цифры или вещи, о которой пост, — а не от слова из заголовка. Над идеями видна главная мысль поста, у каждой идеи — подписи, которые будут на рисунке. Каламбуры только там, где они смешные сами по себе; дежурные лупы, лампочки и абстрактные точки Claude больше не предлагает.", "Claude рисует по образцу одобренных обложек того же типа: интерфейс — как «Светофор, который видят не все», предмет — как весы из «Цель перевешивает красоту», значок — как «Незамеченный бургер».", "Рисунок проверяется дважды. Сначала панель сама смотрит, не залез ли он на заголовок, не пустой ли, не упирается ли в край и есть ли один оранжевый акцент, и просит Claude поправить. Потом Claude смотрит на готовую картинку как арт-директор и правит её. Поэтому рисование занимает одну-две минуты, и при первом рисунке панель спросит разрешение отправлять Claude картинки."]}, {"v": "2.18.1", "date": "07.11.2026", "items": ["Фото с сайта источника (например, Sostav) теперь видны в превью Telegram, в миниатюрах редактора и в карточках. Страница панели не может показывать картинки с чужих сайтов, поэтому при открытии поста панель сама переносит такие фото к себе — 1 операция Make на фото, один раз. В Telegram при публикации уходит исходное фото, как и раньше.", "Вернулась кнопка «✦ 3 варианта» у заголовка обложки. Она пропадала, если пост открылся без обложки, а обложку нарисовали уже в редакторе. Подсказка под обложкой и подпись кнопки теперь тоже меняются сразу, а у новости с фото вместо «Это карусель» честно написано, что пост выйдет с фото."]}];
+const APP_VERSION="2.20.0"; const CHANGES=[{"v": "2.20.0", "date": "07.11.2026", "items": ["Новая вкладка «Игры». Игры больше не смешиваются со статьями: в «На согласовании», «Плане», «Черновиках» и «Опубликовано» их нет, всё в одном месте — «Готовы к выходу», «В плане», «Вышли».", "Опросы публикуются из панели. Викторина или обычный опрос уходит в канал отдельным сообщением сразу после поста — и при «Опубликовать», и по плану. Скрепка в Telegram больше не нужна. Если опрос не ушёл, у вышедшего поста появится кнопка «Отправить опрос».", "В редакторе есть раздел «Опрос»: вопрос, варианты, верный ответ и пояснение, которое Telegram покажет после ответа. Опрос можно добавить к любому посту, не только к игре. Превью показывает его под постом.", "В карточке игры видны вопрос с верным ответом и блок «Для Threads» с кнопками «Копировать пост» и «Копировать ответ».", "Исправлены ссылки, у которых в адресе есть скобки, например статьи Википедии вроде Helvetica_(film). Раньше адрес обрывался на скобке: ссылка вела не туда, а в тексте появлялась лишняя «)»."]}, {"v": "2.19.1", "date": "07.11.2026", "items": ["Нижняя панель на телефоне прижата к самому низу экрана, как в приложениях iPhone: под ней больше не просвечивают карточки. Если подписи задевают полоску iPhone, отступ под кнопками меняется в «Настроить вид» → «Нижняя панель».", "«Команда» переехала из нижней панели в меню под аватаром: раздел нужен редко, а остальным вкладкам стало просторнее. Если есть неотвеченные приглашения, их число видно в этом пункте меню."]}, {"v": "2.19.0", "date": "07.11.2026", "items": ["«✦ Новая сцена от Claude» переделана. Идеи теперь строятся от конкретики поста — настоящего экрана, статуса, цифры или вещи, о которой пост, — а не от слова из заголовка. Над идеями видна главная мысль поста, у каждой идеи — подписи, которые будут на рисунке. Каламбуры только там, где они смешные сами по себе; дежурные лупы, лампочки и абстрактные точки Claude больше не предлагает.", "Claude рисует по образцу одобренных обложек того же типа: интерфейс — как «Светофор, который видят не все», предмет — как весы из «Цель перевешивает красоту», значок — как «Незамеченный бургер».", "Рисунок проверяется дважды. Сначала панель сама смотрит, не залез ли он на заголовок, не пустой ли, не упирается ли в край и есть ли один оранжевый акцент, и просит Claude поправить. Потом Claude смотрит на готовую картинку как арт-директор и правит её. Поэтому рисование занимает одну-две минуты, и при первом рисунке панель спросит разрешение отправлять Claude картинки."]}];
 /* ---------- логотип «ДР»: чаша «Р» — радар, белый сектор — луч ----------
    Один рисунок на всю панель: шапка, загрузка, пустые состояния, аватар канала в превью Telegram.
    Луч вращается вокруг белой точки; рамка-полукольцо (clipPath #drRing в body.html) прячет его слева,
@@ -67,7 +68,7 @@ function loaderEl(text){
 mountBrandLogo();
 /* ---------- formatting (same rules as the channel) ---------- */
 const fmt = v => esc(v)
-  .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"'<>]+)\)/g,'<a href="$2">$1</a>')
+  .replace(/\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()"'<>]|\([^\s()"'<>]*\))+)\)/g,'<a href="$2">$1</a>')
   .replace(/\*\*([^*\n]+)\*\*/g,"<b>$1</b>")
   .replace(/(^|[^_\w])__([^_\n]+)__(?![_\w])/g,"$1<i>$2</i>");
 const photoList = a => (Array.isArray(a.photos)?a.photos:[]).slice(0,9).map(p=>String(typeof p==="string"?p:(p&&(p.file_id||p.id))||"").trim()).map(f=>/^[A-Za-z0-9_-]{10,300}$/.test(f)?f:"");
@@ -533,7 +534,7 @@ function lintText(t, media){
     if(/^\s*(\[фото|##)/i.test(para)) continue;
     const sents=para.replace(/\n/g," ").split(/(?<=[.!?…])\s+(?=[«"A-ZА-ЯЁ0-9])/);
     if(sents.filter(x=>x.trim()).length>3) out.push({s:start,e:start+para.length,kind:"len",msg:"Абзац длиннее трёх предложений — раздели"});
-    let so=start; for(const sn of sents){ const words=sn.replace(/\[([^\]]+)\]\([^)]+\)/g,"$1").split(/\s+/).filter(Boolean).length; const i=t.indexOf(sn.slice(0,20),so); if(words>22 && i>=0) out.push({s:i,e:i+sn.length,kind:"len",msg:"Длинное предложение ("+words+" слов) — разбей на два"}); if(i>=0) so=i+1; }
+    let so=start; for(const sn of sents){ const words=sn.replace(/\[([^\]]+)\]\((?:[^()\s]|\([^()\s]*\))+\)/g,"$1").split(/\s+/).filter(Boolean).length; const i=t.indexOf(sn.slice(0,20),so); if(words>22 && i>=0) out.push({s:i,e:i+sn.length,kind:"len",msg:"Длинное предложение ("+words+" слов) — разбей на два"}); if(i>=0) so=i+1; }
   }
   return out.sort((a,b)=>a.s-b.s);
 }
@@ -1296,6 +1297,9 @@ function tgPreview(a){
   const html=richHtml(a).replace(/<img src="tg:\/\/photo\?id=p(\d+)"\/>/g,(m,n)=>{ const it=med[Number(n)-1]; if(it && needsImport(a,it.url)) return '<div class="ph">фото '+n+' · '+(PH_ERR.has(it.url)?'не перенеслось из источника, в Telegram загрузится при публикации':'переношу из источника…')+'</div>'; return it?'<img class="mi" alt="'+esc(it.caption||("фото "+n))+'" src="'+esc(photoSrc(a,it.url))+'"/>':'<div class="ph">фото '+n+' · превью нет</div>'; }).replace(/<hr\/><footer>/,'<div class="ft">').replace(/<\/footer>$/,"</div>");
   tx.innerHTML=html; // built from escaped text only
   box.append(tx);
+  if(a.poll && pollOpts(a.poll).length){ const p=a.poll, quiz=p.type==="quiz", raw=(p.options||[]).map(o=>String(o||"").trim());
+    box.append(h("div",{class:"tgpoll"}, h("b",{text:String(p.question||"").trim()||"Вопрос опроса"}), h("span",{class:"pt",text:quiz?"Анонимная викторина · отдельным сообщением":"Анонимный опрос · отдельным сообщением"}),
+      ...raw.map((o,i)=>o?h("div",{class:"po"+(quiz&&i===p.correct?" ok":"")}, h("i",{"aria-hidden":"true"}), h("span",{text:o})):null).filter(Boolean))); }
   return box;
 }
 
@@ -1334,8 +1338,12 @@ async function adoptPost(a){
   S.baseOverride=S.baseOverride||{}; S.baseOverride[a.id]="posts";
   return {...a, _base:"posts"};
 }
+/* Игра — пост рубрики «Игра»: живёт во вкладке «Игры», а не среди статей. Опрос (poll) может быть у любого поста. */
+const isGame = a => /^игра$/i.test(String(a.label||a.section||"").trim());
+const GAME_READY=["review","draft","queued","publishing","publish_unknown"];
 function byView(v){
-  const p=S.posts.filter(authorOk);
+  if(v==="games") return S.posts.filter(authorOk).filter(x=>isGame(x)&&GAME_READY.includes(x.status)).sort((a,b)=>(b.updated_at||0)-(a.updated_at||0));
+  const p=S.posts.filter(authorOk).filter(x=>!isGame(x));
   if(v==="review") return p.filter(x=>["review","queued","publishing","publish_unknown"].includes(x.status)).sort((a,b)=>(b.updated_at||0)-(a.updated_at||0));
   if(v==="plan") return p.filter(x=>x.status==="scheduled").sort((a,b)=>(a.scheduled_at||0)-(b.scheduled_at||0));
   if(v==="drafts") return p.filter(x=>x.status==="draft").sort((a,b)=>(b.updated_at||0)-(a.updated_at||0));
@@ -1360,6 +1368,7 @@ function prePublishProblems(a){
   if(n>have) p.push("в тексте [фото:"+n+"], а картинок "+have);
   const fmt=lintText(String(a.full_text||""),have).filter(x=>x.kind==="fmt");
   if(fmt.length) p.push(fmt[0].msg.toLowerCase());
+  p.push(...pollProblems(a.poll));
   return p;
 }
 function findMessageId(x, depth=0){
@@ -1371,6 +1380,39 @@ function findMessageId(x, depth=0){
   return 0;
 }
 const PUB_TRIGGER = "trig_015jMNCGYWvjDN6b5s8MGi3R";
+/* Опрос к посту (с 2.20): poll {type:"quiz"|"regular", question, options[], correct, explanation}.
+   Уходит отдельным сообщением сразу после поста (sendPoll); в канале опросы всегда анонимные. */
+const pollOpts = p => (p&&Array.isArray(p.options)?p.options:[]).map(o=>String(o||"").trim()).filter(Boolean);
+function pollProblems(p){
+  const out=[]; if(!p) return out; const opts=pollOpts(p), q=String(p.question||"").trim();
+  if(!q) out.push("у опроса нет вопроса"); else if(q.length>300) out.push("вопрос опроса длиннее 300 знаков");
+  if(opts.length<2) out.push("в опросе меньше двух вариантов"); if(opts.length>10) out.push("в опросе больше 10 вариантов");
+  if(opts.some(o=>o.length>100)) out.push("вариант ответа длиннее 100 знаков");
+  if(p.type==="quiz"){ if(!(Number.isInteger(p.correct)&&p.correct>=0&&p.correct<opts.length&&String((p.options||[])[p.correct]||"").trim())) out.push("в викторине не отмечен верный ответ");
+    if(String(p.explanation||"").trim().length>200) out.push("пояснение к викторине длиннее 200 знаков"); }
+  return out;
+}
+function pollBody(a){
+  const p=a.poll, raw=(p.options||[]).map(o=>String(o||"").trim()), opts=raw.filter(Boolean);
+  const b={chat_id:chanOf(a), question:String(p.question||"").trim(), options:opts.map(text=>({text})), is_anonymous:true};
+  if(p.type==="quiz"){ b.type="quiz"; b.correct_option_id=raw.slice(0,p.correct).filter(Boolean).length; const ex=String(p.explanation||"").trim(); if(ex) b.explanation=ex; }
+  return b;
+}
+async function sendPoll(a){
+  const res=await mcp.callTool(MAKE, TOOL_TG, {method:"sendPoll", body:JSON.stringify(pollBody(a))});
+  const raw=JSON.stringify(res.payload??res.content??""); const mid=findMessageId(res.payload??res.content);
+  if(!mid) throw {message:"Telegram не вернул номер опроса: "+raw.slice(0,160)};
+  await savePost(a.id,{poll_message_id:mid, poll_sent_at:Date.now(), poll_error:""});
+  return mid;
+}
+async function sendPollNow(a){
+  if(!mcp){ toast("Отправка недоступна в этом окне: открой панель в Claude."); return; }
+  const pr=pollProblems(a.poll); if(pr.length){ S.errors[a.id]="Опрос не отправлен: "+pr.join(", ")+". Открой пост и поправь."; render(); return; }
+  S.busy[a.id]=true; S.errors[a.id]=""; render();
+  try{ await sendPoll(a); toast("Опрос отправлен в канал"); }
+  catch(e){ const m=String((e&&e.message)||"попробуй ещё раз").slice(0,160); await savePost(a.id,{poll_error:m}).catch(()=>{}); S.errors[a.id]="Опрос не ушёл: "+m; }
+  finally{ S.busy[a.id]=false; render(); }
+}
 const CCR = "Claude Code Remote";
 async function canvasAsset(a){
   const c=drawCover(a); if(!c) throw {code:"cover"};
@@ -1466,7 +1508,8 @@ async function armDispatcher(extra){
 }
 async function prepareOutbox(a){
   const body={chat_id:chanOf(a), rich_message:await buildRich(a)};
-  return {body:JSON.stringify(body), prepared_at:Date.now()};
+  /* опрос задача отложенной публикации отправит сразу после поста */
+  return {body:JSON.stringify(body), ...(a.poll?{poll:JSON.stringify(pollBody(a))}:{}), prepared_at:Date.now()};
 }
 const myEd=()=>S.me&&S.editors[S.me]||{};
 const canPub=a=>S.owner || (!!myEd().can_publish && !S.paused && (a.author||"")===S.me);
@@ -1537,6 +1580,8 @@ async function publish(a){
     if(a.owner_edited && a.orig_text!=null) patch.edit_logged=false;
     await savePost(a.id,patch);
     toast("Опубликовано в канал");
+    if(a.poll){ try{ await sendPoll(a); toast("Пост и опрос — в канале"); }
+      catch(pe){ const m=String((pe&&pe.message)||"ошибка").slice(0,160); await savePost(a.id,{poll_error:m}).catch(()=>{}); S.errors[a.id]="Пост вышел, а опрос не ушёл ("+m+"). Нажми «Отправить опрос»."; } }
   }catch(e){
     const code=e&&e.code; let msg;
     if(sent){ await savePost(a.id,{status:"publish_unknown"}).catch(()=>{}); S.errors[a.id]="Пост мог уйти в канал — проверь его, прежде чем жать ещё раз."; return; }
@@ -1555,6 +1600,7 @@ const TAB_ICO=(()=>{ const s=d=>'<svg width="22" height="22" viewBox="0 0 24 24"
     drafts:s('<path d="M14.5 4.5l5 5L9 20H4v-5z"/><path d="M12.5 6.5l5 5"/>'),
     ideas:s('<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/>'),
     published:s('<path d="M21 3L10 14"/><path d="M21 3l-6.5 18-4.5-7-7-4.5z"/>'),
+    games:s('<rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.3" fill="currentColor" stroke="none"/>'),
     team:s('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-2.5-5.1"/>')}; })();
 function renderTabs(){
   const nav=$("#tabs"); const keep=nav.scrollLeft; nav.replaceChildren();
@@ -1577,12 +1623,14 @@ function postCard(a){
   const med=mediaOf(a);
   const st={review:"на согласовании",draft:"черновик",published:"опубликован",rejected:"отклонён",queued:"выходит в канал…",publishing:"публикуется…",publish_unknown:"проверь канал"}[a.status]||a.status;
   /* статус показываем, только если он отличается от раздела: в «На согласовании» и так всё на согласовании */
-  const natural={review:"review",drafts:"draft",published:"published",plan:"scheduled"}[S.view];
+  const natural=S.view==="games"?(a.status==="published"?"published":"review"):{review:"review",drafts:"draft",published:"published",plan:"scheduled"}[S.view];
   const stEl=a.status==="scheduled"?h("span",{class:"when",text:"выйдет "+whenText(a.scheduled_at)}):(a.status!==natural?h("span",{class:"status "+a.status,text:st}):null);
   const multi=new Set(S.posts.map(p=>p.author||"claude")).size>1;
   b.append(h("div",{class:"meta"}, stEl, h("span",{class:"lbl2",text:a.label||a.section||""}), multi?h("span",{text:authorName(a.author)}):null, h("span",{text:ago(a.published_at||a.updated_at||a.created_at)})));
   b.append(h("h3",{text:plain(a.title)}));
-  b.append(h("p",{class:"excerpt",text:plain(a.full_text).slice(0,280)}));
+  b.append(h("p",{class:"excerpt",text:plain(a.full_text).replace(/\[(?:фото|photo)\s*:?\s*\d{1,2}\]\s*/gi,"").slice(0,280)}));
+  if(a.poll) b.append(pollView(a));
+  if(isGame(a) && a.threads && a.status!=="published") b.append(threadsView(a));
   if(med.length && cov.classList.contains("mcover")){ b.querySelector(".meta").append(h("span",{text:(med.length>1?"карусель · ":"картинка · ")+med.length})); }
   else if(med.length){ const st=h("div",{class:"strip",style:"padding:0"}); const pa=a.photo_assets||{}; let bad=0; med.slice(0,10).forEach((m,i)=>{ const im=h("img",{src:pa[m.url]||m.url,alt:"",loading:"lazy",referrerpolicy:"no-referrer"}); im.addEventListener("error",()=>{ im.remove(); bad++; if(bad>=Math.min(10,med.length)) st.replaceWith(h("div",{class:"hint",text:"Фото с сайта источника здесь не показываются — они загрузятся в Telegram при публикации."})); }); st.append(im); }); b.append(h("div",{class:"meta",text:(med.length>1?"Карусель · ":"Картинка · ")+med.length+" шт."}), st); }
   if(a.notes_open>0) b.querySelector(".meta")?.append(h("span",{class:"chk notes",title:"Открытые заметки к посту"},"💬 "+a.notes_open));
@@ -1599,6 +1647,7 @@ function postCard(a){
     main.append(h("button",{class:"btn accent",onclick:()=>savePost(a.id,{status:"published",published_at:Date.now()})},"Пост вышел"),
                 h("button",{class:"btn",onclick:()=>{S.errors[a.id]="";savePost(a.id,{status:"review"});}},"Не вышел"));
   } else if(a.status==="published"){
+    if(a.poll && !a.poll_message_id && S.owner) main.append(h("button",{class:"btn accent",disabled:busy,onclick:()=>sendPollNow(a)},busy?"Отправляю…":"Отправить опрос"));
     if(a.published_url) main.append(h("a",{class:"btn",href:a.published_url,target:"_blank",rel:"noopener"},"В канале ↗"));
     main.append(h("button",{class:"btn",onclick:()=>openEditor(a.id)},S.owner?"Исправить":"Посмотреть"));
   } else if(S.sched===a.id){
@@ -1634,9 +1683,41 @@ function postCard(a){
   card.classList.add("open");
   card.tabIndex=0;
   card.setAttribute("aria-label","Открыть пост: "+plain(a.title));
-  card.addEventListener("click",e=>{ if(e.target.closest("button,a,input,select,textarea,label,.confirm")) return; if(getSelection&&String(getSelection()).length) return; openEditor(a.id); });
+  card.addEventListener("click",e=>{ if(e.target.closest("button,a,input,select,textarea,label,.confirm,details,summary")) return; if(getSelection&&String(getSelection()).length) return; openEditor(a.id); });
   card.addEventListener("keydown",e=>{ if(e.target===card && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); openEditor(a.id); } });
   return card;
+}
+/* ---------- игры (с 2.20) ---------- */
+function pollView(a){
+  const p=a.poll||{}, quiz=p.type==="quiz", raw=(p.options||[]).map(o=>String(o||"").trim());
+  const box=h("div",{class:"pollv"}, h("div",{class:"pollh"}, h("span",{class:"pk",text:quiz?"Викторина":"Опрос"}), h("b",{text:String(p.question||"").trim()||"Вопрос не задан"})),
+    h("ol",{}, ...raw.map((o,i)=>o?h("li",{class:quiz&&i===p.correct?"ok":""}, h("span",{text:o}), quiz&&i===p.correct?h("em",{text:"верный"}):null):null).filter(Boolean)),
+    quiz&&String(p.explanation||"").trim()?h("p",{class:"hint",text:"Пояснение: "+String(p.explanation).trim()}):null);
+  if(a.status==="published") box.append(h("p",{class:"hint pst "+(a.poll_message_id?"ok":"bad"),text:a.poll_message_id?"Опрос в канале":a.poll_error?"Опрос не ушёл: "+a.poll_error:"Опрос ещё не отправлен"}));
+  else { const pr=pollProblems(p); if(pr.length) box.append(h("p",{class:"hint pst bad",text:"Поправь перед выходом: "+pr.join(", ")})); else box.append(h("p",{class:"hint",text:"Уйдёт в канал сразу после поста."})); }
+  return box;
+}
+async function copyText(t, msg){ try{ await navigator.clipboard.writeText(t); toast(msg||"Скопировано"); }
+  catch(_){ const ta=h("textarea",{style:"position:fixed;opacity:0"}); ta.value=t; document.body.append(ta); ta.select(); try{ document.execCommand("copy"); toast(msg||"Скопировано"); }catch(__){ toast("Не получилось скопировать"); } ta.remove(); } }
+function threadsView(a){
+  const t=a.threads||{}; const opts=(t.poll_options||[]).filter(Boolean);
+  const post=String(t.text||"").trim()+(opts.length?"\n\nОпрос: "+opts.join(" / "):"");
+  return h("details",{class:"thr"}, h("summary",{text:"Для Threads"}),
+    t.text?h("p",{text:t.text}):null, opts.length?h("p",{class:"hint",text:"Опрос в Threads (только у поста без картинки): "+opts.join(" / ")}):null,
+    t.reply?h("p",{class:"hint",text:"Ответом под постом: "+t.reply}):null,
+    h("div",{class:"acts"}, t.text?h("button",{type:"button",class:"btn sm",onclick:()=>copyText(post,"Текст для Threads скопирован")},"Копировать пост"):null,
+      t.reply?h("button",{type:"button",class:"btn sm",onclick:()=>copyText(String(t.reply),"Ответ скопирован")},"Копировать ответ"):null));
+}
+function renderGames(){
+  const m=$("#main");
+  m.append(h("div",{class:"lead"}, h("div",{}, h("h2",{text:"Игры"}), h("p",{text:"Игры и опросы отдельно от статей. Опрос уходит в канал сам, сразу после поста, — и при «Опубликовать», и по плану. Текст для Threads — в карточке."})),
+    h("div",{class:"leadacts"}, S.canWrite&&S.owner?h("button",{class:"btn primary newpost",onclick:()=>newPost({label:"Игра"})},"+ Новая игра"):null)));
+  if(!S.ready){ m.append(loaderEl("Загружаю игры…")); return; }
+  const all=S.posts.filter(authorOk).filter(isGame);
+  const ready=byView("games"), plan=all.filter(x=>x.status==="scheduled").sort((a,b)=>(a.scheduled_at||0)-(b.scheduled_at||0)), out=all.filter(x=>x.status==="published").sort((a,b)=>(b.published_at||0)-(a.published_at||0));
+  if(!ready.length&&!plan.length&&!out.length){ m.append(h("div",{class:"empty"}, logoEl("mono live"), h("b",{text:"Игр пока нет"}), h("span",{text:"Игра — пост с рубрикой «Игра» и опросом. Опрос добавляется в редакторе, в разделе «Опрос»."}), S.owner?h("button",{class:"btn primary",onclick:()=>newPost({label:"Игра"})},"+ Новая игра"):null)); return; }
+  const part=(t,list)=>{ if(!list.length) return; m.append(h("h3",{class:"dayh",text:t+" · "+list.length})); const f=h("div",{class:"feed"}); list.forEach(a=>f.append(postCard(a))); m.append(f); };
+  part("Готовы к выходу",ready); part("В плане",plan); part("Вышли",out.slice(0,30));
 }
 function emptyState(v){
   const t={
@@ -1737,7 +1818,7 @@ function render(){
   if(S.blocked){ m.append(h("div",{class:"empty"},h("b",{text:S.blocked==="paused"?"Доступ приостановлен":"Доступ закрыт"}),h("span",{text:S.blocked==="paused"?"Колонка временно на паузе. Посты сохранены — если есть вопросы, напиши главному редактору.":"Доступ к редакции закрыт. Если это ошибка, напиши главному редактору."}))); return; }
   if(S.view==="linkedin" && !S.owner) S.view="review";
   if(S.view==="linkedin"){ renderLinkedIn(); if(fx){ const t=document.querySelector('textarea[data-li="'+fx.id+'"]'); if(t){ t.focus(); try{ t.setSelectionRange(fx.s,fx.e); }catch(_){} t.scrollTop=fx.t; } } return; }
-  if(S.view==="ideas") renderIdeas(); else if(S.view==="team") (S.owner?renderAdmin():renderTeam()); else renderFeed(S.view);
+  if(S.view==="ideas") renderIdeas(); else if(S.view==="games") renderGames(); else if(S.view==="team") (S.owner?renderAdmin():renderTeam()); else renderFeed(S.view);
 }
 
 
@@ -2042,7 +2123,7 @@ function drawSheet(){
   const inp=(id,val,ph)=>{ const e=h("input",{id,type:"text",value:val||"",placeholder:ph||"",readonly:ro}); return e; };
   const tTitle=inp("fTitle",d.title,"Заголовок поста");
   const tCover=h("textarea",{id:"fCover",rows:2,class:"covtitle",readonly:ro,placeholder:"До 50 знаков. Enter — перенос строки там, где хочешь"}); tCover.value=d.cover_title||"";
-  const tLabel=h("select",{id:"fLabel",disabled:ro}); ["Крафт","Разбор","Новости","Мнение","Вакансии","Книга","Фильм","Мем","Редакция","Вопрос читателя","Инсайд","Колонка","Мысль","Находка","Чек-лист","Плохо и хорошо","Итоги недели","Разбор портфолио"].forEach(x=>tLabel.append(h("option",{value:x,selected:(d.label||d.section)===x},x))); { const cur=d.label||d.section; if(cur && ![...tLabel.options].some(o=>o.value===cur)) tLabel.append(h("option",{value:cur,selected:true},cur)); }
+  const tLabel=h("select",{id:"fLabel",disabled:ro}); ["Крафт","Разбор","Новости","Мнение","Вакансии","Книга","Фильм","Мем","Редакция","Вопрос читателя","Инсайд","Колонка","Мысль","Находка","Чек-лист","Плохо и хорошо","Итоги недели","Разбор портфолио","Игра"].forEach(x=>tLabel.append(h("option",{value:x,selected:(d.label||d.section)===x},x))); { const cur=d.label||d.section; if(cur && ![...tLabel.options].some(o=>o.value===cur)) tLabel.append(h("option",{value:cur,selected:true},cur)); }
   const tText=h("textarea",{id:"fText",readonly:ro,spellcheck:"true"}); tText.value=d.full_text||"";
   const lintBox=h("details",{class:"lint"}); let lintOpen=false; lintBox.addEventListener("toggle",()=>{ lintOpen=lintBox.open; });
   const drawLint=()=>{ const L=lintText(tText.value,(d.media||[]).length); lintBox.hidden=!L.length; if(!L.length){ lintBox.replaceChildren(); return; }
@@ -2150,6 +2231,43 @@ function drawSheet(){
     h("div",{class:"hint",text:"Строка [фото:N] в тексте ставит картинку N в это место, остальные идут в конце поста."}),
     ro?null:h("div",{class:"acts"}, fileIn, h("label",{for:"fMedia",class:"btn"},"+ Добавить картинки")));
   drawMedia();
+  /* опрос (с 2.20): уходит в канал отдельным сообщением сразу после поста. Только у главного редактора:
+     посты редакторов выпускает другая задача, она опросы не отправляет. */
+  const pollSec=h("section",{class:"sec pollsec"}); const pollWarn=h("div",{class:"hint pst bad"});
+  const pollChanged=()=>{ const pr=pollProblems(d.poll); pollWarn.textContent=pr.length?"Перед выходом поправь: "+pr.join(", "):""; pollWarn.hidden=!pr.length; editing.dirty=true; upd(); if(!ro){ setSaveState("Опрос изменён…"); clearTimeout(sync.as); sync.as=setTimeout(autosave,2500); } };
+  const drawPoll=()=>{
+    const head=h("div",{class:"sech"}, h("h4",{text:"Опрос"}), h("span",{text:"уйдёт в канал сразу после поста"}));
+    const p=d.poll;
+    if(!p){ pollSec.replaceChildren(head, h("p",{class:"hint",text:"Викторина с верным ответом или обычный опрос. В канале опросы всегда анонимные."}), ro?null:h("div",{class:"acts"}, h("button",{type:"button",class:"btn",onclick:()=>{ d.poll={type:"quiz",question:"",options:["",""],correct:0,explanation:""}; pollChanged(); drawPoll(); pollSec.querySelector("textarea")?.focus(); }},"+ Добавить опрос"))); return; }
+    if(!Array.isArray(p.options)) p.options=["",""];
+    const quiz=p.type==="quiz";
+    const typ=h("div",{class:"seg sm",role:"group","aria-label":"Тип опроса"}, ...[["quiz","Викторина"],["regular","Обычный опрос"]].map(([k,t])=>{ const on=(k==="quiz")===quiz; const b=h("button",{type:"button",class:on?"on":"","aria-pressed":on?"true":"false",disabled:ro},t); b.addEventListener("click",()=>{ p.type=k; if(k==="quiz"&&!Number.isInteger(p.correct)) p.correct=0; pollChanged(); drawPoll(); }); return b; }));
+    const q=h("textarea",{rows:2,readonly:ro,placeholder:"Вопрос, до 300 знаков","aria-label":"Вопрос опроса"}); q.value=p.question||""; q.addEventListener("input",()=>{ p.question=q.value; pollChanged(); });
+    const opts=h("div",{class:"popts"});
+    p.options.forEach((o,i)=>{ const inp=h("input",{type:"text",readonly:ro,placeholder:"Вариант "+(i+1),"aria-label":"Вариант "+(i+1),maxlength:100}); inp.value=o||""; inp.addEventListener("input",()=>{ p.options[i]=inp.value; pollChanged(); });
+      const ok=quiz?h("button",{type:"button",class:"btn sm "+(p.correct===i?"accent":"ghost"),disabled:ro,"aria-pressed":p.correct===i?"true":"false",title:"Отметить верным",onclick:()=>{ p.correct=i; pollChanged(); drawPoll(); }},p.correct===i?"✓ верный":"верный?"):null;
+      const del=(ro||p.options.length<=2)?null:h("button",{type:"button",class:"btn sm ghost danger",title:"Убрать вариант","aria-label":"Убрать вариант "+(i+1),onclick:()=>{ p.options.splice(i,1); if(p.correct===i) p.correct=0; else if(p.correct>i) p.correct--; pollChanged(); drawPoll(); }},"✕");
+      opts.append(h("div",{class:"popt"}, inp, ok, del)); });
+    const ex=quiz?h("textarea",{rows:2,readonly:ro,placeholder:"Пояснение, которое Telegram покажет после ответа, до 200 знаков","aria-label":"Пояснение"}):null;
+    if(ex){ ex.value=p.explanation||""; ex.addEventListener("input",()=>{ p.explanation=ex.value; pollChanged(); }); }
+    pollSec.replaceChildren(head, typ, h("div",{class:"fld"}, h("label",{text:"Вопрос"}), q), h("div",{class:"fld"}, h("label",{text:quiz?"Варианты — отметь верный":"Варианты"}), opts,
+        (ro||p.options.length>=10)?null:h("button",{type:"button",class:"btn sm",onclick:()=>{ p.options.push(""); pollChanged(); drawPoll(); }},"+ Вариант")),
+      ex?h("div",{class:"fld"}, h("label",{text:"Пояснение"}), ex):null, pollWarn,
+      ro?null:h("div",{class:"acts"}, h("button",{type:"button",class:"btn sm ghost danger",onclick:()=>{ d.poll=null; pollChanged(); drawPoll(); }},"Убрать опрос")));
+    const pr=pollProblems(p); pollWarn.textContent=pr.length?"Перед выходом поправь: "+pr.join(", "):""; pollWarn.hidden=!pr.length;
+  };
+  if(S.owner||d.poll) drawPoll(); else pollSec.hidden=true;
+  const thrSec=h("section",{class:"sec thrsec"});
+  if(isGame(d)){ d.threads=d.threads||{text:"",reply:""};
+    const tt=h("textarea",{rows:3,readonly:ro,placeholder:"Пост для Threads"}); tt.value=d.threads.text||"";
+    const tr=h("textarea",{rows:3,readonly:ro,placeholder:"Ответ, который оставишь под постом"}); tr.value=d.threads.reply||"";
+    const thrCh=()=>{ d.threads={...d.threads, text:tt.value, reply:tr.value}; editing.dirty=true; if(!ro){ clearTimeout(sync.as); sync.as=setTimeout(autosave,2500); } };
+    tt.addEventListener("input",thrCh); tr.addEventListener("input",thrCh);
+    thrSec.append(h("div",{class:"sech"}, h("h4",{text:"Для Threads"}), h("span",{text:"публикуешь сама, текст можно скопировать"})),
+      h("div",{class:"fld"}, h("label",{text:"Пост"}), tt), h("div",{class:"fld"}, h("label",{text:"Ответ под постом"}), tr),
+      (d.threads.poll_options||[]).length?h("p",{class:"hint",text:"Опрос в Threads (только у поста без картинки): "+d.threads.poll_options.join(" / ")}):null,
+      h("div",{class:"acts"}, h("button",{type:"button",class:"btn sm",onclick:()=>copyText(tt.value+((d.threads.poll_options||[]).length?"\n\nОпрос: "+d.threads.poll_options.join(" / "):""),"Текст для Threads скопирован")},"Копировать пост"), h("button",{type:"button",class:"btn sm",onclick:()=>copyText(tr.value,"Ответ скопирован")},"Копировать ответ")));
+  } else thrSec.hidden=true;
   /* layout chooser */
   const SAFE_MODE=!!editing.safe;
   if(!d.layout) d.layout=layoutOf(d);
@@ -2275,7 +2393,8 @@ function drawSheet(){
   drawEd();
   covSecRef=cov; if(!SAFE_MODE){ try{ drawLayout(); applyLayout(d.layout,true); }catch(e){ console.error(e); showErr("Оформление не загрузилось", e); } }
   if(SAFE_MODE){ layoutSec.hidden=true; carSec.hidden=true; }
-  form.append(layoutSec, cov, carSec, reelSec, mediaFld, sec("Источник и хэштеги", null, h("div",{class:"row2"}, field("Хэштеги",tTags), field("Источник",tSrc)), field("Ссылка на первоисточник",tUrl,"Для новостей и разборов: в канале появится строка «Открыть первоисточник ↗».")));
+  const game=isGame(d);
+  form.append(...(game?[pollSec,thrSec]:[]), layoutSec, cov, carSec, reelSec, mediaFld, ...(game?[]:[pollSec]), sec("Источник и хэштеги", null, h("div",{class:"row2"}, field("Хэштеги",tTags), field("Источник",tSrc)), field("Ссылка на первоисточник",tUrl,"Для новостей и разборов: в канале появится строка «Открыть первоисточник ↗».")));
   const ed=h("div",{class:"ed"},form);
   panes.append(ed,pv);
   const saveState=h("span",{class:"savestate"});
@@ -2289,7 +2408,7 @@ function drawSheet(){
     editing.lastVerText=text; editing.lastVerAt=now;
     verCol().doc().set({title:d.title||"", full_text:text||"", by:S.me||"", source, at:now}).catch(()=>{});
   }
-  function mkPatch(){ return {title:(d.title||"").trim(), cover_title:(d.cover_title||"").trim(), label:d.label, section:d.section, full_text:(d.full_text||"").replace(/\r\n?/g,"\n").trim(), hashtags:d.hashtags, source:(d.source||"").trim(), url:(d.url||"").trim(), cover_render:!!(d.cover_render||isRendered(d)), cover_seed:Number(d.cover_seed)||0, cover_art:d.cover_art||"", cover_art_prev:d.cover_art_prev||"", ...(d.cover_concept?{cover_concept:d.cover_concept}:{}), carousel:d.carousel||null, reel:d.reel||null, ...(d.photo_assets?{photo_assets:d.photo_assets}:{}), ...(d.reel_video_url&&/^https:/.test(d.reel_video_url)?{reel_video_url:d.reel_video_url, reel_video_asset:d.reel_video_asset||"", reel_video_type:d.reel_video_type||"", reel_video_at:d.reel_video_at||0}:{}), cover_off:!!d.cover_off, layout:d.layout||"cover", ...((d.media||[]).some(m=>m.pending)?{}:{media:(d.media||[]).map(m=>({url:m.url, asset_id:m.asset_id||"", caption:m.caption||"", source_url:m.source_url||"", file_id:m.file_id||"", ...(m.gen?{gen:true}:{})}))})}; }
+  function mkPatch(){ return {title:(d.title||"").trim(), cover_title:(d.cover_title||"").trim(), label:d.label, section:d.section, full_text:(d.full_text||"").replace(/\r\n?/g,"\n").trim(), hashtags:d.hashtags, source:(d.source||"").trim(), url:(d.url||"").trim(), cover_render:!!(d.cover_render||isRendered(d)), cover_seed:Number(d.cover_seed)||0, cover_art:d.cover_art||"", cover_art_prev:d.cover_art_prev||"", ...(d.cover_concept?{cover_concept:d.cover_concept}:{}), carousel:d.carousel||null, reel:d.reel||null, ...(d.photo_assets?{photo_assets:d.photo_assets}:{}), ...(d.reel_video_url&&/^https:/.test(d.reel_video_url)?{reel_video_url:d.reel_video_url, reel_video_asset:d.reel_video_asset||"", reel_video_type:d.reel_video_type||"", reel_video_at:d.reel_video_at||0}:{}), cover_off:!!d.cover_off, layout:d.layout||"cover", ...(d.poll!==undefined?{poll:d.poll?{...d.poll, options:(d.poll.options||[]).map(o=>String(o||""))}:null}:{}), ...(d.threads?{threads:d.threads}:{}), ...((d.media||[]).some(m=>m.pending)?{}:{media:(d.media||[]).map(m=>({url:m.url, asset_id:m.asset_id||"", caption:m.caption||"", source_url:m.source_url||"", file_id:m.file_id||"", ...(m.gen?{gen:true}:{})}))})}; }
   async function uploadPendingSlides(){
     const pend=(d.media||[]).filter(m=>m.pending); if(!pend.length) return true; const ed=editing;
     if(!assets){ toast("Загрузка картинок недоступна в этом окне"); return false; }

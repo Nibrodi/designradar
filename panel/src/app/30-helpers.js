@@ -18,7 +18,7 @@ function lintText(t, media){
     if(/^\s*(\[фото|##)/i.test(para)) continue;
     const sents=para.replace(/\n/g," ").split(/(?<=[.!?…])\s+(?=[«"A-ZА-ЯЁ0-9])/);
     if(sents.filter(x=>x.trim()).length>3) out.push({s:start,e:start+para.length,kind:"len",msg:"Абзац длиннее трёх предложений — раздели"});
-    let so=start; for(const sn of sents){ const words=sn.replace(/\[([^\]]+)\]\([^)]+\)/g,"$1").split(/\s+/).filter(Boolean).length; const i=t.indexOf(sn.slice(0,20),so); if(words>22 && i>=0) out.push({s:i,e:i+sn.length,kind:"len",msg:"Длинное предложение ("+words+" слов) — разбей на два"}); if(i>=0) so=i+1; }
+    let so=start; for(const sn of sents){ const words=sn.replace(/\[([^\]]+)\]\((?:[^()\s]|\([^()\s]*\))+\)/g,"$1").split(/\s+/).filter(Boolean).length; const i=t.indexOf(sn.slice(0,20),so); if(words>22 && i>=0) out.push({s:i,e:i+sn.length,kind:"len",msg:"Длинное предложение ("+words+" слов) — разбей на два"}); if(i>=0) so=i+1; }
   }
   return out.sort((a,b)=>a.s-b.s);
 }

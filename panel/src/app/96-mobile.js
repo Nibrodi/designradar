@@ -1,6 +1,7 @@
 /* ---------- шапка: «новый пост» (телефон) и меню профиля (везде) ----------
    С 2.18 меню одно на телефоне и компьютере: тема, «Что нового», тестовый вход, анкета, вид.
-   Раньше на компьютере эти кнопки жили отдельно в шапке и спорили с вкладками за внимание. */
+   Раньше на компьютере эти кнопки жили отдельно в шапке и спорили с вкладками за внимание.
+   С 2.19 здесь же «Команда»: раздел нужен редко, а в нижней панели отнимал место у ежедневных. */
 function drawMobileBar(){
   const brand=document.querySelector(".brand"); if(!brand) return;
   let bar=document.getElementById("mbar");
@@ -23,7 +24,9 @@ function openMeMenu(){
   const item=(label,right,fn,dot)=>h("button",{type:"button",role:"menuitem",onclick:()=>{ m.remove(); fn(); }}, h("span",{}, label, dot?h("i",{class:"vdot","aria-hidden":"true"}):null), right?h("small",{text:right}):null);
   const themeName={auto:"как в системе",light:"светлая",dark:"тёмная"}[getTheme()]||"";
   const fresh=seenVersion()!==APP_VERSION;
+  const inv=S.owner?S.invites.filter(i=>i.status==="sent").length:0;
   const items=[
+    item("Команда",S.view==="team"?"открыта":inv?inv+" ждут":"",()=>{ location.hash="team"; window.scrollTo({top:0}); }),
     item("Что нового","v"+APP_VERSION,showChanges,fresh),
     item("Тема",themeName,()=>{ const i=THEMES.findIndex(x=>x[0]===getTheme()); const nx=THEMES[(i+1)%THEMES.length]; try{ localStorage.setItem("dr_theme",nx[0]); }catch(_){} applyTheme(nx[0]); toast(nx[2]); })
   ];

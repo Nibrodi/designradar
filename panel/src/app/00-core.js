@@ -13,7 +13,7 @@ const VIEWS = [
   {id:"ideas", name:"Идеи"},
   {id:"published", name:"Опубликовано", short:"Вышло"},
   {id:"linkedin", name:"LinkedIn", short:"LinkedIn", owner:true},
-  {id:"team", name:"Колонки", short:"Команда"}
+  {id:"team", name:"Колонки", short:"Команда", menu:true} /* с 2.19 — в меню профиля, не во вкладках */
 ];
 const S = {posts:[], ideas:[], li:[], invites:[], settings:{}, editors:{}, me:null, owner:false, canWrite:false, view:"review", ready:false, dbOk:null, confirm:null, busy:{}, errors:{}, names:{}};
 let db=null, user=null, mcp=null, sample=null, assets=null, downloads=null;

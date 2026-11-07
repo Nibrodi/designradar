@@ -11,6 +11,7 @@ function renderTabs(){
   requestAnimationFrame(()=>{ nav.scrollLeft=keep; const a=nav.querySelector('[aria-current="page"]'); if(a && nav.scrollWidth>nav.clientWidth){ const l=a.offsetLeft-16, r=a.offsetLeft+a.offsetWidth-nav.clientWidth+24; if(nav.scrollLeft>l) nav.scrollLeft=l; else if(nav.scrollLeft<r) nav.scrollLeft=r; } });
   for(const v of VIEWS){
     if(v.owner && !S.owner) continue;
+    if(v.menu) continue;
     const n = v.id==="ideas" ? S.ideas.filter(i=>i.status!=="done").length : v.id==="linkedin" ? liReady().length : v.id==="team" ? null : byView(v.id).length;
     const nm=v.id==="team"&&S.owner?"Редакция":v.name;
     const n2=v.id==="team"&&S.owner?(S.invites.filter(i=>i.status==="sent").length||null):n;

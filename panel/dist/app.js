@@ -39,7 +39,7 @@ const authorName = id => id==="claude"||!id ? "Редакция" : ((S.editors[i
 const TEST_ID="test_editor";
 const authorOk = p => !S.author || S.author==="all" || (p.author||"claude")===S.author;
 
-const APP_VERSION="2.18.0"; const CHANGES=[{"v": "2.18.0", "date": "06.11.2026", "items": ["Логотип «ДР» в шапке, на экране загрузки, в пустых разделах и как аватар канала в превью Telegram. Луч радара в букве «Р» иногда проходит по кругу; нажми на логотип — он сделает быстрый оборот. Если в системе включено «Уменьшить движение», логотип стоит на месте.", "Шапка спокойнее: «Тестовый вход», тема и «Что нового» переехали в меню под аватаром справа — так же, как на телефоне. Точка на аватаре — есть новая версия.", "Кнопки по одной схеме: в карточке одно оранжевое главное действие и одно обычное, остальное — текстом; «Отклонить» и «Снять с плана» стоят справа отдельно, чтобы не нажать случайно. В редакторе оранжевая — кнопка «К публикации» или «На согласование», а «Сохранить» — обычная.", "Карточки ниже на треть: статус показывается только там, где он что-то говорит (время выхода, «проверь канал»), у каруселей нет второй ленты картинок, фильтр «Все авторы» появляется, только когда авторов больше одного.", "LinkedIn переделан: один черновик крупно, слева — превью как в ленте LinkedIn с обрывом «…ещё», справа — пять шагов: скопировать текст, скачать фото, открыть LinkedIn, скопировать первый комментарий со ссылкой, отметить. Сверху — сколько готово, сколько вышло за неделю из двух и когда придёт следующий черновик; остальные черновики — короткой очередью, вышедшие и отклонённые — в истории. Правила ведения LinkedIn — в блоке «Как ведём LinkedIn».", "Панель легче: обложки в карточках хранятся уменьшенными картинками, а не полноразмерными холстами (на iPhone это десятки мегабайт памяти), а пачка обновлений базы перерисовывает экран один раз, а не по разу на каждое."]}, {"v": "2.17.1", "date": "05.11.2026", "items": ["Исправлена ошибка «Не удалось запланировать: tool input is too large» у постов с тяжёлыми картинками. Картинка больше ~0,9 МБ теперь пережимается в JPEG прямо перед отправкой в Telegram (до 2560 px по длинной стороне — Telegram больше и не хранит), поэтому разницы в канале не видно. Так же работают «Опубликовать» и обложки."]}, {"v": "2.17.0", "date": "01.11.2026", "items": ["Новая вкладка «LinkedIn» (видна только главному редактору): черновики постов для твоего LinkedIn на английском и русском. Текст можно поправить, скопировать один язык или оба сразу, скачать фото (1 операция Make на фото, один раз) и отметить «Опубликовала» со ссылкой или отклонить с причиной — Claude учтёт её в следующих."]}];
+const APP_VERSION="2.18.1"; const CHANGES=[{"v": "2.18.1", "date": "07.11.2026", "items": ["Фото с сайта источника (например, Sostav) теперь видны в превью Telegram, в миниатюрах редактора и в карточках. Страница панели не может показывать картинки с чужих сайтов, поэтому при открытии поста панель сама переносит такие фото к себе — 1 операция Make на фото, один раз. В Telegram при публикации уходит исходное фото, как и раньше.", "Вернулась кнопка «✦ 3 варианта» у заголовка обложки. Она пропадала, если пост открылся без обложки, а обложку нарисовали уже в редакторе. Подсказка под обложкой и подпись кнопки теперь тоже меняются сразу, а у новости с фото вместо «Это карусель» честно написано, что пост выйдет с фото."]}, {"v": "2.18.0", "date": "06.11.2026", "items": ["Логотип «ДР» в шапке, на экране загрузки, в пустых разделах и как аватар канала в превью Telegram. Луч радара в букве «Р» иногда проходит по кругу; нажми на логотип — он сделает быстрый оборот. Если в системе включено «Уменьшить движение», логотип стоит на месте.", "Шапка спокойнее: «Тестовый вход», тема и «Что нового» переехали в меню под аватаром справа — так же, как на телефоне. Точка на аватаре — есть новая версия.", "Кнопки по одной схеме: в карточке одно оранжевое главное действие и одно обычное, остальное — текстом; «Отклонить» и «Снять с плана» стоят справа отдельно, чтобы не нажать случайно. В редакторе оранжевая — кнопка «К публикации» или «На согласование», а «Сохранить» — обычная.", "Карточки ниже на треть: статус показывается только там, где он что-то говорит (время выхода, «проверь канал»), у каруселей нет второй ленты картинок, фильтр «Все авторы» появляется, только когда авторов больше одного.", "LinkedIn переделан: один черновик крупно, слева — превью как в ленте LinkedIn с обрывом «…ещё», справа — пять шагов: скопировать текст, скачать фото, открыть LinkedIn, скопировать первый комментарий со ссылкой, отметить. Сверху — сколько готово, сколько вышло за неделю из двух и когда придёт следующий черновик; остальные черновики — короткой очередью, вышедшие и отклонённые — в истории. Правила ведения LinkedIn — в блоке «Как ведём LinkedIn».", "Панель легче: обложки в карточках хранятся уменьшенными картинками, а не полноразмерными холстами (на iPhone это десятки мегабайт памяти), а пачка обновлений базы перерисовывает экран один раз, а не по разу на каждое."]}, {"v": "2.17.1", "date": "05.11.2026", "items": ["Исправлена ошибка «Не удалось запланировать: tool input is too large» у постов с тяжёлыми картинками. Картинка больше ~0,9 МБ теперь пережимается в JPEG прямо перед отправкой в Telegram (до 2560 px по длинной стороне — Telegram больше и не хранит), поэтому разницы в канале не видно. Так же работают «Опубликовать» и обложки."]}];
 /* ---------- логотип «ДР»: чаша «Р» — радар, белый сектор — луч ----------
    Один рисунок на всю панель: шапка, загрузка, пустые состояния, аватар канала в превью Telegram.
    Луч вращается вокруг белой точки; рамка-полукольцо (clipPath #drRing в body.html) прячет его слева,
@@ -163,13 +163,13 @@ function coverMock(a, opt){
   if(!a.cover_off && a.cover_url && /^https:\/\//.test(a.cover_url)){
     /* Фото находки по ссылке: показываем из источника, в Telegram оно загрузится только при публикации */
     c.classList.add("photocover");
-    const img=h("img",{src:a.cover_url,alt:a.cover_title||a.title||"Фото",loading:"lazy",referrerpolicy:"no-referrer"});
+    const img=h("img",{src:photoSrc(a,a.cover_url),alt:a.cover_title||a.title||"Фото",loading:"lazy",referrerpolicy:"no-referrer"});
     img.addEventListener("error",()=>{ img.remove(); c.append(h("a",{class:"phfail",href:a.cover_url,target:"_blank",rel:"noopener",onclick:e=>e.stopPropagation()},"Фото не показывается здесь — открыть ↗")); });
     c.append(img, h("span",{class:"has",text:a.image_file_id?"фото в Telegram":"фото из источника · загрузится при публикации"}));
     return c; }
   const firstMedia=mediaOf(a)[0];
   if(!a.image_file_id && firstMedia){ const med=mediaOf(a); c.classList.add("mcover"); c.setAttribute("aria-label","Карусель: "+med.length+" карточек");
-    med.slice(0,4).forEach((m,i)=>c.append(h("img",{src:m.url,alt:i?"":(m.caption||"Первая карточка"),loading:"lazy",class:i?"":"first"})));
+    med.slice(0,4).forEach((m,i)=>c.append(h("img",{src:photoSrc(a,m.url),alt:i?"":(m.caption||"Первая карточка"),loading:"lazy",class:i?"":"first"})));
     if(med.length>4) c.append(h("span",{class:"more",text:"+"+(med.length-4)}));
     return c; }
   c.append(h("span",{class:"cl",text:(a.label||a.section||"Дизайн-Радар").toUpperCase()}));
@@ -186,6 +186,21 @@ async function uploadByUrl(url, key){
   return m[1];
 }
 const isExternal = u => /^https:\/\//.test(u||"") && !/\/_blob\//.test(u||"");
+/* Фото с сайта источника страница панели не показывает: она пускает только свои картинки.
+   Поэтому панель переносит их к себе (Make 6848987, 1 операция на фото, один раз) и показывает копию
+   из photo_assets; в Telegram при публикации по-прежнему уходит исходная ссылка. */
+const photoSrc = (a, url) => { const u=((a&&a.photo_assets)||{})[url]; return u ? (R_LOCAL.get(u)||u) : url; };
+const needsImport = (a, url) => rIsExt(url) && !((a&&a.photo_assets)||{})[url];
+const extPhotos = a => [...new Set([...(a.cover_off?[]:[a.cover_url]), ...mediaOf(a).filter(m=>!m.gen).map(m=>m.url)].filter(u=>u&&rIsExt(u)))];
+const PH_BUSY = new Map(), PH_ERR = new Set();
+async function importPostPhotos(a, onStep){
+  const todo=extPhotos(a).filter(u=>needsImport(a,u)&&!PH_ERR.has(u)); if(!todo.length||!mcp||!assets) return 0;
+  a.photo_assets={...(a.photo_assets||{})}; let n=0;
+  for(let i=0;i<todo.length;i++){ const u=todo[i]; if(onStep) onStep(i,todo.length);
+    let p=PH_BUSY.get(u); if(!p){ p=importPhoto(u); PH_BUSY.set(u,p); }
+    try{ a.photo_assets[u]=await p; n++; } catch(e){ PH_BUSY.delete(u); PH_ERR.add(u); throw e; } }
+  return n;
+}
 /* Вход одного вызова коннектора — не больше 1 МиБ вместе с base64. Большую картинку пережимаем в JPEG:
    Telegram всё равно хранит фото как JPEG не крупнее 2560 px, так что на канале разницы не видно. */
 const TOOL_B64_MAX = 900*1024;
@@ -1162,7 +1177,7 @@ function tgPreview(a){
   if(!a.cover_off && (a.image_file_id || a.cover_url || isRendered(a))) box.append(coverMock(a));
   const tx=h("div",{class:"tx"});
   const med=mediaOf(a);
-  const html=richHtml(a).replace(/<img src="tg:\/\/photo\?id=p(\d+)"\/>/g,(m,n)=>{ const it=med[Number(n)-1]; return it?'<img class="mi" alt="'+esc(it.caption||("фото "+n))+'" src="'+esc(it.url)+'"/>':'<div class="ph">фото '+n+' · превью нет</div>'; }).replace(/<hr\/><footer>/,'<div class="ft">').replace(/<\/footer>$/,"</div>");
+  const html=richHtml(a).replace(/<img src="tg:\/\/photo\?id=p(\d+)"\/>/g,(m,n)=>{ const it=med[Number(n)-1]; if(it && needsImport(a,it.url)) return '<div class="ph">фото '+n+' · '+(PH_ERR.has(it.url)?'не перенеслось из источника, в Telegram загрузится при публикации':'переношу из источника…')+'</div>'; return it?'<img class="mi" alt="'+esc(it.caption||("фото "+n))+'" src="'+esc(photoSrc(a,it.url))+'"/>':'<div class="ph">фото '+n+' · превью нет</div>'; }).replace(/<hr\/><footer>/,'<div class="ft">').replace(/<\/footer>$/,"</div>");
   tx.innerHTML=html; // built from escaped text only
   box.append(tx);
   return box;
@@ -1992,7 +2007,7 @@ function drawSheet(){
       const cap=h("input",{type:"text",value:m.caption||"",placeholder:"Подпись",readonly:ro||m.gen,"aria-label":"Подпись к картинке "+(i+1)});
       cap.addEventListener("input",()=>{ m.caption=cap.value; editing.dirty=true; upd(); });
       const mv=(dir)=>{ const j=i+dir; if(j<0||j>=arr.length) return; [arr[i],arr[j]]=[arr[j],arr[i]]; editing.dirty=true; drawMedia(); upd(); };
-      mBox.append(h("div",{class:"mitem"}, h("img",{src:m.url,alt:m.caption||("Картинка "+(i+1))}), h("div",{class:"mb"},
+      mBox.append(h("div",{class:"mitem"}, h("img",{src:photoSrc(d,m.url),alt:m.caption||("Картинка "+(i+1))}), h("div",{class:"mb"},
         h("div",{class:"row"}, h("span",{text:"[фото:"+(i+1)+"]"}), h("span",{class:"sp"}),
           (ro||m.gen)?null:h("button",{type:"button",class:"btn sm ghost",title:"Левее",onclick:()=>mv(-1)},"←"),
           (ro||m.gen)?null:h("button",{type:"button",class:"btn sm ghost",title:"Правее",onclick:()=>mv(1)},"→"),
@@ -2006,7 +2021,15 @@ function drawSheet(){
     for(const f of fileIn.files){ try{ const r=await assets.upload(f); (d.media=d.media||[]).push({url:r.url, asset_id:r.id, caption:""}); }catch(e){ toast("Не удалось загрузить "+f.name); } }
     fileIn.value=""; editing.dirty=true; drawMedia(); upd();
   });
-  const mediaFld=sec("Картинки и карусель","порядок здесь — порядок в посте", mBox,
+  /* фото с сайта источника переносим в панель сразу при открытии поста — иначе превью и миниатюры пустые */
+  const phSt=h("div",{class:"hint rimp",hidden:true,role:"status"});
+  const ensureEdPhotos=async()=>{ const ed=editing; if(ro||!ed||ed.phBusy||!mcp||!assets) return; if(!extPhotos(d).some(u=>needsImport(d,u)&&!PH_ERR.has(u))) return; ed.phBusy=true;
+    try{ const n=await importPostPhotos(d,(i,t)=>{ if(editing!==ed) return; phSt.hidden=false; phSt.textContent="Переношу фото источника в панель: "+(i+1)+" из "+t+"… (Make, 1 операция на фото, один раз)"; if(pvTab==="preview") drawPreview(); });
+      if(editing!==ed) return; phSt.hidden=true; drawMedia(); drawEd(); upd();
+      if(n){ ed.saving=true; try{ await savePost(ed.id,{photo_assets:d.photo_assets}); } catch(_){} finally{ setTimeout(()=>{ ed.saving=false; },2000); } } }
+    catch(e){ if(editing!==ed) return; phSt.hidden=false; phSt.textContent="Фото источника не перенеслись в панель ("+String((e&&e.message)||"ошибка Make").slice(0,120)+"). В Telegram они всё равно загрузятся при публикации."; upd(); }
+    finally{ ed.phBusy=false; } };
+  const mediaFld=sec("Картинки и карусель","порядок здесь — порядок в посте", phSt, mBox,
     h("div",{class:"hint",text:"Строка [фото:N] в тексте ставит картинку N в это место, остальные идут в конце поста."}),
     ro?null:h("div",{class:"acts"}, fileIn, h("label",{for:"fMedia",class:"btn"},"+ Добавить картинки")));
   drawMedia();
@@ -2084,7 +2107,15 @@ function drawSheet(){
   let reelSec=null; if(!SAFE_MODE){ try{ reelSec=reelEditor(d,{ro, changed:()=>{ editing.dirty=true; setSaveState("Рилс изменён"); clearTimeout(sync.as); sync.as=setTimeout(autosave,2500); }}); }catch(e){ console.error(e); showErr("Рилс не загрузился", e); } }
   const covInfo=h("div",{class:"covinfo"});
 
-  const covBox=h("div"); const drawEd=()=>{ covBox.replaceChildren(coverMock(d,{full:true}));
+  /* шапку блока «Обложка» (подзаголовок, «✦ 3 варианта», подсказку, подпись кнопки) обновляем при каждой перерисовке:
+     пост мог открыться без обложки, а потом её нарисовали — раньше кнопка вариантов так и не появлялась */
+  let covUi=null;
+  const refreshCovUi=()=>{ if(!covUi) return; const r=isRendered(d);
+    covUi.sub.textContent=r?"так её увидят в канале":"";
+    if(covUi.cv) covUi.cv.hidden=!r;
+    covUi.hint.hidden=r; covUi.hint.textContent=d.image_file_id?"У этого поста картинка уже лежит в Telegram, показать её здесь нельзя. Нажми «Нарисовать обложку редакции», чтобы заменить её обложкой канала.":(d.media||[]).some(m=>m.gen)?"Это карусель: отдельной обложки нет, в канале пост откроется карточками. Если нужна обложка над текстом — нажми «Нарисовать обложку редакции».":mediaOf(d).length?"Обложки нет: пост выйдет с фото из раздела «Картинки». Если нужна обложка над текстом — нажми «Нарисовать обложку редакции».":"Обложки нет. Нажми «Нарисовать обложку редакции», чтобы она появилась над текстом.";
+    if(covUi.simple) covUi.simple.textContent=r?"Простой рисунок вместо этого":"Нарисовать обложку редакции"; };
+  const covBox=h("div"); const drawEd=()=>{ covBox.replaceChildren(coverMock(d,{full:true})); refreshCovUi();
     const c=drawCover(d); if(!isRendered(d)||!c){ covInfo.replaceChildren(); return; }
     const sz=Number(c.dataset.size)||0, ln=(c.dataset.text||"").split("\n").filter(Boolean), manual=/\n/.test(String(d.cover_title||"").trim());
     covInfo.replaceChildren(...[
@@ -2094,9 +2125,10 @@ function drawSheet(){
       (!ro&&!manual&&ln.length>1)?h("button",{type:"button",class:"btn sm ghost",title:"Подставить текущие строки, чтобы поправить их вручную",onclick:()=>{ tCover.value=ln.join("\n"); sync(); tCover.focus(); }},"Переносить вручную"):null].filter(Boolean)); };
   const aiC=h("div",{class:"ai",hidden:true});
   const [cvBtn,cvBox]=varBox("cover");
-  const covRow=h("div",{class:"row2"}, h("div",{class:"fld"}, h("div",{class:"lblrow"}, h("label",{for:"fCover",text:"Заголовок обложки"}), (!ro&&sample&&isRendered(d))?cvBtn:null), tCover), field("Рубрика",tLabel));
+  const covRow=h("div",{class:"row2"}, h("div",{class:"fld"}, h("div",{class:"lblrow"}, h("label",{for:"fCover",text:"Заголовок обложки"}), (!ro&&sample)?cvBtn:null), tCover), field("Рубрика",tLabel));
   const covBoxWrap=h("div",{class:"covbox"},covBox);
-  const cov=sec("Обложка", isRendered(d)?"так её увидят в канале":"", covRow, cvBox, covBoxWrap, covInfo, isRendered(d)?null:h("div",{class:"hint",text:(!d.image_file_id&&mediaOf(d).length)?"Это карусель: отдельной обложки нет, в канале пост откроется карточками. Если нужна обложка над текстом — нажми «Нарисовать обложку редакции».":"У этого поста картинка уже лежит в Telegram, показать её здесь нельзя. Нажми «Нарисовать обложку редакции», чтобы заменить её обложкой канала."}));
+  const covSub=h("span"), covHint=h("div",{class:"hint"});
+  const cov=sec("Обложка", null, covRow, cvBox, covBoxWrap, covInfo, covHint); cov.querySelector(".sech").append(covSub);
   if(!ro && sample){
     const wishIn=h("input",{type:"text",id:"fWish",placeholder:"Пожелание, необязательно: «бургер», «сделай каламбур», «без интерфейса»"});
     const st=h("div",{class:"hint"}); const ideasBox=h("div",{class:"cideas"});
@@ -2115,9 +2147,11 @@ function drawSheet(){
     }},"Придумать идеи");
     aiC.append(panelHead("Новая сцена от Claude",()=>{ aiC.hidden=true; document.querySelectorAll(".sec .aibtn.on").forEach(b=>b.classList.remove("on")); }), h("label",{for:"fWish",text:"О чём обложка"}), h("div",{class:"airow"}, wishIn, go), st, ideasBox);
   }
+  const covSimple=ro?null:h("button",{type:"button",class:"btn",onclick:()=>{ d.cover_render=true; d.cover_seed=(Number(d.cover_seed)||0)+1; if(d.cover_art) d.cover_art_prev=d.cover_art; d.cover_art=""; editing.dirty=true; drawEd(); upd(); }},"Нарисовать обложку редакции");
+  covUi={sub:covSub, hint:covHint, cv:(!ro&&sample)?cvBtn:null, simple:covSimple};
   if(!ro){ const aiCBtn=sample?h("button",{type:"button",class:"btn aibtn",onclick:()=>{ aiC.hidden=!aiC.hidden; aiCBtn.classList.toggle("on",!aiC.hidden); if(!aiC.hidden) aiC.querySelector("input")?.focus(); }},"✦ Новая сцена от Claude"):null;
   cov.append(h("div",{class:"acts"}, aiCBtn,
-    h("button",{type:"button",class:"btn",onclick:()=>{ d.cover_render=true; d.cover_seed=(Number(d.cover_seed)||0)+1; if(d.cover_art) d.cover_art_prev=d.cover_art; d.cover_art=""; editing.dirty=true; drawEd(); upd(); }},isRendered(d)?"Простой рисунок вместо этого":"Нарисовать обложку редакции"),
+    covSimple,
     d.cover_art_prev?h("button",{type:"button",class:"btn ghost",onclick:()=>{ d.cover_art=d.cover_art_prev; d.cover_seed=0; editing.dirty=true; drawEd(); upd(); }},"Вернуть рисунок редакции"):null), aiC); }
   drawEd();
   covSecRef=cov; if(!SAFE_MODE){ try{ drawLayout(); applyLayout(d.layout,true); }catch(e){ console.error(e); showErr("Оформление не загрузилось", e); } }
@@ -2241,6 +2275,7 @@ function drawSheet(){
   const sheet=h("div",{class:"sheet",role:"dialog","aria-modal":"true","aria-label":"Редактор поста"}, head, panes, (mobile&&edPane)?null:foot);
   root.replaceChildren(sheet); drawPvTabs(); upd();
   if(!ro) setTimeout(()=>tText.focus({preventScroll:true}),50);
+  if(!ro) setTimeout(ensureEdPhotos,0);
 }
 
 /* ---------- версия панели и «Что нового» ---------- */

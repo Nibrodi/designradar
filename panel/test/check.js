@@ -2,7 +2,7 @@
 const {chromium}=require('playwright'); const path=require('path');
 const W=ms=>new Promise(r=>setTimeout(r,ms));
 const url='file://'+path.resolve(process.argv[2]);
-(async()=>{ const b=await chromium.launch(); const errs=[]; const fails=[]; const ok=(c,m)=>{ if(!c) fails.push(m); };
+(async()=>{ const b=await chromium.launch(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{}); const errs=[]; const fails=[]; const ok=(c,m)=>{ if(!c) fails.push(m); };
  for(const scheme of ['light','dark']){
   const p=await b.newPage({viewport:{width:1300,height:900},colorScheme:scheme});
   p.on('pageerror',e=>errs.push(scheme+': '+e.message+' @ '+(e.stack||'').split('\n')[1]));
@@ -225,6 +225,22 @@ const url='file://'+path.resolve(process.argv[2]);
   ok(await m.evaluate(()=>![...document.querySelectorAll('.sheet > footer')].length),'no fixed footer on mobile');
   await m.evaluate(()=>document.querySelector('.sheet header .iconbtn').click()); await W(500);
   await m.close(); }
+ { // 2.18.1: фото с сайта источника переносятся в панель, кнопка вариантов заголовка появляется после «Нарисовать обложку»
+  const q=await b.newPage({viewport:{width:1300,height:900}}); q.on('pageerror',e=>errs.push('photos: '+e.message+' @ '+(e.stack||'').split('\n')[1]));
+  await q.goto(url); await W(1500);
+  await q.evaluate(async()=>{ const db=await window.claude.use('db'); await db.collection('posts').doc('t_ext_photos').set({title:'Визитка без слова помощь',cover_title:'Точки',label:'Находка',section:'Находка',kind:'news',status:'review',author:'claude',full_text:'Текст поста.\n\n[фото:1]\n\nЕщё абзац.',hashtags:['#находка'],media:[{url:'https://cdn.example.com/a.jpg',caption:'Фото: The Clients',file_id:'',asset_id:''},{url:'https://cdn.example.com/b.jpg',caption:'Фото: The Clients',file_id:'',asset_id:''}],created_at:Date.now(),updated_at:Date.now()}); });
+  await q.evaluate(()=>{ location.hash='review'; }); await W(500);
+  await q.evaluate(()=>{ [...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('Визитка без слова')).querySelector('h3').click(); }); await W(2500);
+  const pd=await q.evaluate(()=>window.__mockdb['posts'].get('t_ext_photos'));
+  ok(pd.photo_assets&&Object.keys(pd.photo_assets).length===2,'external photos imported to panel');
+  ok(pd.media[0].url==='https://cdn.example.com/a.jpg','media keeps source url for Telegram');
+  ok(await q.evaluate(()=>[...document.querySelectorAll('.tg img.mi')].length===2 && [...document.querySelectorAll('.tg img.mi')].every(i=>!/cdn\.example/.test(i.getAttribute('src')))),'preview shows imported photos');
+  ok(await q.evaluate(()=>[...document.querySelectorAll('.mitem img')].every(i=>!/cdn\.example/.test(i.getAttribute('src')))),'media thumbs show imported photos');
+  const cvVisible=()=>q.evaluate(()=>{ const b=[...document.querySelectorAll('.sec .lblrow .aibtn')].find(x=>x.textContent.includes('3 варианта')&&x.closest('.fld').querySelector('#fCover')); return !!(b&&b.offsetParent); });
+  ok(await cvVisible(),'cover variants shown when post opens with a drawn cover');
+  ok(await q.evaluate(()=>![...document.querySelectorAll('.sec .hint')].some(h=>h.offsetParent&&h.textContent.startsWith('Это карусель'))),'no stale carousel hint');
+  ok(await q.evaluate(()=>[...document.querySelectorAll('.sec .acts .btn')].some(x=>x.textContent==='Простой рисунок вместо этого')),'cover button label matches drawn cover');
+  await q.close(); }
  await b.close();
  if(errs.length||fails.length){ console.error('ОШИБКИ:\n'+errs.join('\n')+'\nНЕ ПРОШЛО:\n'+fails.join('\n')); process.exit(1); }
  console.log('Все проверки прошли');

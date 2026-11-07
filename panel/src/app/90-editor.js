@@ -163,7 +163,7 @@ function drawSheet(){
       const cap=h("input",{type:"text",value:m.caption||"",placeholder:"Подпись",readonly:ro||m.gen,"aria-label":"Подпись к картинке "+(i+1)});
       cap.addEventListener("input",()=>{ m.caption=cap.value; editing.dirty=true; upd(); });
       const mv=(dir)=>{ const j=i+dir; if(j<0||j>=arr.length) return; [arr[i],arr[j]]=[arr[j],arr[i]]; editing.dirty=true; drawMedia(); upd(); };
-      mBox.append(h("div",{class:"mitem"}, h("img",{src:m.url,alt:m.caption||("Картинка "+(i+1))}), h("div",{class:"mb"},
+      mBox.append(h("div",{class:"mitem"}, h("img",{src:photoSrc(d,m.url),alt:m.caption||("Картинка "+(i+1))}), h("div",{class:"mb"},
         h("div",{class:"row"}, h("span",{text:"[фото:"+(i+1)+"]"}), h("span",{class:"sp"}),
           (ro||m.gen)?null:h("button",{type:"button",class:"btn sm ghost",title:"Левее",onclick:()=>mv(-1)},"←"),
           (ro||m.gen)?null:h("button",{type:"button",class:"btn sm ghost",title:"Правее",onclick:()=>mv(1)},"→"),
@@ -177,7 +177,15 @@ function drawSheet(){
     for(const f of fileIn.files){ try{ const r=await assets.upload(f); (d.media=d.media||[]).push({url:r.url, asset_id:r.id, caption:""}); }catch(e){ toast("Не удалось загрузить "+f.name); } }
     fileIn.value=""; editing.dirty=true; drawMedia(); upd();
   });
-  const mediaFld=sec("Картинки и карусель","порядок здесь — порядок в посте", mBox,
+  /* фото с сайта источника переносим в панель сразу при открытии поста — иначе превью и миниатюры пустые */
+  const phSt=h("div",{class:"hint rimp",hidden:true,role:"status"});
+  const ensureEdPhotos=async()=>{ const ed=editing; if(ro||!ed||ed.phBusy||!mcp||!assets) return; if(!extPhotos(d).some(u=>needsImport(d,u)&&!PH_ERR.has(u))) return; ed.phBusy=true;
+    try{ const n=await importPostPhotos(d,(i,t)=>{ if(editing!==ed) return; phSt.hidden=false; phSt.textContent="Переношу фото источника в панель: "+(i+1)+" из "+t+"… (Make, 1 операция на фото, один раз)"; if(pvTab==="preview") drawPreview(); });
+      if(editing!==ed) return; phSt.hidden=true; drawMedia(); drawEd(); upd();
+      if(n){ ed.saving=true; try{ await savePost(ed.id,{photo_assets:d.photo_assets}); } catch(_){} finally{ setTimeout(()=>{ ed.saving=false; },2000); } } }
+    catch(e){ if(editing!==ed) return; phSt.hidden=false; phSt.textContent="Фото источника не перенеслись в панель ("+String((e&&e.message)||"ошибка Make").slice(0,120)+"). В Telegram они всё равно загрузятся при публикации."; upd(); }
+    finally{ ed.phBusy=false; } };
+  const mediaFld=sec("Картинки и карусель","порядок здесь — порядок в посте", phSt, mBox,
     h("div",{class:"hint",text:"Строка [фото:N] в тексте ставит картинку N в это место, остальные идут в конце поста."}),
     ro?null:h("div",{class:"acts"}, fileIn, h("label",{for:"fMedia",class:"btn"},"+ Добавить картинки")));
   drawMedia();
@@ -255,7 +263,15 @@ function drawSheet(){
   let reelSec=null; if(!SAFE_MODE){ try{ reelSec=reelEditor(d,{ro, changed:()=>{ editing.dirty=true; setSaveState("Рилс изменён"); clearTimeout(sync.as); sync.as=setTimeout(autosave,2500); }}); }catch(e){ console.error(e); showErr("Рилс не загрузился", e); } }
   const covInfo=h("div",{class:"covinfo"});
 
-  const covBox=h("div"); const drawEd=()=>{ covBox.replaceChildren(coverMock(d,{full:true}));
+  /* шапку блока «Обложка» (подзаголовок, «✦ 3 варианта», подсказку, подпись кнопки) обновляем при каждой перерисовке:
+     пост мог открыться без обложки, а потом её нарисовали — раньше кнопка вариантов так и не появлялась */
+  let covUi=null;
+  const refreshCovUi=()=>{ if(!covUi) return; const r=isRendered(d);
+    covUi.sub.textContent=r?"так её увидят в канале":"";
+    if(covUi.cv) covUi.cv.hidden=!r;
+    covUi.hint.hidden=r; covUi.hint.textContent=d.image_file_id?"У этого поста картинка уже лежит в Telegram, показать её здесь нельзя. Нажми «Нарисовать обложку редакции», чтобы заменить её обложкой канала.":(d.media||[]).some(m=>m.gen)?"Это карусель: отдельной обложки нет, в канале пост откроется карточками. Если нужна обложка над текстом — нажми «Нарисовать обложку редакции».":mediaOf(d).length?"Обложки нет: пост выйдет с фото из раздела «Картинки». Если нужна обложка над текстом — нажми «Нарисовать обложку редакции».":"Обложки нет. Нажми «Нарисовать обложку редакции», чтобы она появилась над текстом.";
+    if(covUi.simple) covUi.simple.textContent=r?"Простой рисунок вместо этого":"Нарисовать обложку редакции"; };
+  const covBox=h("div"); const drawEd=()=>{ covBox.replaceChildren(coverMock(d,{full:true})); refreshCovUi();
     const c=drawCover(d); if(!isRendered(d)||!c){ covInfo.replaceChildren(); return; }
     const sz=Number(c.dataset.size)||0, ln=(c.dataset.text||"").split("\n").filter(Boolean), manual=/\n/.test(String(d.cover_title||"").trim());
     covInfo.replaceChildren(...[
@@ -265,9 +281,10 @@ function drawSheet(){
       (!ro&&!manual&&ln.length>1)?h("button",{type:"button",class:"btn sm ghost",title:"Подставить текущие строки, чтобы поправить их вручную",onclick:()=>{ tCover.value=ln.join("\n"); sync(); tCover.focus(); }},"Переносить вручную"):null].filter(Boolean)); };
   const aiC=h("div",{class:"ai",hidden:true});
   const [cvBtn,cvBox]=varBox("cover");
-  const covRow=h("div",{class:"row2"}, h("div",{class:"fld"}, h("div",{class:"lblrow"}, h("label",{for:"fCover",text:"Заголовок обложки"}), (!ro&&sample&&isRendered(d))?cvBtn:null), tCover), field("Рубрика",tLabel));
+  const covRow=h("div",{class:"row2"}, h("div",{class:"fld"}, h("div",{class:"lblrow"}, h("label",{for:"fCover",text:"Заголовок обложки"}), (!ro&&sample)?cvBtn:null), tCover), field("Рубрика",tLabel));
   const covBoxWrap=h("div",{class:"covbox"},covBox);
-  const cov=sec("Обложка", isRendered(d)?"так её увидят в канале":"", covRow, cvBox, covBoxWrap, covInfo, isRendered(d)?null:h("div",{class:"hint",text:(!d.image_file_id&&mediaOf(d).length)?"Это карусель: отдельной обложки нет, в канале пост откроется карточками. Если нужна обложка над текстом — нажми «Нарисовать обложку редакции».":"У этого поста картинка уже лежит в Telegram, показать её здесь нельзя. Нажми «Нарисовать обложку редакции», чтобы заменить её обложкой канала."}));
+  const covSub=h("span"), covHint=h("div",{class:"hint"});
+  const cov=sec("Обложка", null, covRow, cvBox, covBoxWrap, covInfo, covHint); cov.querySelector(".sech").append(covSub);
   if(!ro && sample){
     const wishIn=h("input",{type:"text",id:"fWish",placeholder:"Пожелание, необязательно: «бургер», «сделай каламбур», «без интерфейса»"});
     const st=h("div",{class:"hint"}); const ideasBox=h("div",{class:"cideas"});
@@ -286,9 +303,11 @@ function drawSheet(){
     }},"Придумать идеи");
     aiC.append(panelHead("Новая сцена от Claude",()=>{ aiC.hidden=true; document.querySelectorAll(".sec .aibtn.on").forEach(b=>b.classList.remove("on")); }), h("label",{for:"fWish",text:"О чём обложка"}), h("div",{class:"airow"}, wishIn, go), st, ideasBox);
   }
+  const covSimple=ro?null:h("button",{type:"button",class:"btn",onclick:()=>{ d.cover_render=true; d.cover_seed=(Number(d.cover_seed)||0)+1; if(d.cover_art) d.cover_art_prev=d.cover_art; d.cover_art=""; editing.dirty=true; drawEd(); upd(); }},"Нарисовать обложку редакции");
+  covUi={sub:covSub, hint:covHint, cv:(!ro&&sample)?cvBtn:null, simple:covSimple};
   if(!ro){ const aiCBtn=sample?h("button",{type:"button",class:"btn aibtn",onclick:()=>{ aiC.hidden=!aiC.hidden; aiCBtn.classList.toggle("on",!aiC.hidden); if(!aiC.hidden) aiC.querySelector("input")?.focus(); }},"✦ Новая сцена от Claude"):null;
   cov.append(h("div",{class:"acts"}, aiCBtn,
-    h("button",{type:"button",class:"btn",onclick:()=>{ d.cover_render=true; d.cover_seed=(Number(d.cover_seed)||0)+1; if(d.cover_art) d.cover_art_prev=d.cover_art; d.cover_art=""; editing.dirty=true; drawEd(); upd(); }},isRendered(d)?"Простой рисунок вместо этого":"Нарисовать обложку редакции"),
+    covSimple,
     d.cover_art_prev?h("button",{type:"button",class:"btn ghost",onclick:()=>{ d.cover_art=d.cover_art_prev; d.cover_seed=0; editing.dirty=true; drawEd(); upd(); }},"Вернуть рисунок редакции"):null), aiC); }
   drawEd();
   covSecRef=cov; if(!SAFE_MODE){ try{ drawLayout(); applyLayout(d.layout,true); }catch(e){ console.error(e); showErr("Оформление не загрузилось", e); } }
@@ -412,5 +431,6 @@ function drawSheet(){
   const sheet=h("div",{class:"sheet",role:"dialog","aria-modal":"true","aria-label":"Редактор поста"}, head, panes, (mobile&&edPane)?null:foot);
   root.replaceChildren(sheet); drawPvTabs(); upd();
   if(!ro) setTimeout(()=>tText.focus({preventScroll:true}),50);
+  if(!ro) setTimeout(ensureEdPhotos,0);
 }
 

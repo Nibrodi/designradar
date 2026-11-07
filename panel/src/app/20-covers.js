@@ -46,13 +46,13 @@ function coverMock(a, opt){
   if(!a.cover_off && a.cover_url && /^https:\/\//.test(a.cover_url)){
     /* Фото находки по ссылке: показываем из источника, в Telegram оно загрузится только при публикации */
     c.classList.add("photocover");
-    const img=h("img",{src:a.cover_url,alt:a.cover_title||a.title||"Фото",loading:"lazy",referrerpolicy:"no-referrer"});
+    const img=h("img",{src:photoSrc(a,a.cover_url),alt:a.cover_title||a.title||"Фото",loading:"lazy",referrerpolicy:"no-referrer"});
     img.addEventListener("error",()=>{ img.remove(); c.append(h("a",{class:"phfail",href:a.cover_url,target:"_blank",rel:"noopener",onclick:e=>e.stopPropagation()},"Фото не показывается здесь — открыть ↗")); });
     c.append(img, h("span",{class:"has",text:a.image_file_id?"фото в Telegram":"фото из источника · загрузится при публикации"}));
     return c; }
   const firstMedia=mediaOf(a)[0];
   if(!a.image_file_id && firstMedia){ const med=mediaOf(a); c.classList.add("mcover"); c.setAttribute("aria-label","Карусель: "+med.length+" карточек");
-    med.slice(0,4).forEach((m,i)=>c.append(h("img",{src:m.url,alt:i?"":(m.caption||"Первая карточка"),loading:"lazy",class:i?"":"first"})));
+    med.slice(0,4).forEach((m,i)=>c.append(h("img",{src:photoSrc(a,m.url),alt:i?"":(m.caption||"Первая карточка"),loading:"lazy",class:i?"":"first"})));
     if(med.length>4) c.append(h("span",{class:"more",text:"+"+(med.length-4)}));
     return c; }
   c.append(h("span",{class:"cl",text:(a.label||a.section||"Дизайн-Радар").toUpperCase()}));
@@ -69,6 +69,21 @@ async function uploadByUrl(url, key){
   return m[1];
 }
 const isExternal = u => /^https:\/\//.test(u||"") && !/\/_blob\//.test(u||"");
+/* Фото с сайта источника страница панели не показывает: она пускает только свои картинки.
+   Поэтому панель переносит их к себе (Make 6848987, 1 операция на фото, один раз) и показывает копию
+   из photo_assets; в Telegram при публикации по-прежнему уходит исходная ссылка. */
+const photoSrc = (a, url) => { const u=((a&&a.photo_assets)||{})[url]; return u ? (R_LOCAL.get(u)||u) : url; };
+const needsImport = (a, url) => rIsExt(url) && !((a&&a.photo_assets)||{})[url];
+const extPhotos = a => [...new Set([...(a.cover_off?[]:[a.cover_url]), ...mediaOf(a).filter(m=>!m.gen).map(m=>m.url)].filter(u=>u&&rIsExt(u)))];
+const PH_BUSY = new Map(), PH_ERR = new Set();
+async function importPostPhotos(a, onStep){
+  const todo=extPhotos(a).filter(u=>needsImport(a,u)&&!PH_ERR.has(u)); if(!todo.length||!mcp||!assets) return 0;
+  a.photo_assets={...(a.photo_assets||{})}; let n=0;
+  for(let i=0;i<todo.length;i++){ const u=todo[i]; if(onStep) onStep(i,todo.length);
+    let p=PH_BUSY.get(u); if(!p){ p=importPhoto(u); PH_BUSY.set(u,p); }
+    try{ a.photo_assets[u]=await p; n++; } catch(e){ PH_BUSY.delete(u); PH_ERR.add(u); throw e; } }
+  return n;
+}
 /* Вход одного вызова коннектора — не больше 1 МиБ вместе с base64. Большую картинку пережимаем в JPEG:
    Telegram всё равно хранит фото как JPEG не крупнее 2560 px, так что на канале разницы не видно. */
 const TOOL_B64_MAX = 900*1024;

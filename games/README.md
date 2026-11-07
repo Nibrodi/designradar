@@ -1,6 +1,9 @@
 # Картинки для игр
 
-Карточка 1080×1350 собирается как HTML и снимается в PNG: `CHROME_PATH=/usr/bin/google-chrome node games/render.js <абсолютный путь>.html out.png` (Playwright из panel/node_modules). Образец — `banks.html` (игра про банки в App Store, 07.11.2026).
+Карточка 1080×1350 собирается как HTML и снимается в PNG.
+- Все игры 07.11.2026 (митболы, 5 отличий и ответ, рубль, ⌘, Inter) — в `cards.js`: `CHROME_PATH=/usr/bin/google-chrome PW=$PWD/panel/node_modules/playwright node games/cards.js <папка> [id…]`. Общая сетка — `page()`, новую игру добавляй туда же. Для «Где здесь Inter?» нужны шрифты из npm: `npm i @fontsource/roboto @fontsource/ibm-plex-sans @fontsource/golos-text @fontsource/inter` и путь к ним в FONTS_DIR.
+- Банки — отдельный `banks.html`, снимается `node games/render.js <абсолютный путь>.html out.png`.
+- Ответ к игре с отличиями рисуется выносками справа: рамки вокруг правок, номер и подпись «было → стало»; линии не пересекают текст (ROUTE: r — вправо, b — вниз и вправо).
 
 Правила, чтобы картинка не выглядела нейросетевой:
 - Сетка: поля 80 px; сверху лейбл «ИГРА», заголовок InterDisplay ExtraBold 80–84 px, подзаголовок Inter Medium 34 px; снизу футер (линия 2 px, @designradar_lab слева, «ответ в опросе ниже» справа, JetBrains Mono 22 px).

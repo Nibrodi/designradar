@@ -1,0 +1,97 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:IDisp;src:url(file:///usr/share/fonts/opentype/inter/InterDisplay-ExtraBold.otf);font-weight:800}
+@font-face{font-family:IText;src:url(file:///usr/share/fonts/opentype/inter/Inter-Medium.otf);font-weight:500}
+@font-face{font-family:IText;src:url(file:///usr/share/fonts/opentype/inter/Inter-SemiBold.otf);font-weight:600}
+@font-face{font-family:IText;src:url(file:///usr/share/fonts/opentype/inter/Inter-Bold.otf);font-weight:700}
+@font-face{font-family:Mono;src:url(file:///mnt/skills/examples/canvas-design/canvas-fonts/JetBrainsMono-Regular.ttf)}
+:root{--cream:#F2EBDD;--ink:#141414;--orange:#FF5A1F;--muted:#605A50;--fill:#E9E1D1;--line:#DCD3C2}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1350px;background:var(--cream);overflow:hidden}
+.card{position:relative;width:1080px;height:1350px;padding:80px;color:var(--ink);font-family:IText}
+.tag{display:inline-block;background:var(--orange);color:var(--cream);font:26px/1 Mono;letter-spacing:.12em;padding:12px 18px 11px}
+h1{font:800 82px/0.98 IDisp;letter-spacing:-.025em;margin-top:38px}
+.sub{font:500 34px/1.3 IText;color:var(--muted);margin-top:26px}
+/* окно App Store */
+.store{position:relative;margin-top:42px;border:3px solid var(--ink);border-radius:36px;background:#FFFCF6;padding:30px 34px 14px}
+.search{display:flex;align-items:center;gap:20px}
+.field{flex:1;display:flex;align-items:center;gap:14px;height:72px;border-radius:20px;background:var(--fill);padding:0 24px;font:500 32px/1 IText}
+.field svg{flex:none}
+.cancel{font:600 30px/1 IText;color:var(--orange)}
+.row{display:flex;align-items:center;gap:28px;height:126px;position:relative}
+.row+.row::before{content:"";position:absolute;left:136px;right:0;top:0;height:2px;background:var(--line)}
+.search+.row{margin-top:14px}
+.ic{width:108px;height:108px;flex:none}
+.nm{flex:1;font:600 37px/1.15 IText;letter-spacing:-.01em}
+.nm b{font:700 37px/1 IText;color:var(--orange);margin-right:14px}
+.get{flex:none;font:700 27px/1 IText;color:var(--ink);background:var(--fill);border-radius:40px;padding:15px 26px 14px}
+.foot{position:absolute;left:80px;right:80px;bottom:80px;border-top:2px solid var(--ink);padding-top:18px;display:flex;justify-content:space-between;font:22px/1 Mono;letter-spacing:.02em}
+</style></head>
+<body><div class="card" id="card">
+<div class="tag">ИГРА</div>
+<h1 id="h1">Под что банки ещё<br>не&nbsp;маскировались<br>в&nbsp;App&nbsp;Store?</h1>
+<div class="sub">Три маскировки настоящие, одна выдумана</div>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+ <clipPath id="sq" clipPathUnits="userSpaceOnUse"><rect width="100" height="100" rx="22.5"/></clipPath>
+ <clipPath id="bowl"><path d="M33 22H67C67 46 62 58 50 58S33 46 33 22Z"/></clipPath>
+ <clipPath id="jar"><rect x="27" y="32" width="46" height="50" rx="11"/></clipPath>
+ <clipPath id="flt"><ellipse cx="50" cy="56" rx="13.5" ry="21"/></clipPath>
+</defs></svg>
+
+<div class="store" id="store">
+ <div class="search">
+  <div class="field"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="12.5" cy="12.5" r="9" fill="none" stroke="#7A7366" stroke-width="3.4"/><path d="M19.5 19.5 27 27" stroke="#7A7366" stroke-width="3.6" stroke-linecap="round"/></svg>банк</div>
+  <div class="cancel">Отменить</div>
+ </div>
+
+ <div class="row">
+  <svg class="ic" viewBox="0 0 100 100"><g clip-path="url(#sq)">
+   <rect width="100" height="100" fill="#E4432B"/>
+   <rect x="45" y="17" width="10" height="9" rx="2.5" fill="#F7EFE2"/>
+   <circle cx="50" cy="54" r="28" fill="#F7EFE2"/>
+   <path d="M50 54V30A24 24 0 0 1 72.55 62.21Z" fill="#E4432B"/>
+   <circle cx="50" cy="54" r="3.4" fill="#141414"/>
+  </g><rect x=".5" y=".5" width="99" height="99" rx="22" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="1"/></svg>
+  <div class="nm"><b>А</b>Таймер помидоро</div><div class="get">Загрузить</div>
+ </div>
+
+ <div class="row">
+  <svg class="ic" viewBox="0 0 100 100"><g clip-path="url(#sq)">
+   <rect width="100" height="100" fill="#5A1729"/>
+   <path d="M33 22H67C67 46 62 58 50 58S33 46 33 22Z" fill="#F7EFE2"/>
+   <rect x="30" y="39" width="40" height="22" fill="#C42A45" clip-path="url(#bowl)"/>
+   <rect x="48" y="57" width="4" height="17" fill="#F7EFE2"/>
+   <rect x="37" y="72" width="26" height="5" rx="2.5" fill="#F7EFE2"/>
+  </g><rect x=".5" y=".5" width="99" height="99" rx="22" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="1"/></svg>
+  <div class="nm"><b>Б</b>Оценка вина</div><div class="get">Загрузить</div>
+ </div>
+
+ <div class="row">
+  <svg class="ic" viewBox="0 0 100 100"><g clip-path="url(#sq)">
+   <rect width="100" height="100" fill="#E9A43B"/>
+   <rect x="33" y="19" width="34" height="11" rx="3" fill="#2B2118"/>
+   <rect x="27" y="32" width="46" height="50" rx="11" fill="#F7EFE2"/>
+   <rect x="27" y="47" width="46" height="40" fill="#B5301D" clip-path="url(#jar)"/>
+   <rect x="27" y="47" width="46" height="4" fill="#F7EFE2" opacity=".55" clip-path="url(#jar)"/>
+  </g><rect x=".5" y=".5" width="99" height="99" rx="22" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="1"/></svg>
+  <div class="nm"><b>В</b>Органайзер заготовок</div><div class="get">Загрузить</div>
+ </div>
+
+ <div class="row">
+  <svg class="ic" viewBox="0 0 100 100"><g clip-path="url(#sq)">
+   <rect width="100" height="100" fill="#3E7FC0"/>
+   <rect y="64" width="100" height="36" fill="#1C4A7A"/>
+   <rect x="48.75" y="16" width="2.5" height="20" rx="1.25" fill="#F7EFE2"/>
+   <g clip-path="url(#flt)"><rect x="30" y="34" width="40" height="22" fill="#E4432B"/><rect x="30" y="56" width="40" height="24" fill="#F7EFE2"/></g>
+   <rect x="30" y="64" width="40" height="16" fill="#1C4A7A" opacity=".45" clip-path="url(#flt)"/>
+   <rect x="16" y="63" width="14" height="2.4" rx="1.2" fill="#F7EFE2" opacity=".6"/>
+   <rect x="70" y="63" width="14" height="2.4" rx="1.2" fill="#F7EFE2" opacity=".6"/>
+  </g><rect x=".5" y=".5" width="99" height="99" rx="22" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="1"/></svg>
+  <div class="nm"><b>Г</b>Прогноз клёва</div><div class="get">Загрузить</div>
+ </div>
+</div>
+
+<div class="foot" id="foot"><span>@designradar_lab</span><span>ответ в опросе ниже</span></div>
+</div></body></html>

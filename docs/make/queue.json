@@ -1,0 +1,562 @@
+{
+ "name": "DR · Очередь публикации (API панели)",
+ "flow": [
+  {
+   "id": 1,
+   "module": "scenario-service:StartSubscenario",
+   "version": 2,
+   "parameters": {},
+   "mapper": {}
+  },
+  {
+   "id": 2,
+   "module": "builtin:BasicRouter",
+   "version": 1,
+   "parameters": {},
+   "mapper": {},
+   "routes": [
+    {
+     "flow": [
+      {
+       "id": 3,
+       "module": "datastore:SearchRecord",
+       "version": 1,
+       "parameters": {
+        "datastore": 200751,
+        "continueWhenNoRes": true,
+        "limit": 1
+       },
+       "mapper": {
+        "filter": [
+         [
+          {
+           "a": "key",
+           "o": "text:equal",
+           "b": "{{1.post_id}}"
+          }
+         ]
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "name": "put · текущая запись"
+        }
+       },
+       "filter": {
+        "name": "put",
+        "conditions": [
+         [
+          {
+           "a": "{{1.action}}",
+           "o": "text:equal",
+           "b": "put"
+          },
+          {
+           "a": "{{1.post_id}}",
+           "o": "exist"
+          }
+         ]
+        ]
+       }
+      },
+      {
+       "id": 4,
+       "module": "builtin:BasicRouter",
+       "version": 1,
+       "parameters": {},
+       "mapper": {},
+       "routes": [
+        {
+         "flow": [
+          {
+           "id": 5,
+           "module": "datastore:AddRecord",
+           "version": 1,
+           "parameters": {
+            "datastore": 200751
+           },
+           "filter": {
+            "name": "записи нет или она ещё ждёт",
+            "conditions": [
+             [
+              {
+               "a": "{{3.status}}",
+               "o": "notexist"
+              }
+             ],
+             [
+              {
+               "a": "{{3.status}}",
+               "o": "text:equal",
+               "b": "scheduled"
+              }
+             ]
+            ]
+           },
+           "mapper": {
+            "key": "{{1.post_id}}",
+            "overwrite": true,
+            "data": {
+             "post_id": "{{1.post_id}}",
+             "title": "{{1.title}}",
+             "scheduled_at": "{{1.scheduled_at}}",
+             "when": "{{1.when}}",
+             "ver": "{{1.ver}}",
+             "body": "{{1.body}}",
+             "poll": "{{1.poll}}",
+             "status": "scheduled",
+             "message_id": "",
+             "poll_message_id": "",
+             "poll_error": "",
+             "published_at": "",
+             "error": "",
+             "updated_at": "{{formatDate(now; \"x\")}}"
+            }
+           },
+           "metadata": {
+            "designer": {
+             "name": "put · записать сообщение"
+            }
+           }
+          },
+          {
+           "id": 6,
+           "module": "scenario-service:ReturnData",
+           "version": 2,
+           "parameters": {},
+           "mapper": {
+            "q_status": "scheduled",
+            "q_records": "[]"
+           },
+           "metadata": {
+            "expect": [
+             {
+              "name": "q_status",
+              "type": "text"
+             },
+             {
+              "name": "q_records",
+              "type": "text"
+             }
+            ]
+           }
+          }
+         ]
+        },
+        {
+         "flow": [
+          {
+           "id": 7,
+           "module": "scenario-service:ReturnData",
+           "version": 2,
+           "parameters": {},
+           "mapper": {
+            "q_status": "{{3.status}}",
+            "q_records": "[]"
+           },
+           "metadata": {
+            "expect": [
+             {
+              "name": "q_status",
+              "type": "text"
+             },
+             {
+              "name": "q_records",
+              "type": "text"
+             }
+            ],
+            "designer": {
+             "name": "put · отказ: уже выпускается"
+            }
+           },
+           "filter": {
+            "name": "Make уже выпускает или выпустил",
+            "conditions": [
+             [
+              {
+               "a": "{{3.status}}",
+               "o": "exist"
+              },
+              {
+               "a": "{{3.status}}",
+               "o": "text:notequal",
+               "b": "scheduled"
+              }
+             ]
+            ]
+           }
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "flow": [
+      {
+       "id": 8,
+       "module": "datastore:SearchRecord",
+       "version": 1,
+       "parameters": {
+        "datastore": 200751,
+        "continueWhenNoRes": true,
+        "limit": 1
+       },
+       "mapper": {
+        "filter": [
+         [
+          {
+           "a": "key",
+           "o": "text:equal",
+           "b": "{{1.post_id}}"
+          }
+         ]
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "name": "cancel · текущая запись"
+        }
+       },
+       "filter": {
+        "name": "cancel",
+        "conditions": [
+         [
+          {
+           "a": "{{1.action}}",
+           "o": "text:equal",
+           "b": "cancel"
+          },
+          {
+           "a": "{{1.post_id}}",
+           "o": "exist"
+          }
+         ]
+        ]
+       }
+      },
+      {
+       "id": 9,
+       "module": "builtin:BasicRouter",
+       "version": 1,
+       "parameters": {},
+       "mapper": {},
+       "routes": [
+        {
+         "flow": [
+          {
+           "id": 10,
+           "module": "datastore:DeleteRecord",
+           "version": 1,
+           "parameters": {
+            "datastore": 200751
+           },
+           "filter": {
+            "name": "ещё ждёт выхода",
+            "conditions": [
+             [
+              {
+               "a": "{{8.status}}",
+               "o": "text:equal",
+               "b": "scheduled"
+              }
+             ]
+            ]
+           },
+           "mapper": {
+            "key": "{{1.post_id}}"
+           },
+           "metadata": {
+            "designer": {
+             "name": "cancel · убрать из очереди"
+            }
+           }
+          },
+          {
+           "id": 11,
+           "module": "scenario-service:ReturnData",
+           "version": 2,
+           "parameters": {},
+           "mapper": {
+            "q_status": "cancelled",
+            "q_records": "[]"
+           },
+           "metadata": {
+            "expect": [
+             {
+              "name": "q_status",
+              "type": "text"
+             },
+             {
+              "name": "q_records",
+              "type": "text"
+             }
+            ]
+           }
+          }
+         ]
+        },
+        {
+         "flow": [
+          {
+           "id": 12,
+           "module": "scenario-service:ReturnData",
+           "version": 2,
+           "parameters": {},
+           "mapper": {
+            "q_status": "{{ifempty(8.status; \"missing\")}}",
+            "q_records": "[]"
+           },
+           "metadata": {
+            "expect": [
+             {
+              "name": "q_status",
+              "type": "text"
+             },
+             {
+              "name": "q_records",
+              "type": "text"
+             }
+            ]
+           },
+           "filter": {
+            "name": "уже не ждёт",
+            "conditions": [
+             [
+              {
+               "a": "{{8.status}}",
+               "o": "text:notequal",
+               "b": "scheduled"
+              }
+             ]
+            ]
+           }
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "flow": [
+      {
+       "id": 13,
+       "module": "datastore:DeleteRecord",
+       "version": 1,
+       "parameters": {
+        "datastore": 200751
+       },
+       "filter": {
+        "name": "ack",
+        "conditions": [
+         [
+          {
+           "a": "{{1.action}}",
+           "o": "text:equal",
+           "b": "ack"
+          },
+          {
+           "a": "{{1.post_id}}",
+           "o": "exist"
+          }
+         ]
+        ]
+       },
+       "mapper": {
+        "key": "{{1.post_id}}"
+       },
+       "metadata": {
+        "designer": {
+         "name": "ack · панель забрала результат"
+        }
+       }
+      },
+      {
+       "id": 14,
+       "module": "scenario-service:ReturnData",
+       "version": 2,
+       "parameters": {},
+       "mapper": {
+        "q_status": "ok",
+        "q_records": "[]"
+       },
+       "metadata": {
+        "expect": [
+         {
+          "name": "q_status",
+          "type": "text"
+         },
+         {
+          "name": "q_records",
+          "type": "text"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "flow": [
+      {
+       "id": 15,
+       "module": "datastore:SearchRecord",
+       "version": 1,
+       "parameters": {
+        "datastore": 200751,
+        "continueWhenNoRes": true,
+        "limit": 100
+       },
+       "mapper": {
+        "filter": [
+         [
+          {
+           "a": "key",
+           "o": "exist"
+          }
+         ]
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "name": "list · вся очередь"
+        }
+       },
+       "filter": {
+        "name": "list",
+        "conditions": [
+         [
+          {
+           "a": "{{1.action}}",
+           "o": "text:equal",
+           "b": "list"
+          }
+         ]
+        ]
+       }
+      },
+      {
+       "id": 16,
+       "module": "builtin:BasicAggregator",
+       "version": 1,
+       "parameters": {
+        "feeder": 15
+       },
+       "mapper": {
+        "post_id": "{{15.key}}",
+        "status": "{{15.status}}",
+        "scheduled_at": "{{15.scheduled_at}}",
+        "ver": "{{15.ver}}",
+        "message_id": "{{15.message_id}}",
+        "poll_message_id": "{{15.poll_message_id}}",
+        "poll_error": "{{15.poll_error}}",
+        "published_at": "{{15.published_at}}",
+        "error": "{{15.error}}",
+        "updated_at": "{{15.updated_at}}"
+       }
+      },
+      {
+       "id": 17,
+       "module": "json:TransformToJSON",
+       "version": 1,
+       "parameters": {
+        "space": ""
+       },
+       "mapper": {
+        "object": "{{16.array}}"
+       }
+      },
+      {
+       "id": 18,
+       "module": "scenario-service:ReturnData",
+       "version": 2,
+       "parameters": {},
+       "mapper": {
+        "q_status": "ok",
+        "q_records": "{{17.json}}"
+       },
+       "metadata": {
+        "expect": [
+         {
+          "name": "q_status",
+          "type": "text"
+         },
+         {
+          "name": "q_records",
+          "type": "text"
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "metadata": {
+  "instant": false,
+  "version": 1,
+  "scenario": {
+   "dlq": false,
+   "dataloss": false,
+   "maxErrors": 3,
+   "autoCommit": true,
+   "roundtrips": 1,
+   "sequential": true,
+   "confidential": false
+  },
+  "designer": {
+   "orphans": []
+  }
+ },
+ "interface": {
+  "input": [
+   {
+    "name": "action",
+    "type": "text",
+    "required": true
+   },
+   {
+    "name": "post_id",
+    "type": "text"
+   },
+   {
+    "name": "title",
+    "type": "text"
+   },
+   {
+    "name": "scheduled_at",
+    "type": "number"
+   },
+   {
+    "name": "when",
+    "type": "text"
+   },
+   {
+    "name": "ver",
+    "type": "number"
+   },
+   {
+    "name": "body",
+    "type": "text",
+    "multiline": true
+   },
+   {
+    "name": "poll",
+    "type": "text",
+    "multiline": true
+   }
+  ],
+  "output": [
+   {
+    "name": "q_status",
+    "type": "text"
+   },
+   {
+    "name": "q_records",
+    "type": "text"
+   }
+  ]
+ }
+}

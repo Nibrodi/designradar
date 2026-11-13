@@ -1,0 +1,263 @@
+{
+ "name": "DR · Выпуск по плану (раз в час)",
+ "flow": [
+  {
+   "id": 1,
+   "module": "datastore:SearchRecord",
+   "version": 1,
+   "parameters": {
+    "datastore": 200751,
+    "continueWhenNoRes": false,
+    "limit": 5
+   },
+   "mapper": {
+    "filter": [
+     [
+      {
+       "a": "status",
+       "o": "text:equal",
+       "b": "scheduled"
+      },
+      {
+       "a": "scheduled_at",
+       "o": "number:lessorequal",
+       "b": "{{formatDate(addSeconds(now; 150); \"x\")}}"
+      }
+     ]
+    ],
+    "sort": [
+     {
+      "key": "scheduled_at",
+      "order": 1
+     }
+    ]
+   },
+   "metadata": {
+    "designer": {
+     "name": "Посты, чьё время пришло"
+    }
+   }
+  },
+  {
+   "id": 2,
+   "module": "datastore:UpdateRecord",
+   "version": 1,
+   "parameters": {
+    "datastore": 200751
+   },
+   "mapper": {
+    "key": "{{1.key}}",
+    "data": {
+     "status": "publishing",
+     "updated_at": "{{formatDate(now; \"x\")}}"
+    },
+    "upsert": false,
+    "overwriteArrays": false
+   },
+   "metadata": {
+    "designer": {
+     "name": "Пометить: выпускается"
+    }
+   }
+  },
+  {
+   "id": 3,
+   "module": "telegram:UniversalAPICall",
+   "version": 1,
+   "parameters": {
+    "__IMTCONN__": 11823089
+   },
+   "mapper": {
+    "qs": [],
+    "body": "{{1.body}}",
+    "method": "POST",
+    "headers": [
+     {
+      "key": "Content-Type",
+      "value": "application/json"
+     }
+    ],
+    "bodyType": "mapped_body",
+    "urlMethod": "sendRichMessage"
+   },
+   "metadata": {
+    "designer": {
+     "name": "Отправить пост в канал"
+    }
+   },
+   "onerror": [
+    {
+     "id": 30,
+     "module": "datastore:UpdateRecord",
+     "version": 1,
+     "parameters": {
+      "datastore": 200751
+     },
+     "mapper": {
+      "key": "{{1.key}}",
+      "data": {
+       "status": "failed",
+       "error": "{{ifempty(3.error.message; \"Telegram не принял пост\")}}",
+       "updated_at": "{{formatDate(now; \"x\")}}"
+      },
+      "upsert": false,
+      "overwriteArrays": false
+     },
+     "metadata": {
+      "designer": {
+       "name": "Ошибка отправки → failed"
+      }
+     }
+    },
+    {
+     "id": 31,
+     "module": "builtin:Ignore",
+     "version": 1,
+     "parameters": {},
+     "mapper": {}
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "module": "datastore:UpdateRecord",
+   "version": 1,
+   "parameters": {
+    "datastore": 200751
+   },
+   "mapper": {
+    "key": "{{1.key}}",
+    "data": {
+     "status": "{{if(3.body.result.message_id; \"published\"; \"failed\")}}",
+     "message_id": "{{3.body.result.message_id}}",
+     "published_at": "{{formatDate(now; \"x\")}}",
+     "error": "{{if(3.body.result.message_id; emptystring; ifempty(3.body.description; \"Telegram не вернул номер сообщения\"))}}",
+     "updated_at": "{{formatDate(now; \"x\")}}"
+    },
+    "upsert": false,
+    "overwriteArrays": false
+   },
+   "metadata": {
+    "designer": {
+     "name": "Записать результат"
+    }
+   }
+  },
+  {
+   "id": 5,
+   "module": "telegram:UniversalAPICall",
+   "version": 1,
+   "parameters": {
+    "__IMTCONN__": 11823089
+   },
+   "mapper": {
+    "qs": [],
+    "body": "{{1.poll}}",
+    "method": "POST",
+    "headers": [
+     {
+      "key": "Content-Type",
+      "value": "application/json"
+     }
+    ],
+    "bodyType": "mapped_body",
+    "urlMethod": "sendPoll"
+   },
+   "metadata": {
+    "designer": {
+     "name": "Отправить опрос"
+    }
+   },
+   "filter": {
+    "name": "пост вышел и есть опрос",
+    "conditions": [
+     [
+      {
+       "a": "{{3.body.result.message_id}}",
+       "o": "exist"
+      },
+      {
+       "a": "{{1.poll}}",
+       "o": "exist"
+      },
+      {
+       "a": "{{1.poll}}",
+       "o": "text:notequal",
+       "b": ""
+      }
+     ]
+    ]
+   },
+   "onerror": [
+    {
+     "id": 50,
+     "module": "datastore:UpdateRecord",
+     "version": 1,
+     "parameters": {
+      "datastore": 200751
+     },
+     "mapper": {
+      "key": "{{1.key}}",
+      "data": {
+       "poll_error": "{{ifempty(5.error.message; \"Telegram не принял опрос\")}}",
+       "updated_at": "{{formatDate(now; \"x\")}}"
+      },
+      "upsert": false,
+      "overwriteArrays": false
+     },
+     "metadata": {
+      "designer": {
+       "name": "Ошибка опроса"
+      }
+     }
+    },
+    {
+     "id": 51,
+     "module": "builtin:Ignore",
+     "version": 1,
+     "parameters": {},
+     "mapper": {}
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "module": "datastore:UpdateRecord",
+   "version": 1,
+   "parameters": {
+    "datastore": 200751
+   },
+   "mapper": {
+    "key": "{{1.key}}",
+    "data": {
+     "poll_message_id": "{{5.body.result.message_id}}",
+     "poll_error": "{{if(5.body.result.message_id; emptystring; ifempty(5.body.description; \"Telegram не вернул номер опроса\"))}}",
+     "updated_at": "{{formatDate(now; \"x\")}}"
+    },
+    "upsert": false,
+    "overwriteArrays": false
+   },
+   "metadata": {
+    "designer": {
+     "name": "Записать опрос"
+    }
+   }
+  }
+ ],
+ "metadata": {
+  "instant": false,
+  "version": 1,
+  "scenario": {
+   "dlq": false,
+   "dataloss": false,
+   "maxErrors": 10,
+   "autoCommit": true,
+   "roundtrips": 1,
+   "sequential": true,
+   "confidential": false
+  },
+  "designer": {
+   "orphans": []
+  }
+ }
+}

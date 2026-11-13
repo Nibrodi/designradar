@@ -32,6 +32,22 @@ const url='file://'+path.resolve(process.argv[2]);
  await p.evaluate(()=>{ const c=[...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('Токен')); [...c.querySelectorAll('button')].find(b=>b.textContent==='Запланировать').click(); }); await W(300);
  await p.evaluate(()=>{ [...document.querySelectorAll('.sched button')].find(b=>b.textContent==='Запланировать').click(); }); await W(1500);
  d=await doc('cl_20261028_19_tokens'); ok(d.status==='scheduled'&&d.outbox&&d.outbox.body,'schedule prepares outbox');
+ { const q=await p.evaluate(()=>{ const r=(window.__queue||new Map()).get('cl_20261028_19_tokens'); return r&&{st:r.status,body:r.body,at:r.scheduled_at,ver:r.ver}; });
+   ok(q&&q.st==='scheduled'&&q.body===d.outbox.body&&q.at===d.scheduled_at&&q.ver===d.outbox.prepared_at,'schedule puts post into Make queue');
+   ok(d.scheduled_at%36e5===0,'schedule time rounded to the hour');
+   ok(!(await p.evaluate(()=>(window.__calls||[]).some(c=>c.tool==='update_trigger'&&c.args.trigger_id==='trig_01WWyd17PvLVN5jSuiwHkRwb'))),'no Claude task for scheduled posts');
+   /* Make выпустил пост: панель переносит результат в пост и убирает запись из очереди */
+   await p.evaluate(()=>{ const r=window.__queue.get('cl_20261028_19_tokens'); Object.assign(r,{status:'published',message_id:4242,published_at:Date.now()-60000,updated_at:Date.now()}); });
+   await p.evaluate(()=>window.__dr.syncQueue()); await W(500);
+   const d2=await doc('cl_20261028_19_tokens');
+   ok(d2.status==='published'&&d2.published_message_id===4242&&/\/4242$/.test(d2.published_url||''),'queue result synced into post');
+   ok(!(await p.evaluate(()=>window.__queue.has('cl_20261028_19_tokens'))),'published record acked');
+   /* снятый с плана пост уходит из очереди */
+   await p.evaluate(()=>{ window.__queue.set('ghost',{post_id:'ghost',status:'scheduled',scheduled_at:Date.now()+36e5,ver:1}); });
+   await p.evaluate(()=>window.__dr.syncQueue()); await W(400);
+   ok(!(await p.evaluate(()=>window.__queue.has('ghost'))),'record without scheduled post cancelled');
+   /* вернуть пост в план, как было до проверки очереди */
+   await p.evaluate(async()=>{ const db=await window.claude.use('db'); await db.doc('posts/cl_20261028_19_tokens').update({status:'scheduled',published_message_id:{__delete__:true},published_url:{__delete__:true},published_at:{__delete__:true},released_by:{__delete__:true}}); }); await W(300); }
  await p.evaluate(()=>location.hash='review'); await W(300);
  await p.evaluate(()=>{ const c=[...document.querySelectorAll('.card.open')].find(c=>c.textContent.includes('Финал 7')); [...c.querySelectorAll('button')].find(b=>b.textContent==='Опубликовать').click(); }); await W(300);
  await p.evaluate(()=>{ [...document.querySelectorAll('.confirm button')].find(b=>b.textContent.includes('Да')).click(); }); await W(1500);

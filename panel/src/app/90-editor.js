@@ -445,7 +445,9 @@ function drawSheet(){
     }
     ed.saving=true; await savePost(ed.id,patch); ed.dirty=false; setTimeout(()=>{ ed.saving=false; },2000);
     if(changed && editing===ed) logVersion("manual");
-    if(orig.status==="scheduled" && mcp){ try{ const outbox=await prepareOutbox({...orig,...patch,id:ed.id}); await savePost(ed.id,{outbox}); toast("План обновлён: в канал выйдет новая версия"); }catch(e){ toast("Текст сохранён, но не удалось обновить запланированную версию. Перезапланируй пост."); } }
+    if(orig.status==="scheduled" && mcp){ try{ const nx={...orig,...patch,id:ed.id}; const outbox=await prepareOutbox(nx); await savePost(ed.id,{outbox});
+        if((orig._base||"posts")==="posts" && S.owner){ const put=await queuePut({...nx, outbox}); if(put.status && put.status!=="scheduled") throw {message:"уже выпускается"}; }
+        toast("План обновлён: в канал выйдет новая версия"); }catch(e){ toast("Текст сохранён, но не удалось обновить запланированную версию. Перезапланируй пост."); } }
     if(close){ if(editing===ed) closeEditor(); toast("Сохранено"); }
   }
   const pvToggle=h("button",{type:"button",class:"btn pvbtn",onclick:()=>{ panes.classList.toggle("showpv"); pvToggle.textContent=panes.classList.contains("showpv")?"Текст":"Превью"; }},"Превью");

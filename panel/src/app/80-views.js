@@ -42,6 +42,10 @@ function postCard(a){
   if(a.check && a.status!=="published") b.querySelector(".meta")?.append(h("span",{class:"chk",title:"Есть что проверить руками — подробности в посте"},h("span",{class:"chk-i","aria-hidden":"true",text:"!"}),"проверить"));
   if(err) b.append(h("div",{class:"notice err",text:err}));
   else if(a.publish_error && (a.status==="review"||a.status==="scheduled")) b.append(h("div",{class:"notice err",text:a.publish_error}));
+  if(a.status==="scheduled" && (a._base||"posts")==="posts" && S.owner){
+    if(a.scheduled_at && Date.now()-a.scheduled_at>QUEUE_LATE) b.append(h("div",{class:"notice err",text:"Должен был выйти "+whenText(a.scheduled_at)+", но Make его не выпустил. Проверь канал: если поста там нет — нажми «Выпустить сейчас»."}));
+    else if(S.queueErr) b.append(h("div",{class:"notice err",text:S.queueErr}));
+  }
   if(a.status==="queued") b.append(h("div",{class:"notice",text:"Публикация запущена. Если через 5 минут пост не вышел, проверь канал."}));
   const acts=h("div",{class:"cacts"});
   const main=h("div",{class:"amain"}), sub=h("div",{class:"asub"});
@@ -59,11 +63,11 @@ function postCard(a){
     acts.append(schedPicker(a));
   } else if(a.status==="scheduled"){
     if(S.owner) main.append(h("button",{class:"btn accent",disabled:busy,onclick:()=>{S.sched=a.id;render();}},"Перенести"),
-      h("button",{class:"btn",disabled:busy,onclick:()=>{S.confirm=a.id;S.sched=null;savePost(a.id,{status:"review"}).then(()=>{location.hash="review";armDispatcher();});}},"Выпустить сейчас"));
+      h("button",{class:"btn",disabled:busy,onclick:()=>{S.confirm=a.id;S.sched=null;savePost(a.id,{status:"review"}).then(()=>{location.hash="review";syncQueue();});}},"Выпустить сейчас"));
     else if(canPub(a)) main.append(h("button",{class:"btn accent",disabled:busy,onclick:()=>{S.sched=a.id;render();}},"Перенести"));
     if(a.needs_prepare && S.owner) b.append(h("div",{class:"notice"},"Пост редактора: при открытии панели обложка и картинки уже готовятся к выходу."));
     sub.append(link("Редактировать",()=>openEditor(a.id)));
-    if(S.owner||canPub(a)) sub.append(link("Снять с плана",()=>savePost(a.id,{status:"review"}).then(()=>{toast("Снято с плана, пост на согласовании");armDispatcher();}),"danger end"));
+    if(S.owner||canPub(a)) sub.append(link("Снять с плана",()=>savePost(a.id,{status:"review"}).then(()=>{toast("Снято с плана, пост на согласовании");syncQueue();}),"danger end"));
   } else if(S.confirm===a.id){
     acts.append(h("div",{class:"confirm"}, h("p",{},S.owner?"Пост сразу появится в ":"Пост выйдет в течение часа в ", h("b",{text:CHANNEL}), ". Опубликовать?"),
       h("div",{class:"amain"}, h("button",{class:"btn accent",disabled:busy,onclick:()=>S.owner?publish(a):scheduleAt(a,Date.now())},"Да, опубликовать"), h("button",{class:"btn",onclick:()=>{S.confirm=null;render();}},"Отмена"))));

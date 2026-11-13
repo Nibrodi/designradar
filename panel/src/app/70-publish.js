@@ -99,7 +99,91 @@ async function updateInChannel(id, draft){
   }catch(e){ toast("Не удалось обновить: "+((e&&e.message)||"попробуй ещё раз").slice(0,160)); }
   finally{ S.busy[id]=false; render(); }
 }
-const DISPATCH = "trig_01WWyd17PvLVN5jSuiwHkRwb";
+/* ---------- отложенная публикация через Make (с 2.21.0) ----------
+   До 2.21 пост по плану выпускала задача Claude, которая после каждого выпуска сама переставляла себя на следующий
+   пост. 11–13.11 цепочка дважды оборвалась на этом шаге и один раз не запустилась вовсе — посты молча не выходили.
+   Теперь выпускает Make, без сессий Claude:
+   • панель кладёт готовое сообщение (outbox.body и outbox.poll) в хранилище Make dr_publish_queue
+     через сценарий SCN_QUEUE (действия put / cancel / ack / list);
+   • сценарий «DR · Выпуск по плану» раз в час отправляет всё, чьё время пришло, и пишет в запись message_id;
+   • панель при открытии и после каждого изменения плана сверяет очередь с постами (syncQueue): переносит в пост
+     результат выпуска, убирает из очереди снятое с плана и докладывает то, чего в очереди нет. */
+const SCN_QUEUE = 999999;
+const QUEUE_LATE = 75*6e4; /* выпуск раз в час: если пост не вышел через 75 минут после своего времени, что-то сломалось */
+function queueReply(x, depth=0){
+  if(x==null || depth>6) return null;
+  if(typeof x==="string"){ try{ return queueReply(JSON.parse(x),depth+1); }catch{ return null; } }
+  if(Array.isArray(x)){ for(const v of x){ const r=queueReply(v,depth+1); if(r) return r; } return null; }
+  if(typeof x!=="object") return null;
+  if("q_status" in x || "q_records" in x) return x;
+  for(const v of Object.values(x)){ const r=queueReply(v,depth+1); if(r) return r; }
+  return null;
+}
+async function queueCall(data){
+  if(!mcp || !SCN_QUEUE) throw {message:"очередь Make недоступна в этом окне"};
+  const res=await mcp.callTool(MAKE,"scenarios_run",{scenarioId:SCN_QUEUE, responsive:true, data});
+  const r=queueReply(res.payload??res.content);
+  if(!r) throw {message:"Make не ответил: "+JSON.stringify(res.payload??res.content??"").slice(0,160)};
+  let recs=r.q_records; if(typeof recs==="string"){ try{ recs=JSON.parse(recs||"[]"); }catch{ recs=[]; } }
+  return {status:String(r.q_status||""), records:Array.isArray(recs)?recs.filter(x=>x&&typeof x==="object"):[]};
+}
+const mskText = ms => new Date(ms).toLocaleString("ru-RU",{timeZone:"Europe/Moscow",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})+" МСК";
+/* put не перезаписывает запись, которую Make уже выпускает или выпустил: тогда вернётся её статус */
+function queuePut(p){
+  const ob=p.outbox||{};
+  return queueCall({action:"put", post_id:p.id, title:plain(p.title||"").slice(0,120), scheduled_at:Number(p.scheduled_at)||0,
+    when:mskText(p.scheduled_at), ver:Number(ob.prepared_at)||0, body:String(ob.body||""), poll:String(ob.poll||"")});
+}
+async function freshPost(id){ try{ const g=await db.doc("posts/"+id).get(); return g&&g.exists?{id, ...g.data(), _base:"posts"}:null; }catch{ return null; } }
+async function syncQueueOnce(){
+  const {records}=await queueCall({action:"list"});
+  const have=new Map(records.map(r=>[String(r.post_id||r.key||""),r])); have.delete("");
+  let again=false;
+  for(const [id,r] of have){
+    const now=Date.now(), p=await freshPost(id);
+    if(r.status==="published"){
+      const mid=Number(r.message_id)||0;
+      if(p && p.status!=="published" && mid){
+        const at=Number(r.published_at)||now;
+        const patch={status:"published", published_at:at, published_message_id:mid, published_url:"https://t.me/"+chanOf(p).slice(1)+"/"+mid, publish_error:"", released_by:"make"};
+        if(Number(r.poll_message_id)>0) Object.assign(patch,{poll_message_id:Number(r.poll_message_id), poll_sent_at:at, poll_error:""});
+        else if(p.poll && r.poll_error) patch.poll_error=String(r.poll_error).slice(0,200);
+        if(p.owner_edited && p.orig_text!=null) patch.edit_logged=false;
+        await savePost(id,patch);
+      }
+      await queueCall({action:"ack", post_id:id});
+    } else if(r.status==="failed" || (r.status==="publishing" && now-(Number(r.updated_at)||0)>20*6e4)){
+      if(p && ["scheduled","publishing"].includes(p.status))
+        await savePost(id,{status:"publish_unknown", publish_error:(r.status==="failed"?"Make не выпустил пост по плану":"Выпуск по плану завис")+(r.error?": "+String(r.error).slice(0,160):"")+". Проверь канал, прежде чем публиковать снова."});
+      await queueCall({action:"ack", post_id:id});
+    } else if(r.status==="scheduled" && !(p && p.status==="scheduled")){
+      await queueCall({action:"cancel", post_id:id});
+    }
+  }
+  const plan=S.posts.filter(p=>p.status==="scheduled" && (p._base||"posts")==="posts" && p.outbox && p.outbox.body);
+  for(const p0 of plan){
+    const r=have.get(p0.id);
+    if(r && r.status!=="scheduled") continue;
+    if(r && Number(r.scheduled_at)===Number(p0.scheduled_at) && Number(r.ver||0)===Number(p0.outbox.prepared_at||0)) continue;
+    const p=await freshPost(p0.id); if(!p || p.status!=="scheduled" || !p.outbox || !p.outbox.body) continue;
+    const res=await queuePut(p); if(res.status && res.status!=="scheduled") again=true;
+  }
+  return again;
+}
+let qSync=null, qMore=false, qLast=0;
+/* Сверка плана с очередью Make. Запускается при открытии панели, при возврате на вкладку и после каждого изменения плана. */
+function syncQueue(){
+  if(!S.owner || S.test || !mcp || !SCN_QUEUE) return Promise.resolve();
+  if(qSync){ qMore=true; return qSync; }
+  qSync=(async()=>{
+    try{ let n=0; do{ qMore=false; if(await syncQueueOnce()) qMore=true; }while(qMore && ++n<2); S.queueErr=""; }
+    catch(e){ S.queueErr="Не удалось сверить план с Make: "+String((e&&e.message)||"ошибка").slice(0,140)+". Обнови панель через пару минут."; }
+    finally{ qSync=null; qLast=Date.now(); renderSoon(); }
+  })();
+  return qSync;
+}
+window.__dr=Object.assign(window.__dr||{},{syncQueue}); /* для автопроверки */
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && S.ready && Date.now()-qLast>10*6e4) syncQueue(); });
 const pad2=n=>String(n).padStart(2,"0");
 function whenText(ms){ if(!ms) return "—"; const d=new Date(ms); return dayText(ms).toLowerCase()+", "+pad2(d.getHours())+":"+pad2(d.getMinutes()); }
 function dayText(ms){ const d=new Date(ms), t=new Date(); const z=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime(); const diff=Math.round((z(d)-z(t))/864e5);
@@ -110,23 +194,26 @@ function at(dayOffset,hh,mm){ const d=new Date(); d.setDate(d.getDate()+dayOffse
 const SLOT_GAP=60*6e4;
 const takenSlots=exceptId=>S.posts.filter(p=>p.status==="scheduled"&&p.id!==exceptId&&p.scheduled_at).map(p=>({ms:p.scheduled_at,title:plain(p.title),author:p.author||"claude"}));
 const slotConflict=(ms,exceptId)=>takenSlots(exceptId).find(t=>Math.abs(t.ms-ms)<SLOT_GAP);
-function nextFree(ms,exceptId){ let t=ms; for(let i=0;i<96&&slotConflict(t,exceptId);i++) t+=30*6e4; return t; }
+function nextFree(ms,exceptId){ let t=ms; for(let i=0;i<96&&slotConflict(t,exceptId);i++) t+=60*6e4; return t; }
+/* Make выпускает посты раз в час, в начале часа: время выхода округляем до часа вперёд */
+const toHour = ms => Math.ceil(ms/36e5)*36e5;
 function schedPicker(a){
   const now=Date.now(); let val=a.scheduled_at&&a.scheduled_at>now?a.scheduled_at:(at(0,18)>now+15*6e4?at(0,18):at(1,10));
-  const inp=h("input",{type:"datetime-local",value:localInput(val),min:localInput(now+5*6e4),"aria-label":"Дата и время выхода"});
+  const inp=h("input",{type:"datetime-local",value:localInput(val),min:localInput(toHour(now+5*6e4)),step:3600,"aria-label":"Дата и время выхода"});
   const chips=h("div",{class:"chips"});
   const opts=[["Сегодня 18:00",at(0,18)],["Завтра 10:00",at(1,10)],["Завтра 14:00",at(1,14)],["Завтра 18:00",at(1,18)],["Послезавтра 10:00",at(2,10)]].filter(o=>o[1]>now+5*6e4);
   if(slotConflict(val,a.id)) val=nextFree(val,a.id); inp.value=localInput(val);
   const warn=h("div",{class:"hint slotwarn"});
-  const check=()=>{ const ms=new Date(inp.value).getTime(); const c=ms&&slotConflict(ms,a.id); warn.textContent=c?"Занято: «"+c.title.slice(0,50)+"» ("+authorName(c.author)+") выходит "+whenText(c.ms)+". Между постами нужен час — ближайшее свободное: "+whenText(nextFree(ms,a.id))+".":""; warn.classList.toggle("bad",!!c); return !c; };
+  const check=()=>{ const ms=toHour(new Date(inp.value).getTime()); const c=ms&&slotConflict(ms,a.id); warn.textContent=c?"Занято: «"+c.title.slice(0,50)+"» ("+authorName(c.author)+") выходит "+whenText(c.ms)+". Между постами нужен час — ближайшее свободное: "+whenText(nextFree(ms,a.id))+".":""; warn.classList.toggle("bad",!!c); return !c; };
   inp.addEventListener("input",check);
   opts.forEach(([t,ms])=>{ const c=slotConflict(ms,a.id); const b=h("button",{type:"button",class:"btn sm chip"+(ms===val?" on":""),disabled:!!c,title:c?"Занято: "+c.title+" — "+authorName(c.author):""},c?t+" · занято":t);
     b.addEventListener("click",()=>{ inp.value=localInput(ms); [...chips.children].forEach(x=>x.classList.remove("on")); b.classList.add("on"); check(); }); chips.append(b); });
   const taken=takenSlots(a.id).filter(t=>t.ms>now).sort((x,y)=>x.ms-y.ms).slice(0,6);
   const takenBox=taken.length?h("div",{class:"taken"}, h("span",{class:"hint",text:"Уже в плане:"}), ...taken.map(t=>h("span",{class:"tk",text:whenText(t.ms)+" · "+authorName(t.author)}))):null;
   const busy=!!S.busy[a.id];
-  return h("div",{class:"sched"}, panelHead("Когда выпустить?",()=>{S.sched=null;render();}), chips, inp, warn, takenBox,
-    h("div",{class:"amain"}, h("button",{class:"btn accent",disabled:busy,onclick:()=>{ const ms=new Date(inp.value).getTime(); if(!ms||ms<Date.now()+2*6e4){ toast("Выбери время хотя бы на 2 минуты вперёд"); return; } if(!check()){ toast("Это время уже занято другим постом"); return; } scheduleAt(a,ms); }},busy?"Готовлю…":"Запланировать"),
+  const hourHint=S.owner?h("div",{class:"hint",text:"Посты выходят в начале часа: 14:20 станет 15:00."}):null;
+  return h("div",{class:"sched"}, panelHead("Когда выпустить?",()=>{S.sched=null;render();}), chips, inp, hourHint, warn, takenBox,
+    h("div",{class:"amain"}, h("button",{class:"btn accent",disabled:busy,onclick:()=>{ const ms=S.owner?toHour(new Date(inp.value).getTime()):new Date(inp.value).getTime(); if(!ms||ms<Date.now()+2*6e4){ toast("Выбери время хотя бы на 2 минуты вперёд"); return; } if(!check()){ toast("Это время уже занято другим постом"); return; } scheduleAt(a,ms); }},busy?"Готовлю…":"Запланировать"),
       h("button",{class:"btn",onclick:()=>{S.sched=null;render();}},"Отмена")));
 }
 let preparing=false;
@@ -136,22 +223,12 @@ async function prepareEditorPosts(){
   if(!list.length) return;
   preparing=true;
   try{ for(const a of list){ try{ const outbox=await prepareOutbox(a); await savePost(a.id,{outbox, needs_prepare:false}); }catch(e){ await savePost(a.id,{publish_error:"Не удалось подготовить пост редактора: "+String(e&&e.message||"ошибка").slice(0,120)}).catch(()=>{}); } }
-    await armDispatcher(); }
+    syncQueue(); }
   finally{ preparing=false; }
-}
-async function armDispatcher(extra){
-  if(!mcp) return;
-  const times=S.posts.filter(p=>p.status==="scheduled"&&(p._base||"posts")==="posts"&&(!extra||p.id!==extra.id)).map(p=>p.scheduled_at||0);
-  if(extra&&extra.status==="scheduled") times.push(extra.scheduled_at);
-  const next=times.filter(Boolean).sort((x,y)=>x-y)[0];
-  if(!next) return;
-  const runAt=new Date(Math.max(next, Date.now()+90*1000)); runAt.setSeconds(0,0);
-  try{ await mcp.callTool(CCR,"update_trigger",{trigger_id:DISPATCH, run_once_at:runAt.toISOString().replace(/\.\d{3}Z$/,"Z"), enabled:true}); }
-  catch(e){ toast("Не удалось поставить таймер публикации — попробуй ещё раз"); throw e; }
 }
 async function prepareOutbox(a){
   const body={chat_id:chanOf(a), rich_message:await buildRich(a)};
-  /* опрос задача отложенной публикации отправит сразу после поста */
+  /* опрос сценарий выпуска по плану отправит сразу после поста */
   return {body:JSON.stringify(body), ...(a.poll?{poll:JSON.stringify(pollBody(a))}:{}), prepared_at:Date.now()};
 }
 const myEd=()=>S.me&&S.editors[S.me]||{};
@@ -182,12 +259,13 @@ async function scheduleAt(a, ms){
   try{
     const outbox=await prepareOutbox(a);
     await savePost(a.id,{status:"scheduled", scheduled_at:ms, outbox, needs_prepare:false, publish_error:""});
-    await armDispatcher({id:a.id,status:"scheduled",scheduled_at:ms});
-    S.sched=null; toast("Запланировано: "+whenText(ms));
+    const put=await queuePut({...a, status:"scheduled", scheduled_at:ms, outbox});
+    if(put.status && put.status!=="scheduled") throw {message:"Make уже выпускает этот пост — проверь канал"};
+    S.sched=null; toast("Запланировано: "+whenText(ms)); syncQueue();
   }catch(e){
     await savePost(a.id,{status:"review"}).catch(()=>{});
     const code=e&&e.code;
-    S.errors[a.id]=(code==="approval_required"||code==="not_granted")?"Разреши панели доступ к Make и Claude Code Remote и нажми ещё раз.":"Не удалось запланировать"+(e&&e.message?": "+String(e.message).slice(0,160):"")+".";
+    S.errors[a.id]=(code==="approval_required"||code==="not_granted")?"Разреши панели доступ к Make и нажми ещё раз.":"Не удалось запланировать"+(e&&e.message?": "+String(e.message).slice(0,160):"")+".";
   }finally{ S.busy[a.id]=false; render(); }
 }
 const ICO={auto:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg>',

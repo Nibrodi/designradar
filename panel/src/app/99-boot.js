@@ -26,7 +26,9 @@ route();
     if(t && S.realOwner){ S.test=true; S.owner=false; S.me=TEST_ID; }
     renderWho();
   }
-  postsCol().onSnapshot(snap=>{ S.mainPosts=snap.docs.map(d=>({id:d.id,...d.data(),_base:"posts"})); mergePosts(); S.ready=true; renderSoon(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500); }, ()=>{ S.ready=true; renderSoon(); });
+  let firstPosts=true;
+  postsCol().onSnapshot(snap=>{ S.mainPosts=snap.docs.map(d=>({id:d.id,...d.data(),_base:"posts"})); mergePosts(); S.ready=true; renderSoon(); resolveNames(); syncEditor(); setTimeout(prepareEditorPosts,1500);
+    if(firstPosts){ firstPosts=false; setTimeout(syncQueue,800); } }, ()=>{ S.ready=true; renderSoon(); });
   liWatch();
   ideasCol().onSnapshot(snap=>{ S.ideas=snap.docs.map(d=>({id:d.id,...d.data()})); renderSoon(); });
   db.collection("roles").onSnapshot(snap=>{ S.roles={}; snap.docs.forEach(d=>S.roles[d.id]=d.data()); S.rolesLoaded=true; mergeEditors(); applyBlock(); renderSoon(); }, ()=>{});
